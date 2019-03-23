@@ -1,0 +1,10 @@
+name = "AlgebraicGraphs"
+uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"
+authors = ["Jordan Jalving <jhjalving@gmail.com>"]
+version = "0.1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
