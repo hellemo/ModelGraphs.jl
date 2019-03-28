@@ -1,8 +1,8 @@
-import ..PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
+import StructureGraphs:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver,getvalue
-import LightGraphs.Graph
-import MathProgBase.numvar
+#import LightGraphs.Graph
+#import MathProgBase.numvar
 
 ##############################################################################
 # ModelGraph
@@ -15,14 +15,12 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
-    linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
-    serial_model::Union{AbstractModel,Nothing}        #The internal serial model for the graph.  Returned if requested by the solve
+    basegraph::StructuredHyperGraph                     #Model graph structure.  Put constraint references on edges
+    linkmodel::LinkModel                                #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
+    jump_model::Union{JuMP.AbstractModel,Nothing}          #The internal serial model for the graph.  Returned if requested by the solve
 end
 
-ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),nothing)
-# @deprecate PlasmoGraph ModelGraph
-# @deprecate GraphModel ModelGraph
+ModelGraph() = ModelGraph(StructuredHyperGraph(),LinkModel(),nothing)
 
 #Write total objective functions for a model graph
 _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value

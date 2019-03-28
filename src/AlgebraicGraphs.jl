@@ -6,7 +6,10 @@ import StructureGraphs:getedge,getnodes,getedges
 using Requires
 using Distributed
 using LinearAlgebra
-using Pkg
+using MathOptInterface
+
+const MOI = MathOptInterface
+
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 import Base.==
