@@ -6,24 +6,23 @@ import StructureGraphs:getedge,getnodes,getedges
 using Requires
 using Distributed
 using LinearAlgebra
-using MathOptInterface
 
+using MathOptInterface
 const MOI = MathOptInterface
 
 import JuMP
-import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
+import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base.==
 
 #Model Graph Constructs
-export AbstractModelGraph, ModelGraph, SolutionGraph, ModelTree, JuMPGraphModel, JuMPGraph, BipartiteGraph, UnipartiteGraph, PipsTree,
+export AbstractModelGraph, ModelGraph, ModelBipartiteGraph,NodeUnipartiteGraph, LinkUnipartiteGraph, SolutionGraph, JuMPGraph,
 
-ModelNode, LinkingEdge, LinkConstraint,
+ModelNode, LinkingEdge,
 
+LinkConstraint,
 
 #Solver Constructs
-AbstractPlasmoSolver,BendersSolver,LagrangeSolver,
-
-load_pips,
+AbstractGraphSolver,BendersSolver,LagrangeSolver,
 
 #re-export base functions
 add_node!,getnodes,getedges,collectnodes,

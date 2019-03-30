@@ -173,33 +173,46 @@ end
     @linkconstraint(graph,args...)
     macro for defining linkconstraints between nodes and edges.  Link constraints are associated with nodes and edges within their respective graph.
 """
-macro linkconstraint(graph,args...)
-    #Check the inputs are the correct types.  This needs to throw
-    checkinputs = quote
-        #@assert Plasmo.is_graphmodel($m)
-        @assert isa($graph,AbstractModelGraph)
-    end
-    #generate constraint list and them to node or edge linkdata
-    refscode = quote
-        cons_refs = @getconstraintlist($(args...))           #returns all of the constraints that would be generated from the expression
+# macro linkconstraint(graph,args...)
+#     #Check the inputs are the correct types.  This needs to throw
+#     checkinputs = quote
+#         #@assert Plasmo.is_graphmodel($m)
+#         @assert isa($graph,AbstractModelGraph)
+#     end
+#     #generate constraint list and them to node or edge linkdata
+#     refscode = quote
+#         cons_refs = @getconstraintlist($(args...))           #returns all of the constraints that would be generated from the expression
+#
+#         if isa(cons_refs,JuMP.JuMPArray)
+#             cons_refs = cons_refs.innerArray
+#         elseif isa(cons_refs,JuMP.JuMPDict)
+#             cons_refs = collect(values(cons_refs.tupledict))
+#         end
+#         addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
+#     end
+#     # return quote
+#     #     begin
+#     #         $checkinputs
+#     #         $refscode
+#     #     end
+#     # end
+#     return esc(quote
+#         begin
+#             $checkinputs
+#             $refscode
+#         end
+#     end)
+# end
 
-        if isa(cons_refs,JuMP.JuMPArray)
-            cons_refs = cons_refs.innerArray
-        elseif isa(cons_refs,JuMP.JuMPDict)
-            cons_refs = collect(values(cons_refs.tupledict))
+#TODO New Link constraint macro
+macro linkconstraint(graph,args...)
+        code = quote
+            @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+            JuMP.@constraint(getlinkmodel($graph)$(args...))  #Need to build a link constraint out of these arguments
         end
-        addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
-    end
-    # return quote
-    #     begin
-    #         $checkinputs
-    #         $refscode
-    #     end
-    # end
-    return esc(quote
-        begin
-            $checkinputs
-            $refscode
-        end
-    end)
+        return esc(code)
 end
+
+macro graphconstraint end
+
+macro graphvariable end

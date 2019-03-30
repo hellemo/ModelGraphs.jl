@@ -15,7 +15,7 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    basegraph::StructuredHyperGraph                     #Model graph structure.  Put constraint references on edges
+    hypergraph::StructuredHyperGraph                     #Model graph structure.  edges in the graph have references to constraints.  The graph expresses the structure of the link model
     linkmodel::LinkModel                                #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
     jump_model::Union{JuMP.AbstractModel,Nothing}          #The internal serial model for the graph.  Returned if requested by the solve
 end
