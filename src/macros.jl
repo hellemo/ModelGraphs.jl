@@ -2,9 +2,6 @@ import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize
 constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype,undef,
 macro_return,macro_assign_and_return
 
-#Would need to create link variables to do this
-macro NLlinkconstraint(graph,args...) end
-
 #TODO
 #Graph objective should be a sum of node objectives
 #Should work similar to JuMPs @objective
@@ -29,7 +26,7 @@ end
 
 
 #generate a list of constraints, but don't attach them to the model @Might be the same as JuMP.LinearConstraints
-macro getconstraintlist(args...)
+macro buildlinkconstraints(args...)
         # Pick out keyword arguments
         if isexpr(args[1],:parameters) # these come if using a semicolon
             kwargs = args[1]
@@ -204,15 +201,13 @@ end
 #     end)
 # end
 
-#TODO New Link constraint macro
+# #TODO New Link constraint macro
+ #Note: Need a custom link constraint
 macro linkconstraint(graph,args...)
         code = quote
             @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-            JuMP.@constraint(getlinkmodel($graph)$(args...))  #Need to build a link constraint out of these arguments
+            linkconstraints = @buildlinkconstraints($(args...))  #Need to build a link constraint out of these arguments
+            addlinkconstraints($graph,linkconstraints)
         end
         return esc(code)
 end
-
-macro graphconstraint end
-
-macro graphvariable end

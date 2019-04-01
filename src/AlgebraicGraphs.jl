@@ -49,7 +49,7 @@ solve_jump,pipsnlp_solve,dsp_solve,bendersolve,solve,
 getsolution,setsolution,setvalue,getvalue,
 
 #macros
-@linkconstraint,@getconstraintlist
+@linkconstraint#,@getconstraintlist
 
 #Abstract Types
 abstract type AbstractModelGraph <: AbstractPlasmoGraph end
@@ -59,38 +59,38 @@ abstract type AbstractPlasmoSolver end
 
 include("linkmodel.jl")
 
-include("modelgraph.jl")
-
-include("modelnode.jl")
-
-include("modeledge.jl")
-
-include("solve.jl")
-
-include("solution.jl")
-
-include("macros.jl")
-
-include("aggregation.jl")
-
-include("community_detection.jl")
-
-include("graph_transformations/modeltree.jl")
-
-include("graph_transformations/pipstree.jl")
-
-include("graph_transformations/partite_graphs.jl")
-
-include("graph_transformations/graph_transformation.jl")
-
-#Plasmo Solvers
-include("plasmo_solvers/plasmo_solvers.jl")
-
-function __init__()
-    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
-    @require Metis = "2679e427-3c69-5b7f-982b-ece356f1e94b" include("extras/metis.jl")
-    @require CommunityDetection = "d427f087-d71a-5a1b-ace0-b93392eea9ff" include("extras/communities.jl")
-end
+# include("modelgraph.jl")
+#
+# include("modelnode.jl")
+#
+# include("modeledge.jl")
+#
+# include("solve.jl")
+#
+# include("solution.jl")
+#
+# include("macros.jl")
+#
+# include("aggregation.jl")
+#
+# include("community_detection.jl")
+#
+# include("graph_transformations/modeltree.jl")
+#
+# include("graph_transformations/pipstree.jl")
+#
+# include("graph_transformations/partite_graphs.jl")
+#
+# include("graph_transformations/graph_transformation.jl")
+#
+# #Plasmo Solvers
+# include("plasmo_solvers/plasmo_solvers.jl")
+#
+# function __init__()
+#     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
+#     @require Metis = "2679e427-3c69-5b7f-982b-ece356f1e94b" include("extras/metis.jl")
+#     @require CommunityDetection = "d427f087-d71a-5a1b-ace0-b93392eea9ff" include("extras/communities.jl")
+# end
 
 
 # if haskey(Pkg.installed(),"MPI")
