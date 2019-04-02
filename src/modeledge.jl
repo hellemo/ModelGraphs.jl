@@ -2,11 +2,11 @@
 # Edges
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
-    baseedge::BasePlasmoEdge
-    linkconrefs::Vector{ConstraintRef}
+    baseedge::StructureEdge
+    linkconstraints::Vector{ConstraintRef}
 end
 #Edge constructors
-LinkingEdge() = LinkingEdge(BasePlasmoEdge(),JuMP.ConstraintRef[])
+LinkingEdge() = LinkingEdge(StructureEdge(),JuMP.ConstraintRef[])
 create_edge(graph::ModelGraph) = LinkingEdge()
 
 #Add hyperedge to graph using linkconstraint reference

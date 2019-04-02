@@ -201,13 +201,30 @@ end
 #     end)
 # end
 
-# #TODO New Link constraint macro
- #Note: Need a custom link constraint
 macro linkconstraint(graph,args...)
         code = quote
             @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-            linkconstraints = @buildlinkconstraints($(args...))  #Need to build a link constraint out of these arguments
-            addlinkconstraints($graph,linkconstraints)
+            link_model = getlinkmodel($graph)
+            link_constraints = @constraint(link_model,$(args...)
+            addlinkedges(graph,link_constraints)
         end
         return esc(code)
 end
+
+# function addlinkconstraints(graph::AbstractModelGraph,linkconstraints)
+#     for linkcon in linkconstraints
+#         addlinkconstraint(graph,linkcon)
+#     end
+# end
+
+
+# # #TODO New Link constraint macro
+#  #Note: Need a custom link constraint
+# macro linkconstraint(graph,args...)
+#         code = quote
+#             @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+#             linkconstraints = @buildlinkconstraints($(args...))  #Need to build a link constraint out of these arguments
+#             addlinkconstraints($graph,linkconstraints)
+#         end
+#         return esc(code)
+# end

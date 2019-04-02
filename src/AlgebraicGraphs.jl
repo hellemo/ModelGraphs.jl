@@ -15,7 +15,7 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base.==
 
 #Model Graph Constructs
-export AbstractModelGraph, ModelGraph, ModelBipartiteGraph,NodeUnipartiteGraph, LinkUnipartiteGraph, SolutionGraph, JuMPGraph,
+export AbstractModelGraph, ModelGraph, ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph, SolutionGraph, JuMPGraph,
 
 ModelNode, LinkingEdge,
 
@@ -52,18 +52,24 @@ getsolution,setsolution,setvalue,getvalue,
 @linkconstraint#,@getconstraintlist
 
 #Abstract Types
-abstract type AbstractModelGraph <: AbstractPlasmoGraph end
-abstract type AbstractModelNode <: AbstractPlasmoNode end
-abstract type AbstractLinkingEdge  <: AbstractPlasmoEdge end
-abstract type AbstractPlasmoSolver end
+abstract type AbstractModelGraph <: AbstractStructureGraph end
+abstract type AbstractModelNode <: AbstractStructureNode end
+abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
+abstract type AbstractGraphSolver end
 
 include("linkmodel.jl")
 
-# include("modelgraph.jl")
-#
-# include("modelnode.jl")
-#
-# include("modeledge.jl")
+include("modelgraph.jl")
+
+include("modelnode.jl")
+
+include("modeledge.jl")
+
+include("linkconstraint.jl")
+
+
+
+
 #
 # include("solve.jl")
 #
