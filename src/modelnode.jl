@@ -10,13 +10,15 @@ ModelNode()
 Creates an empty ModelNode.  Does not add it to a graph.
 """
 mutable struct ModelNode <: AbstractModelNode
-    basenode::StructureNode
-    model::Union{JuMP.AbstractModel}
-    linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
+    node::StructureNode
+    model::JuMP.AbstractModel
+    # NOTE: Thinkink whether we store linkconstraint references.  Depends how often this would have to be accessed.
+    #linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
+    #linkconstraints::DefaultDict{AbstractModelGraph, Vector{GraphConstraintRef}}(GraphConstraintRef[])
 end
 
 #Constructor
-ModelNode() = ModelNode(StructureNode(),JuMP.Model(),Dict{AbstractModelGraph,Vector{ConstraintRef}}())
+ModelNode() = ModelNode(StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 StructureGraphs.create_node(graph::ModelGraph) = ModelNode()
 
 """
@@ -28,6 +30,10 @@ function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = add_node!(graph)
     setmodel(node,m)
     return node
+end
+
+function getlinkconstraints(node::ModelNode)
+    #TODO.
 end
 
 #Model Management
@@ -62,6 +68,7 @@ getlinkconstraints(node::ModelNode)
 Return a Dictionary of LinkConstraints for each graph the node is a member of
 """
 function getlinkconstraints(node::ModelNode)
+    #TODO get incident edges to node
     links = Dict()
     for (graph,refs) in node.linkconstraints
         links[graph] = Vector{LinkConstraint}()
@@ -89,7 +96,7 @@ end
 # Get model node from other objects
 ########################################
 """
-is_nodevar(node::ModelNode,var::AbstractJuMPScalar)
+is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
 
 Check whether a JuMP variable belongs to a ModelNode
 """

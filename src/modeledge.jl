@@ -2,29 +2,38 @@
 # Edges
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
-    baseedge::StructureEdge
-    linkconstraints::Vector{ConstraintRef}
+    linkedge::StructureEdge
+    linkconstraints::Vector{ConstraintRef}  #Link constraints this edge represents
 end
 #Edge constructors
 LinkingEdge() = LinkingEdge(StructureEdge(),JuMP.ConstraintRef[])
 create_edge(graph::ModelGraph) = LinkingEdge()
 
-#Add hyperedge to graph using linkconstraint reference
-function add_edge!(graph::AbstractModelGraph,ref::JuMP.ConstraintRef)
+#Add a hyperedge to graph using a linkconstraint reference
+function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
+
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
-    vars = con.terms.vars
-    nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
+    nodes = getnodes(con)
 
-    edge = add_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
-    push!(edge.linkconrefs,ref)
+    #node_indices = con.node_indices
 
-    for node in nodes
-        if !haskey(node.linkconrefs,graph)
-            node.linkconrefs[graph] = [ref]
-        else
-            push!(node.linkconrefs[graph],ref)
-        end
-    end
+    edge = add_edge!(graph,nodes...)
+    push!(edge.linkconstraints,ref)
+
+    #NOTE: Is storing this information necessary?.  We can look at a node's incident edges and determine the linkconstraints.
+
+    # for node in nodes
+    #     push!(node.linkconrefs[graph],ref)
+    # end
+
+    # for node in nodes
+    #     if !haskey(node.linkconstraints,graph)
+    #         node.linkconstraints[graph] = [ref]
+    #     else
+    #         push!(node.linkconrefs[graph],ref)
+    #     end
+    # end
+
     return edge
 end
 

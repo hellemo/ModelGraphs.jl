@@ -15,17 +15,18 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base.==
 
 #Model Graph Constructs
-export AbstractModelGraph, ModelGraph, ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph, SolutionGraph, JuMPGraph,
+export AbstractModelGraph, ModelGraph, SolutionGraph, JuMPGraph,
 
-ModelNode, LinkingEdge,
+#Graph transformations
+ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph
 
-LinkConstraint,
+ModelNode, LinkingEdge,LinkConstraint,
 
 #Solver Constructs
 AbstractGraphSolver,BendersSolver,LagrangeSolver,
 
 #re-export base functions
-add_node!,getnodes,getedges,collectnodes,
+addnode!,add_node!,getnodes,getedges,collectnodes,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
@@ -43,13 +44,13 @@ buildjumpmodel!, create_jump_graph_model,
 getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 
 #solve handles
-solve_jump,pipsnlp_solve,dsp_solve,bendersolve,solve,
+solve_jump,bendersolve,solve,  #pipsnlp_solve,dsp_solve,
 
 #Solution management
 getsolution,setsolution,setvalue,getvalue,
 
 #macros
-@linkconstraint#,@getconstraintlist
+@linkconstraint,@graphobjective,
 
 #Abstract Types
 abstract type AbstractModelGraph <: AbstractStructureGraph end
@@ -63,9 +64,11 @@ include("modelgraph.jl")
 
 include("modelnode.jl")
 
+include("linkconstraint.jl")
+
 include("modeledge.jl")
 
-include("linkconstraint.jl")
+
 
 
 

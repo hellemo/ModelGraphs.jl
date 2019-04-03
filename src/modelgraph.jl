@@ -19,10 +19,8 @@ end
 
 ModelGraph() = ModelGraph(StructuredHyperGraph(),LinkModel(),nothing)
 
-# #Write total objective functions for a model graph
-# _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value
-
 "Set the objective of a ModelGraph"
+#TODO. Write objective methods for the LinkModel
 JuMP.setobjective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
 
 "Get the ModelGraph objective value"
@@ -41,23 +39,19 @@ setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver)
 Set the graph solver to use an AbstractMathProg compliant solver
 """
 #setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
+set_optimizer(model::AbstractModelGraph,optimizer_factory::JuMP.OptimizerFactory) = set_optimizer(model.linkmodel,optimizer_factory)
 
 """
 setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver)
 
 Set the graph solver to use an AbstractMathProg compliant solver
 """
-#setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver) = model.linkmodel.solver = solver
+set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
 
 "Get the ModelGraph solver"
 #getsolver(model::AbstractModelGraph) = model.linkmodel.solver
 
-########################################
-# Link Constraints
-########################################
-#Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
-
-#TODO
+#TODO Copy a ModelGraph
 # function copy(graph::AbstractModelGraph)
 #     nodes = getnodes(graph)
 #     edges = getedges(graph)
@@ -69,7 +63,13 @@ Set the graph solver to use an AbstractMathProg compliant solver
 #Print Functions
 ####################################
 function string(graph::AbstractModelGraph)
-    "Model Graph\ngraph_id: "*string(getlabel(graph))*"\nnodes:"*string((length(getnodes(graph))))*"\nsimple links:"*string(length(getsimplelinkconstraints(graph)))*"\nhyper links: "*string(length(gethyperlinkconstraints(graph)))
+    "Model Graph\ngraph_id: "*string(getlabel(graph))*"\nnodes:"*string((length(getnodes(graph))))*"\n
+    simple links:"*string(length(getsimplelinkconstraints(graph)))*"\n
+    hyper links: "*string(length(gethyperlinkconstraints(graph)))
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
+
+
+# #Write total objective functions for a model graph
+# _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value

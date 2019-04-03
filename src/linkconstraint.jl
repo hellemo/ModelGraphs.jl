@@ -23,11 +23,12 @@ function LinkConstraint(con::JuMP.ScalarConstraint)
     node_indices = [getnode(var) for var in keys(con.func.terms)]
     return LinkConstraint(con.func,con.set,node_indices)
 end
+LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 
 function JuMP.add_constraint(m::LinkModel, con::JuMP.ScalarConstraint, name::String="")
     m.graph_constraint_index += 1
     cref = GraphConstraintRef(m, m.graph_constraint_index)
-    link_con = LinkConstraint(con)
+    link_con = LinkConstraint(con)  #convert ScalarConstraint to a LinkConstraint
     m.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
     return cref
@@ -108,3 +109,11 @@ function get_all_linkconstraints(graph::AbstractModelGraph)
     append!(links,getlinkconstraints(graph))
     return links
 end
+
+########################################################################
+# Node information for graph and link constraints
+########################################################################
+function StructureGraphs.getnodes(con::LinkConstraint)
+    return [getnode(con.nodes[i]) for i = 1:getnumnodes(con)]
+end
+getnumnodes(con::LinkConstraint) = return length(con.nodes)

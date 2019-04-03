@@ -146,16 +146,9 @@ end
 # Model Extras
 JuMP.show_constraints_summary(::IOContext,m::LinkModel) = ""
 JuMP.show_backend_summary(::IOContext,m::LinkModel) = ""
-########################################################################
-# Node information for graph and link constraints
-########################################################################
-# function StructureGraphs.getnodes(con::LinkConstraint)
-#     # vars = keys(con.func.terms)
-#     # nodes = unique([getnode(var) for var in vars])  #NOTE unique would lead to slow behavior
-#     # return nodes
-#     return [getnode(con.nodes[i]) for i = 1:getnumnodes(con)]
-# end
-# getnumnodes(con::LinkConstraint) = return length(con.nodes)
+
+
+
 
 # Add a graph constraint to a standard JuMP model
 # # TODO
