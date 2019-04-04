@@ -199,6 +199,10 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
               "able to aggregate into a new JuMP Model.")
     end
 
+    #Copy model_node into aggregate model
+    idx_map = my_copy_to(m,node_model,true)
+
+
     # reference_map = ReferenceMap(new_model, index_map)
     #
     # for (name, value) in object_dictionary(model)
@@ -293,70 +297,92 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     jump_node.indexmap = index_map
 
     #COPY CONSTRAINTS
+
+    #NOTE
+    #Option 1
+    #Use JuMP and check if I have VariableRef, ScalarConstraint, or QuadtraticConstraint and use my index map to create new constraints
+    #Also Array of each of these
+
+    #Option 2
+    #Use MOI to copy which would hit all of these constraints.  See MOI.copy_to for ideas about how to do this.
+
     constraint_types = JuMP.list_of_constraint_types(node_model)
 
     for (func,set) in constraint_types
-        con_refs = all_constraints(model,func, set)
-        for constraint_ref in con_refs
-            constraint = constraint_object(contraint_ref)
+        constraint_refs = JuMP.all_constraints(model, func, set)
+        for constraint_ref in constraint_refs
+            constraint = JuMP.constraint_object(contraint_ref)
+
+            #Create a copy of this constraint with different VariableIndices
+            #need to use correct indices on the constraint func
+            func = constraint.func
+
+
             new_constraint = typeof(constraint)(constraint.func,constraint.set)
-
-
-    for i = 1:length(node_model.linconstr)
-        con = node_model.linconstr[i]
-        #t = collect(linearterms(con.terms))  #This is broken in julia 0.5
-        t = []
-        for terms in linearterms(con.terms)
-            push!(t,terms)
+            JuMP.add_constraint(new_model,new_constraint)
         end
-        reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
-        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
-        push!(jump_node.constraintlist,reference)
     end
 
-    #COPY QUADRATIC CONSTRAINTS
-    for i = 1:length(node_model.quadconstr)
-        con = node_model.quadconstr[i]
-        #collect the linear terms
-        t = []
-        for terms in linearterms(con.terms.aff)
-            push!(t,terms)
-        end
-        qcoeffs =con.terms.qcoeffs
-        qvars1 = con.terms.qvars1
-        qvars2 = con.terms.qvars2
-        #Might be a better way to do this
-        if con.sense == :(==)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant == 0)
-        elseif con.sense == :(<=)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant <= 0)
-        elseif con.sense == :(>=)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
-        end
-        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
-        push!(jump_node.constraintlist,reference)
-    end
 
-    #COPY NONLINEAR CONSTRAINTS
-    if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
+    # for i = 1:length(node_model.linconstr)
+    #     con = node_model.linconstr[i]
+    #     #t = collect(linearterms(con.terms))  #This is broken in julia 0.5
+    #     t = []
+    #     for terms in linearterms(con.terms)
+    #         push!(t,terms)
+    #     end
+    #     reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
+    #     # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+    #     push!(jump_node.constraintlist,reference)
+    # end
+
+    # #COPY QUADRATIC CONSTRAINTS
+    # for i = 1:length(node_model.quadconstr)
+    #     con = node_model.quadconstr[i]
+    #     #collect the linear terms
+    #     t = []
+    #     for terms in linearterms(con.terms.aff)
+    #         push!(t,terms)
+    #     end
+    #     qcoeffs =con.terms.qcoeffs
+    #     qvars1 = con.terms.qvars1
+    #     qvars2 = con.terms.qvars2
+    #     #Might be a better way to do this
+    #     if con.sense == :(==)
+    #         reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+    #         sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant == 0)
+    #     elseif con.sense == :(<=)
+    #         reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+    #         sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant <= 0)
+    #     elseif con.sense == :(>=)
+    #         reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+    #         sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
+    #     end
+    #     # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+    #     push!(jump_node.constraintlist,reference)
+    # end
+
+    if node_model.nlp !== nothing
         d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
-        MathProgBase.initialize(d,[:ExprGraph])
-        num_cons = MathProgBase.numconstr(node_model)
-        start_index = length(node_model.linconstr) + length(node_model.quadconstr) + 1 # the start index for nonlinear constraints
-        for i = start_index:num_cons
-            #if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
-            expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
-            _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
-            con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
-            # push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
-            #push!(nodeoredge.node_data.constraintlist,con)  #Add the nonlinear constraint reference to the node
-            push!(jump_node.constraintlist,con)
-            #end
-        end
-    end
+        MOI.initialize(d,[:ExprGraph])
+        for nlconstr in node_model.nlpdata.nlconstr
+    #COPY NONLINEAR CONSTRAINTS
+    # if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
+    #     d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
+    #     MathProgBase.initialize(d,[:ExprGraph])
+    #     num_cons = MathProgBase.numconstr(node_model)
+    #     start_index = length(node_model.linconstr) + length(node_model.quadconstr) + 1 # the start index for nonlinear constraints
+    #     for i = start_index:num_cons
+    #         #if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
+    #         expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
+    #         _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
+    #         con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
+    #         # push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+    #         #push!(nodeoredge.node_data.constraintlist,con)  #Add the nonlinear constraint reference to the node
+    #         push!(jump_node.constraintlist,con)
+    #         #end
+    #     end
+    # end
 
     #OBJECTIVE FUNCTION
     getobjectivesense(node_model) == :Min ? sense = 1 : sense = -1
@@ -481,6 +507,37 @@ function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
         end
     end
     #TODO Set dual values for linear constraints
+end
+
+function my_copy_to(aggregate_model::JuMP.Model, src_model::JuMP.Model, copy_names::Bool)
+
+    dest = backend(aggregate_model)
+    src = backend(src_model)
+
+    #MOI.empty!(dest)
+
+    idxmap = MOI.Utilities.IndexMap()
+
+    #Copy variables
+    vis_src = MOI.get(src, MOI.ListOfVariableIndices())
+    vars = MOI.add_variables(dest, length(vis_src))
+    for (vi, var) in zip(vis_src, vars)
+        idxmap.varmap[vi] = var
+    end
+
+    # Copy variable attributes
+    MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
+
+    # Copy model attributes
+    MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
+
+    # Copy constraints
+    for (F, S) in MOI.get(src, MOI.ListOfConstraints())
+        # do the rest in copyconstraints! which is type stable
+        MOI.Utilities.copyconstraints!(dest, src, copy_names, idxmap, F, S)
+    end
+
+    return idxmap
 end
 
 
