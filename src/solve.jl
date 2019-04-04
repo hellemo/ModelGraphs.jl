@@ -1,37 +1,30 @@
-#This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
-#flattened model which JuMP can always solve in serial.
-import MathProgBase
-#import MathOptInterface (soon)
-import LightGraphs
-using JuMP
-import JuMP:setvalue,solve
-
-
 #IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
 
-#If solving with a MathProgBase compliant solver, convert the model graph to a flattened JuMP Model, solve that, and pass the result back to the ModelGraph
 mutable struct JuMPGraph <: AbstractModelGraph
-    basegraph::BasePlasmoGraph
-    linkconstraints::Vector{ConstraintRef}
+    hypergraph::StructuredHyperGraph
+    graphvariables::Vector{JuMP.VariableRef}
+    graphconstraints::Vector{JuMP.ConstraintRef}
+    linkconstraints::Vector{JuMP.ConstraintRef}
 end
 JuMPGraph() = JuMPGraph(BasePlasmoGraph(HyperGraph),ConstraintRef[])
 JuMPGraph(basegraph::BasePlasmoGraph) = JuMPGraph(basegraph,ConstraintRef[])
 
 mutable struct JuMPNode <: AbstractModelNode
-    basenode::BasePlasmoNode
-    objective#::AffExpr                           #Individual node objective expression.
-    variablemap::Dict{Symbol,Any}                 #Dictionary of symbols to JuMP Model variables.  Might make sense to use JuMP containers here
-    variablelist::Vector{AbstractJuMPScalar}
-    constraintlist::Vector{ConstraintRef}         #Vector of model constraints (make this a dictionary too)
-    indexmap::Dict{Int,Int}                       #linear index of node variable in flat model to the original index of the component model
+    node::StructureNode
+    obj_dict::Dict{Symbol,Any}
+    #objective#::AffExpr                           #Individual node objective expression.
+    #variablemap::Dict{Symbol,Any}                 #Dictionary of symbols to JuMP Model variables.  Use existing JuMP containers.
+    #variablelist::Vector{AbstractJuMPScalar}
+    #constraintlist::Vector{ConstraintRef}         #Vector of model constraints (make this a dictionary too)
+    indexmap::Dict{Int,Int}                       #linear index of node variable in new jump graph model to the original index of the node model
 end
-create_node(graph::JuMPGraph) = JuMPNode(BasePlasmoNode(),0,Dict{Symbol,AbstractJuMPScalar}(),AbstractJuMPScalar[],ConstraintRef[],Dict{Int,Int}())
-hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
+create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),0,Dict{Symbol,AbstractJuMPScalar}(),AbstractJuMPScalar[],ConstraintRef[],Dict{Int,Int}())
+#hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
 
 #Has constraint references for link constraints
 mutable struct JuMPEdge <: AbstractLinkingEdge
-    baseedge::BasePlasmoEdge
-    linkconstraintlist::Vector{ConstraintRef}  #indices in JuMP model of linkconstraints for this edge
+    edge::StructureEdge
+    linkconstraints::Vector{ConstraintRef}  #indices in JuMP model of linkconstraints for this edge
 end
 create_edge(graph::JuMPGraph) = JuMPEdge(BasePlasmoEdge(),ConstraintRef[])
 
@@ -45,29 +38,29 @@ is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph) ? true : false  #check if th
 
 # Should be defined by base type
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
-function add_node!(m::JuMP.Model; index = nv(getgraph(m).basegraph)+1)
+function StructureGraphs.add_node!(m::JuMP.Model; index = nv(getgraph(m).hypergraph)+1)
     is_graphmodel(m) || error("Can only add nodes to graph models")
     node = create_node(getgraph(m))
     add_node!(getgraph(m),node,index = index)
     return node
 end
 
-function add_edge!(m::Model,nodes::JuMPNode...)
+function StructureGraphs.add_edge!(m::Model,nodes::JuMPNode...)
     is_graphmodel(m) || error("Can only add edges to graph models")
-    add_edge!(getgraph(m),nodes...)
+    edge = add_edge!(getgraph(m),nodes...)
     return edge
 end
 
 #Define all of the JuMP model extension functions
 getgraph(m::Model) = haskey(m.ext, :Graph) ? m.ext[:Graph] : error("Model is not a graph model")
-PlasmoGraphBase.getnodes(m::Model) = getnodes(getgraph(m))
-getedges(m::Model) = getedges(getgraph(m))
+StructureGraphs.getnodes(m::Model) = getnodes(getgraph(m))
+StructureGraphs.getedges(m::Model) = getedges(getgraph(m))
 
-getnode(m::Model,id::Integer) = getnode(getgraph(m),id)  #Grab from the highest level graph if not specified
-getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
+StructureGraphs.getnode(m::Model,id::Integer) = getnode(getgraph(m),id)  #Grab from the highest level graph if not specified
+StructureGraphs.getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
 
-getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
-getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
+StructureGraphs.getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
+StructureGraphs.getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
 
 JuMP.getobjective(node::JuMPNode) = node.objective
 JuMP.getobjectivevalue(node::JuMPNode) = getvalue(node.objective)
@@ -76,8 +69,7 @@ getnodevariablemap(node::JuMPNode) = node.variablemap
 getnodevariables(node::JuMPNode) = node.variablelist
 getnodevariable(node::JuMPNode,index::Integer) = node.variablelist[index]
 getnodeconstraints(node::JuMPNode) = node.constraintlist
-num_var(node::JuMPNode) = length(node.variablelist)
-
+JuMP.num_variables(node::JuMPNode) = length(node.variablelist)
 #get node variables
 getindex(node::JuMPNode,s::Symbol) = node.variablemap[s]
 
@@ -92,19 +84,19 @@ end
 @deprecate create_flat_graph_model create_jump_graph_model
 
 function create_jump_graph_model(model_graph::AbstractModelGraph)
-    jump_model = JuMPGraphModel()
-    jump_graph = copy_graph(model_graph,to_graph_type = JuMPGraph)
-    jump_model.ext[:Graph] = jump_graph
+    jump_graph_model = JuMPGraphModel()
 
-    #COPY NODE MODELS
-    var_maps = Dict()
-    for model_node in getnodes(model_graph)  #for each node in the model graph
+    jump_graph = copy_graph_to(model_graph,JuMPGraph)  #Create empty JuMP graph with nodes and edges
+    jump_graph_model.ext[:Graph] = jump_graph
+
+    #COPY NODE MODELS INTO AGGREGATED MODEL
+    var_maps = Dict{JuMPNode,Dict}()
+    for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
         jump_node = getnode(jump_graph,nodeindex)
-        if hasmodel(model_node)
-            m,var_map = _buildnodemodel!(jump_model,jump_node,model_node)
-            var_maps[jump_node] = var_map
-        end
+
+        m,var_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)
+        var_maps[jump_node] = var_map
     end
 
     #LINK CONSTRAINTS
@@ -112,7 +104,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph)
     for linkconstraint in get_all_linkconstraints(model_graph)
         #linkconstraint = LinkConstraint(link)
         indexmap = Dict() #{node variable => new jump model variable index} Need index of node variables to flat model variables
-        vars = linkconstraint.terms.vars
+        vars = keys(linkconstraint.func.terms)
         for var in vars
             model_node = getnode(var)
             var_index = JuMP.linearindex(var)                   #index in modelgraph node
@@ -125,6 +117,10 @@ function create_jump_graph_model(model_graph::AbstractModelGraph)
         for terms in linearterms(linkconstraint.terms)
             push!(t,terms)
         end
+
+        #Create a linear constraint from the LinkConstraints
+        new_constraint = JuMP.ScalarConstraint()
+        JuMP.addconstraint(jump_model,linkconstraint.func,linkconstraint.set)
         con_reference = @constraint(jump_model, linkconstraint.lb <= sum(t[i][1]*JuMP.Variable(jump_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
         push!(jump_graph.linkconstraints,con_reference)
     end
@@ -178,63 +174,134 @@ function create_jump_graph_model(model_graph::AbstractModelGraph)
     return jump_model
 end
 
+
+#Useful utility for copying object_data from node models to a the aggregated model
+struct ReferenceMap
+    model::Model
+    index_map::Dict{Int,Int}
+end
+function Base.getindex(reference_map::ReferenceMap, vref::VariableRef)
+    return JuMP.VariableRef(reference_map.model,reference_map.index_map[index(vref)])
+end
+function Base.getindex(reference_map::ReferenceMap, cref::ConstraintRef)
+    return JuMP.ConstraintRef(reference_map.model,reference_map.index_map[index(cref)],cref.shape)
+end
+Base.broadcastable(reference_map::ReferenceMap) = Ref(reference_map)
+
+
 #Function to build a node model for a flat graph model
 function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     node_model = getmodel(model_node)
 
-    num_vars = MathProgBase.numvar(node_model)
-    var_map = Dict()              #this dict will map linear index of the node model variables to the new model JuMP variables {node var index => flat model JuMP.Variable}
-    node_map = Dict()             #nodemap. {varkey => [var1,var2,...]}
-    index_map = Dict()            #{var index in node => var index in flat model}
+    if mode(model) == DIRECT
+        error("Cannot copy a node model in `DIRECT` mode. Use the `Model` ",
+              "constructor instead of the `direct_model` constructor to be ",
+              "able to aggregate into a new JuMP Model.")
+    end
+
+    # reference_map = ReferenceMap(new_model, index_map)
+    #
+    # for (name, value) in object_dictionary(model)
+    #     new_model.obj_dict[name] = getindex.(reference_map, value)
+    # end
+    #
+    # for (key, data) in model.ext
+    #     new_model.ext[key] = copy_extension_data(data, new_model, model)
+    # end
+    #num_vars = MathProgBase.numvar(node_model)
+    #num_vars = JuMP.num_variables(node_model)
+
+    #var_map = Dict{MOI.Index,JuMP.VariableRef}()              #this dict will map linear index of the node model variables to the new model JuMP variables {node var index => flat model JuMP.Variable}
+    #node_map = Dict()             #nodemap. {varkey => [var1,var2,...]}
+    index_map = Dict{MOI.Index,JuMP.VariableRef}()            #{var index in node => var index in flat model}
 
     #add the node model variables to the new model
-    for i = 1:num_vars
-        x = JuMP.@variable(m)                                                #create an anonymous variable
-        setlowerbound(x,node_model.colLower[i])
-        setupperbound(x,node_model.colUpper[i])
-        var_name = string(Variable(node_model,i))
+    # Look at JuMP copy method for ideas here
+    #for i = 1:num_vars
+
+    #This might be unnecssary since I'll grab all of the variable data going through the MOI constraints
+
+    for var in JuMP.all_variables(node_model)
+        new_x = JuMP.@variable(m)                                                #create an anonymous variable
+
+        i = var.index           #This is an MOI Index
+        #variable_map[i] = new_x                                                 #map the index of the model_node variable to the new variable in the jump_node
+        index_map[i] = new_x.index                                               #map of model node variable index to the aggregated model index
+        #m.objDict[Symbol(new_name)] = new_x                                      #Update master model variable dictionary
+        #push!(jump_node.variablelist,new_x)
+
+
+        #Setup new variable
+
+        #Upper and Lower Bounds
+        JuMP.setlowerbound(x,JuMP.lower_bound(var))
+        JuMP.setupperbound(x,JuMP.upper_bound(var))
+
+        var_name = JuMP.name(var)
         new_name = "$(getlabel(jump_node))$(getindex(getgraph(m),jump_node))."*var_name
-        setname(x,new_name)                                                  #rename the variable to the node model variable name plus the node or edge name
-        setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
-        setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
-        var_map[i] = x                                                       #map the linear index of the model_node variable to the new variable in the jump_node
-        index_map[i] = linearindex(x)                                        #map of jump node variable index to it's actual flat model index
-        m.objDict[Symbol(new_name)] = x                                      #Update master model variable dictionary
-        push!(jump_node.variablelist,x)
+
+        JuMP.set_name(x,new_name)                                                  #rename the variable to the node model variable name plus the node or edge name
+
+        #setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
+        if JuMP.is_binary(var)
+            JuMP.set_binary(new_x)
+        end
+
+        if JuMP.is_integar(var)
+            JuMP.set_integer(new_x)
+        end
+
+        if JuMP.is_fixed(var)
+            JuMP.set_fixed(var,) #Query fixed value
+        end
+
+        JuMP.set_value(new_x,JuMP.value(var))                                     #set the variable to the same value
+
+
     end
     #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
 
-    #TODO Create an objdict with the reproduced JuMP container types for each node
-    for key in keys(node_model.objDict)  #this contains both variable and constraint references
-        if isa(node_model.objDict[key],Union{JuMP.JuMPArray{AbstractJuMPScalar},Array{AbstractJuMPScalar}})     #if the JuMP variable is an array or a JuMPArray
-            vars = node_model.objDict[key]
-            isa(vars,JuMP.JuMPArray) ? vars = vars.innerArray : nothing
-            dims = JuMP.size(vars)
-            node_map[key] = Array{AbstractJuMPScalar}(dims)
-            for j = 1:length(vars)
-                var = vars[j]
-                node_map[key][j] = var_map[linearindex(var)]
-            end
-        #reproduce the same mapping in a dictionary
-        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
-            tdict = node_model.objDict[key].tupledict  #get the tupledict
-            d_tmp = Dict()
-            for dkey in keys(tdict)
-                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
-            end
-            node_map[key] = d_tmp
+    # #Containers
+    # #TODO Create an objdict with the reproduced JuMP container types for each node
+    # for key in keys(node_model.objDict)  #this contains both variable and constraint references
+    #     if isa(node_model.objDict[key],Union{JuMP.JuMPArray{AbstractJuMPScalar},Array{AbstractJuMPScalar}})     #if the JuMP variable is an array or a JuMPArray
+    #         vars = node_model.objDict[key]
+    #         isa(vars,JuMP.JuMPArray) ? vars = vars.innerArray : nothing
+    #         dims = JuMP.size(vars)
+    #         node_map[key] = Array{AbstractJuMPScalar}(dims)
+    #         for j = 1:length(vars)
+    #             var = vars[j]
+    #             node_map[key][j] = var_map[linearindex(var)]
+    #         end
+    #     #reproduce the same mapping in a dictionary
+    #     elseif isa(node_model.objDict[key],JuMP.JuMPDict)
+    #         tdict = node_model.objDict[key].tupledict  #get the tupledict
+    #         d_tmp = Dict()
+    #         for dkey in keys(tdict)
+    #             d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
+    #         end
+    #         node_map[key] = d_tmp
+    #
+    #     elseif isa(node_model.objDict[key],JuMP.AbstractJuMPScalar) #else it's a single variable
+    #         node_map[key] = var_map[linearindex(node_model.objDict[key])]
+    #     # else #objDict also has contraints!
+    #     #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
+    #     end
+    # end
 
-        elseif isa(node_model.objDict[key],JuMP.AbstractJuMPScalar) #else it's a single variable
-            node_map[key] = var_map[linearindex(node_model.objDict[key])]
-        # else #objDict also has contraints!
-        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
-        end
-    end
-
-    jump_node.variablemap = node_map
+    #jump_node.variablemap = node_map
     jump_node.indexmap = index_map
 
-    #COPY LINEAR CONSTRAINTS
+    #COPY CONSTRAINTS
+    constraint_types = JuMP.list_of_constraint_types(node_model)
+
+    for (func,set) in constraint_types
+        con_refs = all_constraints(model,func, set)
+        for constraint_ref in con_refs
+            constraint = constraint_object(contraint_ref)
+            new_constraint = typeof(constraint)(constraint.func,constraint.set)
+
+
     for i = 1:length(node_model.linconstr)
         con = node_model.linconstr[i]
         #t = collect(linearterms(con.terms))  #This is broken in julia 0.5

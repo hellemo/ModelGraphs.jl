@@ -19,6 +19,8 @@ end
 
 ModelGraph() = ModelGraph(StructuredHyperGraph(),LinkModel(),nothing)
 
+getlinkmodel(graph::AbstractModelGraph) = graph.linkmodel
+
 "Set the objective of a ModelGraph"
 #TODO. Write objective methods for the LinkModel
 JuMP.setobjective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
@@ -48,7 +50,10 @@ Set the graph solver to use an AbstractMathProg compliant solver
 """
 set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
 
+getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
+
 "Get the ModelGraph solver"
+#TODO Use OptimizerFactory
 #getsolver(model::AbstractModelGraph) = model.linkmodel.solver
 
 #TODO Copy a ModelGraph

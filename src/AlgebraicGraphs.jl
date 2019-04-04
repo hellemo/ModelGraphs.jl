@@ -2,6 +2,7 @@ module AlgebraicGraphs
 
 using StructureGraphs
 import StructureGraphs:getedge,getnodes,getedges
+import LightGraphs
 
 using Requires
 using Distributed
