@@ -24,7 +24,7 @@ addnode!(graph::AbstractModelGraph)
 
 Add a ModelNode to a ModelGraph.
 """
-function addnode!(graph::AbstractModelGraph,m::AbstractModel)
+function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = StructureGraphs.add_node!(graph)
     setmodel(node,m)
     return node
