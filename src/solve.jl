@@ -1,14 +1,17 @@
-#IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
-#Data structure stored in a JuMPGraphModel
+#IDEA : Create a JuMP model by aggregating all of the nodes in a ModelGraph together
+"""
+JuMPGraph
+    Extension Data attached to a constructed JuMPGraphModel.  The JuMPGraph retains a reference to the original hypergraph topology with references to
+    graphvariables, graphconstraints, and linkconstraints.
+"""
 mutable struct JuMPGraph <: AbstractModelGraph
     hypergraph::StructuredHyperGraph
     graphvariables::Vector{JuMP.VariableRef}
     graphconstraints::Vector{JuMP.ConstraintRef}
     linkconstraints::Vector{JuMP.ConstraintRef}
-    #referencemap::JuMP.ReferenceMap  #Map subproblems variable and constraint references
 end
 JuMPGraph() = JuMPGraph(StructuredHyperGraph(),ConstraintRef[])
-JuMPGraph(hypergraph::StructuredHyperGraph) = JuMPGraph(hypergraph,ConstraintRef[])
+JuMPGraph(hypergraph::StructuredHyperGraph) = JuMPGraph(hypergraph,JuMP.VariableRef[],JuMP.ConstraintRef[],JuMP.ConstraintRef[])
 
 mutable struct JuMPNode <: AbstractModelNode
     node::StructureNode
@@ -59,19 +62,18 @@ StructureGraphs.getedges(m::Model) = getedges(getgraph(m))
 StructureGraphs.getnode(m::Model,id::Integer) = getnode(getgraph(m),id)  #Grab from the highest level graph if not specified
 StructureGraphs.getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
 
-StructureGraphs.getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
-StructureGraphs.getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
+# StructureGraphs.getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
+# StructureGraphs.getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
 
 JuMP.objective_function(node::JuMPNode) = node.objective
 #JuMP.getobjectivevalue(node::JuMPNode) = getvalue(node.objective)
 
-getnodevariablemap(node::JuMPNode) = node.variablemap
 getnodevariables(node::JuMPNode) = node.variablelist
 getnodevariable(node::JuMPNode,index::Integer) = node.variablelist[index]
 getnodeconstraints(node::JuMPNode) = node.constraintlist
 JuMP.num_variables(node::JuMPNode) = length(node.variablelist)
-#get node variables
-getindex(node::JuMPNode,s::Symbol) = node.variablemap[s]
+#get node variables using a symbol lookup
+getindex(node::JuMPNode,s::Symbol) = node.obj_dict[s]
 
 #get all of the link constraints from a JuMP model
 #Retrieves constraint indices that are link constraints
@@ -80,27 +82,30 @@ function getlinkconstraints(m::JuMP.Model)
     return getgraph(m).linkconstraints
 end
 
-
 """
-ModelMap
-    Mapping between variable and constraint reference of a node model and the Aggregated Model. The
-    reference of the copied model can be obtained by indexing the map with the
-    reference of the corresponding reference of the original model.
+GraphReferenceMap
+    Mapping between variable and constraint reference of a node model and the Aggregated Model.
+    The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding reference of the original node model.
 """
-struct ModelMap
+struct GraphReferenceMap
     model::JuMP.Model
     index_map::MOIU.IndexMap
 end
-function Base.getindex(reference_map::ReferenceMap, vref::VariableRef)
+function Base.getindex(reference_map::GraphReferenceMap, vref::VariableRef)
     return VariableRef(reference_map.model,reference_map.index_map[index(vref)])
 end
-function Base.getindex(reference_map::ReferenceMap, cref::ConstraintRef)
+function Base.getindex(reference_map::GraphReferenceMap, cref::ConstraintRef)
     return ConstraintRef(reference_map.model,reference_map.index_map[index(cref)],cref.shape)
 end
-Base.broadcastable(reference_map::ReferenceMap) = Ref(reference_map)
+Base.broadcastable(reference_map::GraphReferenceMap) = Ref(reference_map)
+function Base.setindex(reference_map::GraphReferenceMap, node_cref::ConstraintRef,graph_cref::ConstraintRef)
+    reference_map.index_map.conmap[node_cref.index] = graph_cref.index
+end
+function Base.setindex(reference_map::GraphReferenceMap, node_vref::JuMP.VariableRef,graph_vref::JuMP.VariableRef)
+    reference_map.index_map.varmap[node_vref.index] = graph_vref.index
+end
 
-function Base.setindex(reference_map::ReferenceMap, node_cref::ConstraintRef,graph_cref::ConstraintRef)
-
+#TODO merge! for modelmap
 
 #Create a single JuMP model from a ModelGraph
 function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
@@ -109,7 +114,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     jump_graph = copy_graph_to(model_graph,JuMPGraph)  #Create empty JuMP graph with nodes and edges
     jump_graph_model.ext[:Graph] = jump_graph
 
-    ref_map = JuMP.ReferenceMap(jump_graph_model,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(jump_graph_model,MOIU.IndexMap())
 
     # COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_obj = false                           #check if any nodes have nonlinear objectives
@@ -117,13 +122,13 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
         nodeindex = getindex(model_graph,model_node)
         jump_node = getnode(jump_graph,nodeindex)
 
-        node_ref_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
+        node_reference_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
 
         #Update the reference_map
         #reference_maps[jump_node] = node_ref_map
-        merge!(ref_map,node_ref_map)
+        merge!(reference_map,node_reference_map)
 
-        # Check for nonlinear objective functions
+        #Check for nonlinear objective functions unless we know we already have one
         node_model = getmodel(model_node)
         if has_nonlinear_obj != true
             has_nonlinear_obj = has_nonlinear_obj(node_model)
@@ -133,18 +138,22 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     #OBJECTIVE FUNCTION
     if add_node_objectives
         if !(has_nonlinear_obj)
-            graph_obj = sum(JuMP.objective_function(jump_node) for node in getnodes(jump_graph))
+            graph_obj = sum(JuMP.objective_function(jump_node) for jump_node in getnodes(jump_graph)) #NOTE: All of the node objectives were converted to Minimize (MOI.OptimizationSense(0))
             JuMP.set_objecive_function(m,MOI.OptimizationSense(0),graph_obj)
         else
-            graph_obj = :(0)
-            for node in getnodes(jump_graph)
-                id = getindex(jump_graph,node)
+            graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
+            for jump_node in getnodes(jump_graph)
+
+                #NOTE: Might be able to just convert AffExpr and QuadExpr into Julia Expressions to make this easier
+                id = getindex(jump_graph,jump_node)
+                #node_obj = JuMP.objective_function(jump_node)  # NOTE This should be a Julia expression
                 node_model = getmodel(getnode(model_graph,id))
                 JuMP.objective_sense(node_model) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
                 d = JuMP.NLPEvaluator(node_model)
                 MOI.initialize(d,[:ExprGraph])
                 node_obj = MOI.objective_expr(d)
                 _splice_nonlinear_variables!(node_obj,ref_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
+
                 node_obj = Expr(:call,:*,:($sense),node_obj)
                 graph_obj = Expr(:call,:+,graph_obj,node_obj)
             end
@@ -181,14 +190,14 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
               "able to aggregate into a new JuMP Model.")
     end
 
-    model_map = ModelMap(m,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(m,MOIU.IndexMap())
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
         new_x = JuMP.@variable(m)    #create an anonymous variable
         #i = var#.index              #This is an MOI Index
 
         #reference_map.index_map.varmap[i] = new_x.index         #map of model node variable index to the aggregated model index
-        model_map[var] = new_x                                   #map variable reference to new reference
+        reference_map[var] = new_x                                   #map variable reference to new reference
 
         var_name = JuMP.name(var)
         new_name = "$(getlabel(jump_node))$(getindex(getgraph(m),jump_node))."*var_name
@@ -199,10 +208,11 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     end
 
     #COPY CONSTRAINTS
-    #NOTE Option 1:
+    #NOTE Option 1: Currently implemented
     #Use JuMP and check if I have ScalarConstraint or VectorConstraint and use my index map to create new constraints
 
-    #Option 2: Use MOI to copy which would hit all of these constraints.  See MOI.copy_to for ideas about how to do this.
+    #Option 2: Not implemented
+    #Use MOI to copy which would hit all of these constraints.  See MOI.copy_to for ideas about how to do this.
 
     #Using Option 1
     constraint_types = JuMP.list_of_constraint_types(node_model)
@@ -210,11 +220,10 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
         constraint_refs = JuMP.all_constraints(model, func, set)
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(contraint_ref)
-
-            new_constraint = copy_constraint(constraint,variable_map)
+            new_constraint = copy_constraint(constraint,model_map)
 
             #reference_map.index_map.conmap[constraint.index] = new_constraint.index
-            model_map[constraint] = new_constraint
+            reference_map[constraint] = new_constraint
 
             JuMP.add_constraint(new_model,new_constraint)
             push!(jump_node.constraintlist,new_constraint)
@@ -234,10 +243,10 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
         nlp_initialized = true
         for i = 1:length(node_model.nlpdata.nlconstr)
             expr = MOI.constraint_expr(d,i)                     #this returns a julia expression
-            _splice_nonlinear_variables!(expr,model_map)        #splice the variables from var_map into the expression
+            _splice_nonlinear_variables!(expr,reference_map)        #splice the variables from var_map into the expression
             new_nl_constraint = JuMP.add_NL_constraint(m,expr)  #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            model_map[constraint_ref] = new_nl_constraint
+            reference_map[constraint_ref] = new_nl_constraint
             push!(jump_node.constraintlist,new_nl_constraint)
         end
     end
@@ -245,7 +254,7 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     #OBJECTIVE FUNCTION
     #AFFINE OR QUADTRATIC OBJECTIVE
     if !(has_nonlinear_obj(node_model))
-        new_objective = _copy_objective(node_model,variablemap)
+        new_objective = _copy_objective(node_model,model_map)
         jump_node.objective = new_objective
     else
         #NONLINEAR OBJECTIVE
@@ -255,7 +264,7 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
         end
         new_obj = _copy_nl_objective(d,variablemap)
         jump_node.objective = new_obj
-    return m,model_map
+    return  model_map
 end
 
 #Create a JuMP model and solve with a MPB compliant solver
@@ -277,33 +286,33 @@ function jump_solve(graph::AbstractModelGraph;scale = 1.0,kwargs...)
     status = JuMP.termination_status(m_jump)
 
     #TODO Get correct status
-    if status == :Optimal
-        setsolution(getgraph(m_flat),graph)                       #Now get our solution data back into the original ModelGraph
-        _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
-
+    if status == MOI.Optimal
+        copysolution!(getgraph(m_jump),graph)                       #Now get our solution data back into the original ModelGraph
+        #_setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
     end
     return status
 end
 
-#check if graph has a mathprogbase solver
+#check if graph has a MOI connected solver
 #TODO Remove scale argument.  Allow direct interface with the graph objective function
 function JuMP.optimize!(graph::AbstractModelGraph;scale = 1.0,kwargs...)
-    if isa(getsolver(graph),AbstractMathProgSolver)
+    #if isa(getoptimizer(graph),MOI.AbstractOptimizer)
+    if isa(getoptimizer(graph),JuMP.OptimizerFactory)
         status = jump_solve(graph,scale = scale,kwargs...)
-    elseif isa(getsolver(graph),AbstractPlasmoSolver)
-        status = solve(graph,getsolver(graph))
+    elseif isa(getoptimizer(graph),AbstractPlasmoSolver)
+        status = solve(graph,getoptimizer(graph))
     else
         throw(error("Given solver not recognized"))
     end
     return status
 end
 
-#copy the solution from one graph to another where nodes and variables match
-function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
+#TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
+function copysolution!(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
     for node in getnodes(graph1)
         index = getindex(graph1,node)
         node2 = getnode(graph2,index)       #get the corresponding node or edge in graph2
-        for i = 1:num_var(node)
+        for i = 1:JuMP.num_variables(node)
             node1_var = getnodevariable(node,i)
             node2_var = getnodevariable(node2,i)
             setvalue(node2_var,getvalue(node1_var))
@@ -312,8 +321,8 @@ function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
     #TODO Set dual values for linear constraints
 end
 
-
 #INTERNAL HELPER FUNCTIONS
+
 function _has_nonlinear_obj(m::JuMP.Model)
     if m.nlp_data != nothing
         if m.nlp_data.nlobj != nothing
@@ -325,14 +334,15 @@ end
 
 #COPY OBJECTIVE FUNCTIONS
 #splice variables into a constraint expression
-function _splice_nonlinear_variables!(expr::Expr,var_map::Dict{Int,VariableRef})  #var_map needs to map the node_model index to the new model variable
+function _splice_nonlinear_variables!(expr::Expr,reference_map::GraphReferenceMap)  #var_map needs to map the node_model index to the new model variable
     for i = 1:length(expr.args)
         if typeof(expr.args[i]) == Expr
             if expr.args[i].head != :ref   #keep calling _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
-                _splice_nonlinear_variables!(expr.args[i],var_map)
+                _splice_nonlinear_variables!(expr.args[i],reference_map)
             else  #it's a variable
                 var_index = expr.args[i].args[2]     #this is the actual index in x[1], x[2], etc...
-                new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
+                new_var = :($(reference_map.index_map.varmap[var_index.value]))
+                #new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
             end
         end
@@ -360,18 +370,19 @@ function _copy_objective(m::JuMP.Model;nonlinear = false)
     end
 end
 
-function _copy_nl_objective(d::JuMP.NLPEvaluator,variablemap::Dict{Int,VariableRef})
+function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::GraphReferenceMap)#variablemap::Dict{Int,VariableRef})
     new_obj = MOI.objective_expr(d)
-    _splice_nonlinear_variables!(new_obj,varmap)
+    _splice_nonlinear_variables!(new_obj,reference_map)
+    JuMP.objective_sense(d.m) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
     new_obj = Expr(:call,:*,:($sense),obj)
     return new_obj
 end
 
 
-function _copy_objective(JuMP.GenericAffExpr,ref_map::ReferenceMap)
+function _copy_objective(JuMP.GenericAffExpr,ref_map::GraphReferenceMap)
 end
 
-function _copy_objective(JuMP.GenericQuadExpr,ref_map::ReferenceMap)
+function _copy_objective(JuMP.GenericQuadExpr,ref_map::GraphReferenceMap)
 end
 
 function _add_to_objective!(m::JuMP.Model,add_obj::JuMP.AbstractJuMPScalar)
@@ -392,7 +403,7 @@ function _add_to_objective!(m::JuMP.Model,obj::JuMP.AbstractJuMPScalar,expr::Exp
 end
 
 # COPY CONSTRAINT FUNCTIONS
-function _copy_constraint_func(func::JuMP.GenericAffExpr{Float64,V <: AbstractVariableRef},ref_map::ReferenceMap)
+function _copy_constraint_func(func::JuMP.GenericAffExpr{Float64,V <: AbstractVariableRef},ref_map::GraphReferenceMap)
     terms = func.terms
     new_terms = OrderedDict([(ref_map[var_ref],coeff) for (var_ref,coeff) in terms])
     new_func = JuMP.GenericAffExpr{Float64,typeof(V)}()
@@ -401,7 +412,7 @@ function _copy_constraint_func(func::JuMP.GenericAffExpr{Float64,V <: AbstractVa
     return new_func
 end
 
-function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::ReferenceMap)
+function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::GraphReferenceMap)
     new_aff = copy_constraint_func(func.aff)
     new_terms = OrderedDict([(ref_map[var_ref],coeff) for (var_ref,coeff) in terms])
     new_func = JuMP.GenericQuadExpr{Float64,typeof(V)}()
@@ -411,19 +422,19 @@ function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::ReferenceMap)
     return new_func
 end
 
-function _copy_constraint_func(func::JuMP.VariableRef,ref_map::ReferenceMap)
+function _copy_constraint_func(func::JuMP.VariableRef,ref_map::GraphReferenceMap)
     new_func = ref_map[func]
     return new_func
 end
 
-function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::ReferenceMap)
+function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::GraphReferenceMap)
     new_func = copy_constraint_func(constraint.func,ref_map)
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con
 end
 
 #NOTE Figure out whether I can do a broadcast for the array
-function _copy_constraint(constraints::JuMP.VectorConstraint,ref_map::ReferenceMap)
+function _copy_constraint(constraints::JuMP.VectorConstraint,ref_map::GraphReferenceMap)
     new_funcs = [copy_constraint_func(con.func) for con in constraints]
     new_con = JuMP.VectorConstraint(new_func,constraint.set,constraint.shape)
     return new_con
@@ -432,6 +443,7 @@ end
 function copy_constraint(constraint::GraphScalarConstraint)
     new_func = copy_constraint_func(constraint.func)
 end
+
 
 # struct ReferenceMap
 #     model::Model

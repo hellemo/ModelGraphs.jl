@@ -9,14 +9,14 @@ ModelNode()
 Creates an empty ModelNode.  Does not add it to a graph.
 """
 mutable struct ModelNode <: AbstractModelNode
-    node::StructureNode
+    node::StructureGraphs.StructureNode
     model::JuMP.AbstractModel
     # NOTE: Thinking whether we store linkconstraint references.  Depends how often this would have to be accessed.
     #linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
     #linkconstraints::DefaultDict{AbstractModelGraph, Vector{GraphConstraintRef}}(GraphConstraintRef[])
 end
 #Constructor
-ModelNode() = ModelNode(StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
+ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 StructureGraphs.create_node(graph::ModelGraph) = ModelNode()
 
 """

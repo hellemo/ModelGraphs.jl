@@ -1,8 +1,7 @@
 module AlgebraicGraphs
 
 using StructureGraphs
-import StructureGraphs:getedge,getnodes,getedges
-import LightGraphs
+#import LightGraphs
 
 using Requires
 using Distributed
@@ -10,20 +9,25 @@ using LinearAlgebra
 
 using MathOptInterface
 const MOI = MathOptInterface
+const MOIU = MathOptInterface.Utilities
 
 import JuMP
-import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
-import Base.==
+import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
+import Base: ==,show,print,string,getindex,copy
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, SolutionGraph, JuMPGraph,
 
 #Graph transformations
-ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph
+ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph,
 
-ModelNode, LinkingEdge,LinkConstraint,
+#Nodes and Edges,
+ModelNode,LinkingEdge,
 
-#Solver Constructs
+#LinkModel Types
+LinkConstraint, GraphConstraint, GraphVariableRef, GraphConstraintRef,
+
+#Solvers
 AbstractGraphSolver,BendersSolver,LagrangeSolver,
 
 #re-export base functions
@@ -31,27 +35,27 @@ addnode!,add_node!,getnodes,getedges,collectnodes,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
-getnumnodes, getobjectivevalue, getinternalgraphmodel,getroot,add_master!,
+getnumnodes, getobjectivevalue, getinternalgraphmodel,
 
 #Link Constraints
 addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints, get_all_linkconstraints,
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,label_propagation,create_pips_tree,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,label_propagation,
 
 #JuMP Interface functions
-buildjumpmodel!, create_jump_graph_model,
+create_jump_graph_model,
 getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 
 #solve handles
-solve_jump,bendersolve,solve,  #pipsnlp_solve,dsp_solve,
+solve_jump,bendersolve,solve,
 
 #Solution management
 getsolution,setsolution,setvalue,getvalue,
 
 #macros
-@linkconstraint,@graphobjective,
+@linkconstraint,@graphobjective
 
 #Abstract Types
 abstract type AbstractModelGraph <: AbstractStructureGraph end
