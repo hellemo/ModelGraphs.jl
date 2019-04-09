@@ -7,7 +7,7 @@ abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get ConstraintRef
 
     graphvariables::Dict{Int,JuMP.AbstractVariable}                             #global level variables.  Defined over an entire graph.  Can be used by sub-problems.
-    graphvariablechildren::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of graph variables to children variables
+    graphvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of graph variables to children variables
 
     graphconstraints::Dict{Int,JuMP.AbstractConstraint}  #global constraint.  Defined over graph variables.  Think "first stage" constraints or Shared variable constraints.
     linkconstraints::Dict{Int,AbstractLinkConstraint}            #linking constraint.  Defined over variables in nodes.

@@ -73,7 +73,7 @@ include("linkconstraint.jl")
 
 include("modeledge.jl")
 
-
+include("macros.jl")
 
 
 
@@ -83,7 +83,7 @@ include("modeledge.jl")
 #
 # include("solution.jl")
 #
-# include("macros.jl")
+
 #
 # include("aggregation.jl")
 #

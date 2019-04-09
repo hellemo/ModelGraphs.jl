@@ -2,22 +2,28 @@
 #  Link Constraint
 #  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
 #####################################################
-struct LinkConstraint{F <: AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
+struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
     func::F
     set::S
-    node_indices::Vector{Int}  #Custom link constraint data.  Indices of nodes this LinkConstraint connects.  NOTE: Might be able to move node_indices to the LinkingEdge
+    nodes::Vector{ModelNode}  #Custom link constraint data.  Indices of nodes this LinkConstraint connects.  NOTE: Might be able to move node_indices to the LinkingEdge
 end
 
 function LinkConstraint(con::JuMP.ScalarConstraint)
-    node_indices = [getnode(var) for var in keys(con.func.terms)]
-    return LinkConstraint(con.func,con.set,node_indices)
+    nodes = ModelNode[]
+    for var in keys(con.func.terms)
+        node = getnode(var)
+        if !(node in nodes)
+            push!(nodes,node)
+        end
+    end
+    return LinkConstraint(con.func,con.set,nodes)
 end
 LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 
 function JuMP.add_constraint(m::LinkModel, con::JuMP.ScalarConstraint, name::String="")
     m.graph_constraint_index += 1
     cref = GraphConstraintRef(m, m.graph_constraint_index)
-    link_con = LinkConstraint(con)  #convert ScalarConstraint to a LinkConstraint
+    link_con = LinkConstraint(con)      #convert ScalarConstraint to a LinkConstraint
     m.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
     return cref
@@ -28,9 +34,10 @@ function JuMP.add_constraint(m::LinkModel, con::JuMP.AbstractConstraint, name::S
 end
 
 function StructureGraphs.getnodes(con::LinkConstraint)
-    return [getnode(con.nodes[i]) for i = 1:getnumnodes(con)]
+    return con.nodes
+    #return [getnode(var) for var in keys(con.func.terms)]
 end
-getnumnodes(con::LinkConstraint) = return length(con.nodes)
+getnumnodes(con::LinkConstraint) = length(con.nodes)
 
 is_simplelinkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
 is_hyperlinkconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false

@@ -11,18 +11,19 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    hypergraph::StructureGraphs.StructuredHyperGraph                     #Model graph structure.  edges in the graph have references to constraints.  The graph expresses the structure of the link model
+    hypergraph::StructureGraphs.StructureGraph           #Model graph structure.  edges in the graph have references to constraints.  The graph expresses the structure of the link model
     linkmodel::LinkModel                                 #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
     jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph.  Returned if requested by the solve
 end
 
 ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),nothing)
+StructureGraphs.getstructuregraph(graph::ModelGraph) = graph.hypergraph
 
 getlinkmodel(graph::AbstractModelGraph) = graph.linkmodel
 
 "Set the objective of a ModelGraph"
 #TODO. Write objective methods for the LinkModel
-JuMP.setobjective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
+JuMP.set_objective_function(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.VariableRef) = JuMP.set_objective_function(graph.linkmodel, sense, convert(AffExpr,x))
 
 "Get the ModelGraph objective value"
 JuMP.getobjectivevalue(graph::AbstractModelGraph) = getobjectivevalue(graph.linkmodel)

@@ -9,7 +9,7 @@ ModelNode()
 Creates an empty ModelNode.  Does not add it to a graph.
 """
 mutable struct ModelNode <: AbstractModelNode
-    node::StructureGraphs.StructureNode
+    structurenode::StructureGraphs.StructureNode
     model::JuMP.AbstractModel
     # NOTE: Thinking whether we store linkconstraint references.  Depends how often this would have to be accessed.
     #linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
@@ -18,6 +18,7 @@ end
 #Constructor
 ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 StructureGraphs.create_node(graph::ModelGraph) = ModelNode()
+StructureGraphs.getbasenode(node::ModelNode) = node.structurenode
 
 """
 addnode!(graph::AbstractModelGraph)
@@ -120,7 +121,7 @@ getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
-getnode(var::JuMP.AbstractVariableRef) = var.m.ext[:node]
+getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
 
 """
 setmodel(node::ModelNode,m::AbstractModel)

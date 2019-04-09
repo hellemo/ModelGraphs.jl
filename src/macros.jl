@@ -1,9 +1,11 @@
 macro linkconstraint(graph,args...)
         code = quote
             @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-            link_model = getlinkmodel($graph)
-            link_constraints = @constraint(link_model,$(args...))
-            addlinkedges(graph,link_constraints)
+            link_model = AlgebraicGraphs.getlinkmodel($graph)
+
+            link_constraints = JuMP.@constraint(link_model,($(args...)))  #link model extends @constraint macro
+
+            AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
         end
         return esc(code)
 end
