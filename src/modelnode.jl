@@ -11,6 +11,7 @@ Creates an empty ModelNode.  Does not add it to a graph.
 mutable struct ModelNode <: AbstractModelNode
     structurenode::StructureGraphs.StructureNode
     model::JuMP.AbstractModel
+
     # NOTE: Thinking whether we store linkconstraint references.  Depends how often this would have to be accessed.
     #linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
     #linkconstraints::DefaultDict{AbstractModelGraph, Vector{GraphConstraintRef}}(GraphConstraintRef[])
@@ -70,7 +71,6 @@ Return a Dictionary of LinkConstraints for each graph the node is a member of
 #TODO JuMP 0.19
 #TODO get incident edges to node
 # function getlinkconstraints(node::ModelNode)
-#
 #     links = Dict()
 #     for (graph,refs) in node.linkconstraints
 #         links[graph] = Vector{LinkConstraint}()
@@ -157,7 +157,7 @@ function resetmodel(node::ModelNode,m::AbstractModel)
 end
 
 function string(node::ModelNode)
-    "Model Node: "*"\n"*string("Member of $(length(getindices(node))) graph(s)")*"\n$(num_variables(node))) Variables"
+    "Model Node w/ $(JuMP.num_variables(node)) Variable(s)"
 end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)

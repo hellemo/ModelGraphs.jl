@@ -20,6 +20,8 @@ ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),not
 StructureGraphs.getstructuregraph(graph::ModelGraph) = graph.hypergraph
 
 getlinkmodel(graph::AbstractModelGraph) = graph.linkmodel
+getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkmodel.linkconstraints)
+hasobjective(graph::AbstractModelGraph) = getlinkmodel(graph).objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 
 "Set the objective of a ModelGraph"
 #TODO. Write objective methods for the LinkModel
@@ -50,7 +52,7 @@ Set the graph solver to use an AbstractMathProg compliant solver
 """
 set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
 
-getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
+#getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
 
 "Get the ModelGraph solver"
 #TODO Use OptimizerFactory
@@ -68,13 +70,17 @@ getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(
 #Print Functions
 ####################################
 function string(graph::AbstractModelGraph)
-    "Model Graph\ngraph_id: "*string(getlabel(graph))*"\nnodes:"*string((length(getnodes(graph))))*"\n
-    simple links:"*string(length(getsimplelinkconstraints(graph)))*"\n
-    hyper links: "*string(length(gethyperlinkconstraints(graph)))
+    "Model Graph:"*string(getlabel(graph))*"
+nodes:"*string((length(getnodes(graph))))*"
+link constraints (edges):"*string((getnumlinkconstraints(graph)))
+
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 
+
+# simple links:"*string(length(getsimplelinkconstraints(graph)))*"\n
+# hyper links: "*string(length(gethyperlinkconstraints(graph)))
 
 # #Write total objective functions for a model graph
 # _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value

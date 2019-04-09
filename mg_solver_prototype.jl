@@ -19,4 +19,6 @@ n2 = add_node!(graph,m2)
 
 @linkconstraint(graph,n1[:x] + n2[:y] <= 4)  #This a link constraint
 
-#optimizer = with_optimizer(Ipopt.Optimizer)
+optimizer = with_optimizer(Ipopt.Optimizer)
+
+optimize!(graph,optimizer)

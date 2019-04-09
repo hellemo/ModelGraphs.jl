@@ -63,29 +63,27 @@ abstract type AbstractModelNode <: AbstractStructureNode end
 abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
 abstract type AbstractGraphSolver end
 
-include("linkmodel.jl")
+include("linkmodel.jl")  #A JuMP extension model to manage special variables and constraints
 
-include("modelgraph.jl")
+include("modelgraph.jl") #The ModelGraph
 
-include("modelnode.jl")
+include("modelnode.jl")  #ModelGraph nodes
 
-include("linkconstraint.jl")
+include("linkconstraint.jl")  #LinkConstraints which create graph topology
 
-include("modeledge.jl")
+include("modeledge.jl")   #ModelGraph edges
 
-include("macros.jl")
+include("macros.jl")      #@linkconstraint, @graphobjective
 
+include("jumpgraph.jl")   #An aggregated JuMP model
 
-
-
+include("solve.jl")       #Aggregate and solve with an MOI Solver
 #
-# include("solve.jl")
-#
-# include("solution.jl")
+# include("solution.jl")  #SolutionGraph
 #
 
 #
-# include("aggregation.jl")
+# include("aggregation.jl")  #Aggregate pieces of a ModelGraph
 #
 # include("community_detection.jl")
 #
@@ -93,12 +91,9 @@ include("macros.jl")
 #
 # include("graph_transformations/pipstree.jl")
 #
-# include("graph_transformations/partite_graphs.jl")
+# include("graph_transformations/partite_graphs.jl")   #Transformations that facilitate graph analysis (partitioning and community detection)
 #
 # include("graph_transformations/graph_transformation.jl")
-#
-# #Plasmo Solvers
-# include("plasmo_solvers/plasmo_solvers.jl")
 #
 # function __init__()
 #     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")

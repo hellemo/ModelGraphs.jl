@@ -14,7 +14,7 @@ function addlinkedges!(graph::AbstractModelGraph,con_ref::GraphConstraintRef)
     add_edge!(graph,con_ref)
 end
 
-function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{GraphConstraintRef}) #TODO dispatch on Array type
+function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{GraphConstraintRef}) #TODO make sure this always works
     for con_ref in con_refs
         add_edge!(graph,con_ref)
     end
@@ -30,6 +30,7 @@ function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
     edge = StructureGraphs.add_edge!(graph,nodes...)
     push!(edge.linkconstraints,ref)
 
+    #STORE LINKCONSTRAINT REFERENCES ON NODES
     #NOTE: Is storing this information necessary?.  We can look at a node's incident edges and determine the linkconstraints.
     # Depends how often we need to look up this information.  Could cache the references onto the nodes.
     # for node in nodes
@@ -46,9 +47,3 @@ function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
 
     return edge
 end
-
-# TODO  Think of a good way to update links when swapping out models.  Might need to store variable names in NodeLinkData
-# function _updatelinks(m,::AbstractModel,nodeoredge::NodeOrEdge)
-#     link_cons = getlinkconstraints(nodeoredge)
-#     #find variables
-# end
