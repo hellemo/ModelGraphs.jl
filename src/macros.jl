@@ -5,7 +5,7 @@ macro linkconstraint(graph,args...)
 
             link_constraints = JuMP.@constraint(link_model,($(args...)))  #link model extends @constraint macro
 
-            AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
+            #AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
         end
         return esc(code)
 end

@@ -1,3 +1,32 @@
+#TODO IndexMap with NonlinearConstraintIndex
+# const GraphConstraintIndex = Union{MOI.ConstraintIndex,JuMP.NonlinearConstraintIndex}
+#
+# struct IndexMap
+#     varmap::Dict{MOI.VariableIndex,MOI.VariableIndex}
+#     conmap::Dict{GraphConstraintIndex,GraphConstraintIndex}
+# end
+#
+# IndexMap() = IndexMap(Dict{MOI.VariableIndex, MOI.VariableIndex}(),Dict{GraphConstraintIndex, GraphConstraintIndex}())
+#
+# Base.getindex(idxmap::IndexMap, vi::MOI.VariableIndex) = idxmap.varmap[vi]
+#
+# function Base.getindex(idxmap::IndexMap, ci::MOI.ConstraintIndex{F, S}) where {F, S}
+#     idxmap.conmap[ci]::MOI.ConstraintIndex{F, S}
+# end
+# function Base.getindex(idxmap::IndexMap, ci::JuMP.NonlinearConstraintIndex)
+#     idxmap.conmap[ci]::JuMP.NonlinearConstraintIndex
+# end
+#
+# Base.setindex!(idxmap::IndexMap, vi1::MOI.VariableIndex, vi2::MOI.VariableIndex) = Base.setindex!(idxmap.varmap, vi1, vi2)
+# function Base.setindex!(idxmap::IndexMap, ci1::MOI.ConstraintIndex{F, S}, ci2::MOI.ConstraintIndex{F, S}) where {F, S}
+#     Base.setindex!(idxmap.conmap, ci1, ci2)
+# end
+#
+# Base.delete!(idxmap::IndexMap, vi::MOI.VariableIndex) = delete!(idxmap.varmap, vi)
+# Base.delete!(idxmap::IndexMap, ci::MOI.ConstraintIndex) = delete!(idxmap.conmap, ci)
+#
+# Base.keys(idxmap::IndexMap) = Iterators.flatten((keys(idxmap.varmap), keys(idxmap.conmap)))
+
 """
 GraphReferenceMap
     Mapping between variable and constraint reference of a node model and the Aggregated Model.
@@ -149,11 +178,10 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
             constraint = JuMP.constraint_object(constraint_ref)
             new_constraint = _copy_constraint(constraint,reference_map)
 
-            #reference_map.index_map.conmap[constraint.index] = new_constraint.index
-            reference_map[constraint] = new_constraint
+            #reference_map[constraint] = new_constraint
 
-            JuMP.add_constraint(new_model,new_constraint)
-            push!(jump_node.constraintlist,new_constraint)
+            ref= JuMP.add_constraint(m,new_constraint)
+            push!(jump_node.constraintlist,ref)
         end
     end
 
@@ -173,10 +201,10 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         for i = 1:length(node_model.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,reference_map)        #splice the variables from var_map into the expression
-            println(expr)
+            #println(expr)
             new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            reference_map[constraint_ref] = new_nl_constraint
+            #reference_map[constraint_ref] = new_nl_constraint
             push!(jump_node.constraintlist,new_nl_constraint)
         end
     end
@@ -325,6 +353,11 @@ end
 
 function _copy_objective(func::Union{JuMP.GenericAffExpr,JuMP.GenericQuadExpr},ref_map::GraphReferenceMap)
     new_func = _copy_constraint_func(func,ref_map)
+    return new_func
+end
+
+function _copy_objective(func::JuMP.VariableRef,ref_map::GraphReferenceMap)
+    new_func = ref_map[func]
     return new_func
 end
 

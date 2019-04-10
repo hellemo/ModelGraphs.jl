@@ -21,6 +21,12 @@ function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{GraphConstraint
     end
 end
 
+function addlinkedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{GraphConstraintRef}) #TODO make sure this always works
+    for con_ref in con_refs.data
+        add_edge!(graph,con_ref)
+    end
+end
+
 function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
 
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
