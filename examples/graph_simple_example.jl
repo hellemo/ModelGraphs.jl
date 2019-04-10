@@ -1,9 +1,12 @@
+
+
 using JuMP
-using Plasmo
+using AlgebraicGraphs
 using Ipopt
 
 graph = ModelGraph()
-setsolver(graph,Ipopt.IpoptSolver())
+optimizer = with_optimizer(Ipopt.Optimizer)
+#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
 n1 = add_node!(graph)
@@ -33,8 +36,8 @@ for link in links
     println(link)
 end
 
-solve(graph)
+optimize!(graph,optimizer)
 
-println("n1[:x]= ",JuMP.getvalue(n1[:x]))
-println("n2[:x]= ",JuMP.getvalue(n2[:x]))
-println("objective = ", getobjectivevalue(graph))
+println("n1[:x]= ",JuMP.value(n1[:x]))
+println("n2[:x]= ",JuMP.value(n2[:x]))
+println("objective = ", objectivevalue(graph))

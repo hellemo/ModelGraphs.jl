@@ -14,6 +14,7 @@ function Base.getindex(reference_map::GraphReferenceMap, cref::JuMP.ConstraintRe
     return JuMP.ConstraintRef(reference_map.model,reference_map.index_map[JuMP.index(cref)],cref.shape)
 end
 Base.broadcastable(reference_map::GraphReferenceMap) = Ref(reference_map)
+
 function Base.setindex!(reference_map::GraphReferenceMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
     reference_map.index_map.conmap[node_cref.index] = graph_cref.index
 end
@@ -143,10 +144,10 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
     #Using Option 1
     constraint_types = JuMP.list_of_constraint_types(node_model)
     for (func,set) in constraint_types
-        constraint_refs = JuMP.all_constraints(model, func, set)
+        constraint_refs = JuMP.all_constraints(node_model, func, set)
         for constraint_ref in constraint_refs
-            constraint = JuMP.constraint_object(contraint_ref)
-            new_constraint = copy_constraint(constraint,model_map)
+            constraint = JuMP.constraint_object(constraint_ref)
+            new_constraint = _copy_constraint(constraint,reference_map)
 
             #reference_map.index_map.conmap[constraint.index] = new_constraint.index
             reference_map[constraint] = new_constraint
@@ -156,10 +157,12 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         end
     end
 
+    #TODO Get nonlinear to work
     #COPY OBJECT DATA (JUMP CONTAINERS)
-    for (name, value) in JuMP.object_dictionary(node_model)
-        jump_node.obj_dict[name] = getindex.(reference_map, value)
-    end
+    # for (name, value) in JuMP.object_dictionary(node_model)
+    #     jump_node.obj_dict[name] = reference_map[value]
+    #     #jump_node.obj_dict[name] = getindex.(reference_map, value)
+    # end
 
     #COPY NONLINEAR CONSTRAINTS
     nlp_initialized = false
@@ -167,10 +170,11 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
         MOI.initialize(d,[:ExprGraph])
         nlp_initialized = true
-        for i = 1:length(node_model.nlpdata.nlconstr)
-            expr = MOI.constraint_expr(d,i)                     #this returns a julia expression
+        for i = 1:length(node_model.nlp_data.nlconstr)
+            expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_NL_constraint(m,expr)  #raw expression input for non-linear constraint
+            println(expr)
+            new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
             reference_map[constraint_ref] = new_nl_constraint
             push!(jump_node.constraintlist,new_nl_constraint)
@@ -261,7 +265,7 @@ function _splice_nonlinear_variables!(expr::Expr,reference_map::GraphReferenceMa
                 _splice_nonlinear_variables!(expr.args[i],reference_map)
             else  #it's a variable
                 var_index = expr.args[i].args[2]     #this is the actual index in x[1], x[2], etc...
-                new_var = :($(reference_map.index_map.varmap[var_index.value]))
+                new_var = :($(reference_map.index_map.varmap[var_index].value))
                 #new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
             end
