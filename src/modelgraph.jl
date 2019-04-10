@@ -1,5 +1,3 @@
-
-#import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver,getvalue
 ##############################################################################
 # ModelGraph
 ##############################################################################
@@ -33,38 +31,19 @@ JuMP.getobjectivevalue(graph::AbstractModelGraph) = getobjectivevalue(graph.link
 "Get the current created JuMP model for the ModelGraph.  Only created when solving using a JuMP compliant solver."
 getinternaljumpmodel(graph::AbstractModelGraph) = graph.serial_model
 
+getgraphvariables(graph::AbstractModelGraph) = getgraphvariables(getlinkmodel(graph))
+getgraphconstraints(graph::AbstractModelGraph) = getgraphconstraints(getlinkmodel(graph))
 
 #################################
 # Solver setters and getters
 #################################
-"""
-setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver)
-
-Set the graph solver to use an AbstractMathProg compliant solver
-"""
-#setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
-set_optimizer(model::AbstractModelGraph,optimizer_factory::JuMP.OptimizerFactory) = set_optimizer(model.linkmodel,optimizer_factory)
-
+#NOTE: JuMP doesn't hook solvers to models anymore.
 """
 setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver)
 
 Set the graph solver to use an AbstractMathProg compliant solver
 """
 set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
-
-#getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
-
-"Get the ModelGraph solver"
-#TODO Use OptimizerFactory
-#getsolver(model::AbstractModelGraph) = model.linkmodel.solver
-
-#TODO Copy a ModelGraph
-# function copy(graph::AbstractModelGraph)
-#     nodes = getnodes(graph)
-#     edges = getedges(graph)
-#     copy_graph(graph)
-#     Fill in other data
-# end
 
 ####################################
 #Print Functions
@@ -73,14 +52,15 @@ function string(graph::AbstractModelGraph)
     "Model Graph:"*string(getlabel(graph))*"
 nodes:"*string((length(getnodes(graph))))*"
 link constraints (edges):"*string((getnumlinkconstraints(graph)))
-
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 
 
-# simple links:"*string(length(getsimplelinkconstraints(graph)))*"\n
-# hyper links: "*string(length(gethyperlinkconstraints(graph)))
-
-# #Write total objective functions for a model graph
-# _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value
+# """
+# setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver)
+#
+# Set the graph solver to use an AbstractMathProg compliant solver
+# """
+# #setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
+# set_optimizer(model::AbstractModelGraph,optimizer_factory::JuMP.OptimizerFactory) = set_optimizer(model.linkmodel,optimizer_factory)

@@ -19,7 +19,7 @@ end
 #Constructor
 ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 StructureGraphs.create_node(graph::ModelGraph) = ModelNode()
-StructureGraphs.getbasenode(node::ModelNode) = node.structurenode
+StructureGraphs.getstructurenode(node::ModelNode) = node.structurenode
 
 """
 addnode!(graph::AbstractModelGraph)
@@ -33,7 +33,7 @@ function add_node!(graph::AbstractModelGraph,m::AbstractModel)
 end
 
 #Get node for a JuMP model if the model is set to a node
-getnode(m::JuMP.Model) = m.ext[:node]
+StructureGraphs.getnode(m::JuMP.Model) = m.ext[:node]
 
 #Get the corresponding node for a JuMP variable reference
 function StructureGraphs.getnode(var::JuMP.VariableRef)
@@ -114,14 +114,14 @@ getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Model
 """
-getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
+StructureGraphs.getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
 
 """
 getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
-getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
+StructureGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
 
 """
 setmodel(node::ModelNode,m::AbstractModel)
@@ -167,7 +167,7 @@ show(io::IO,node::ModelNode) = print(io,node)
 
 # TODO Rewrite
 #getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
-
+#getnodevariable(node::ModelNode)
 
 #TODO Rewrite for new JuMP v0.19
 # This effectively return a mapping of symbols to different JuMP containers. This can be done better.

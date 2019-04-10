@@ -52,7 +52,8 @@ getlinkconstraints(graph::AbstractModelGraph)
 
 Return Array of all LinkConstraints in the ModelGraph graph
 """
-getlinkconstraints(model::AbstractModelGraph) = getlinkconstraints(model.linkmodel)
+getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
+getlinkconstraints(model::LinkModel) = collect(values(model.linkconstraints))
 
 """
 getsimplelinkconstraints(model::AbstractModelGraph)

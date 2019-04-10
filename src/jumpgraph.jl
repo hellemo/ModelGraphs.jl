@@ -11,24 +11,25 @@ mutable struct JuMPGraph <: AbstractModelGraph
 end
 JuMPGraph() = JuMPGraph(StructureGraphs.StructuredHyperGraph(),GraphVariableRef[],GraphConstraintRef[],GraphConstraintRef[])
 JuMPGraph(hypergraph::StructureGraphs.StructureGraph) = JuMPGraph(hypergraph,GraphVariableRef[],GraphConstraintRef[],GraphConstraintRef[])
+StructureGraphs.getstructuregraph(graph::JuMPGraph) = graph.hypergraph
 
 mutable struct JuMPNode <: AbstractModelNode
-    node::StructureNode
+    structurenode::StructureNode
     obj_dict::Dict{Symbol,Any}
     variablelist::Vector{JuMP.VariableRef}
     constraintlist::Vector{JuMP.ConstraintRef}
     objective::Union{JuMP.AbstractJuMPScalar,Expr}
-    #index_map::MOIU.IndexMap                        #Map of variable and constraint indices from JuMP node to aggregated model. #linear index of node variable in new jump graph model to the original index of the node model
 end
-create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),Dict{Symbol,Any}(),JuMP.VariableRef[],JuMP.ConstraintRef[],:(0))
-#hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
+StructureGraphs.create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),Dict{Symbol,Any}(),JuMP.VariableRef[],JuMP.ConstraintRef[],zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}))
+StructureGraphs.getstructurenode(node::JuMPNode) = node.structurenode
 
 #Has constraint references for link constraints
 mutable struct JuMPEdge <: AbstractLinkingEdge
-    edge::StructureEdge
+    structureedge::StructureEdge
     linkconstraints::Vector{GraphConstraintRef}  #indices in JuMP model of linkconstraints for this edge
 end
-create_edge(graph::JuMPGraph) = JuMPEdge(StructureEdge(),GraphConstraintRef[])
+StructureGraphs.create_edge(graph::JuMPGraph) = JuMPEdge(StructureEdge(),GraphConstraintRef[])
+StructureGraphs.getstructureedge(edge::JuMPEdge) = edge.structureedge
 
 #Construct a structured model, but roll it all into one JuMP model (this is how we solve with JuMP accessible solvers)
 function JuMPGraphModel()

@@ -47,6 +47,8 @@ mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get Co
 end
 JuMP.object_dictionary(m::LinkModel) = m.objdict
 JuMP.objective_sense(m::LinkModel) = m.objective_sense
+getgraphvariables(m::LinkModel) = collect(values(m.graphvariables))
+getgraphconstraints(m::LinkModel) = collect(values(m.graphconstraints))
 
 #####################################################
 #  Graph Variables

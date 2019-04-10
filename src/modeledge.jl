@@ -1,13 +1,14 @@
 ##############################################################################
-# Edges
+# ModelEdges
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
-    baseedge::StructureGraphs.StructureEdge
+    structureedge::StructureGraphs.StructureEdge
     linkconstraints::Vector{GraphConstraintRef}  #Link constraints this edge represents
 end
 #Edge constructors
 LinkingEdge() = LinkingEdge(StructureGraphs.StructureEdge(),JuMP.ConstraintRef[])
 StructureGraphs.create_edge(graph::ModelGraph) = LinkingEdge()
+StructureGraphs.getstructureedge(edge::LinkingEdge) = edge.structureedge
 
 #Add a hyperedge to graph using a linkconstraint reference
 function addlinkedges!(graph::AbstractModelGraph,con_ref::GraphConstraintRef)
@@ -44,6 +45,5 @@ function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
     #         push!(node.linkconrefs[graph],ref)
     #     end
     # end
-
     return edge
 end

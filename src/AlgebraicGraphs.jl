@@ -6,6 +6,7 @@ using StructureGraphs
 using Requires
 using Distributed
 using LinearAlgebra
+using DataStructures
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -31,7 +32,7 @@ LinkConstraint, GraphConstraint, GraphVariableRef, GraphConstraintRef,
 AbstractGraphSolver,BendersSolver,LagrangeSolver,
 
 #re-export base functions
-addnode!,add_node!,getnodes,getedges,collectnodes,
+addnode!,add_node!,getnode,getnodes,getedges,collectnodes,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
