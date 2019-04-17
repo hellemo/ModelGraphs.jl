@@ -6,7 +6,8 @@ struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <
     func::F
     set::S
     #TODO Rethink what to store for a LinkConstraint
-    nodes::Vector{ModelNode}  #Custom link constraint data.  Indices of nodes this LinkConstraint connects.  NOTE: Might be able to move node_indices to the LinkingEdge
+    #NOTE: Might be able to move node_indices to the LinkingEdge
+    nodes::Vector{ModelNode}  #Custom link constraint data.  Indices of nodes this LinkConstraint connects.
 end
 
 function LinkConstraint(con::JuMP.ScalarConstraint)

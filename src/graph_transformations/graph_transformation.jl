@@ -1,26 +1,25 @@
 #Functions that do graph transformations to facilitate different decomposition algorithms
 
-#Convert ModelGraph ==> ModelTree
-#NOTE: Could use a spanning tree?
-function getmodeltree(graph::ModelGraph;root_node = nothing)
-    #1.) If no root_node, lift all the link constraints into a root node
-    #if root_node == nothing
-
-
-    #2.) If there is a root node, create the tree by recursively going out
-    #3.) Lift hyper-constraints into root node
+function convert_to_shared_variable(graph::ModelGraph)
 end
 
+function convert_to_shared_constraint(graph::ModelGraph)
+end
+
+
 # IDEA: Use a Unipartite graph to do partitioning
-#Convert Hypergraph ==> Unipartite Graph
-function getunipartitegraph(graph::ModelGraph)
-    ugraph = UnipartiteGraph()
+#Convert Hypergraph ==> NodeUnipartite Graph
+function getnodeunipartitegraph(graph::ModelGraph)
+    ugraph = NodeUnipartiteGraph()
 
     #Add the model nodes to the Unipartite graph
     for node in getnodes(graph)
         idx = getindex(graph,node)
         new_node = create_node(ugraph)
-        n_vars = length(getmodel(node).colVal)
+
+        n_vars = JuMP.num_variables(getmodel(node))
+        #n_vars = length(getmodel(node).colVal)
+
         add_node!(ugraph,new_node,index = idx)
         new_index = getindex(ugraph,new_node)
         ugraph.v_weights[new_index] = n_vars  #node weights are number of variables
@@ -40,7 +39,7 @@ function getunipartitegraph(graph::ModelGraph)
                 if !haskey(ugraph.e_weights,new_index)
                     ugraph.e_weights[new_index] = 1
                 else
-                    ugraph.e_weights[new_index] += length(edge.linkconrefs)  #edge weights are number of link constraints
+                    ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                 end
             end
         end
@@ -63,7 +62,7 @@ function getunipartitegraph(graph::ModelGraph)
                     if !haskey(ugraph.e_weights,new_index)
                         ugraph.e_weights[new_index] = 1
                     else
-                        ugraph.e_weights[new_index] += length(edge.linkconrefs)  #edge weights are number of link constraints
+                        ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                     end
                 end
             end
@@ -71,6 +70,9 @@ function getunipartitegraph(graph::ModelGraph)
     end
 
     return ugraph
+end
+
+function getlinkunipartitegraph(graph::ModelGraph)
 end
 
 #Convert Hypergraph ==> Bipartite Graph
@@ -97,15 +99,18 @@ function getbipartitegraph(graph::ModelGraph)
             add_edge!(bgraph,constraint_node,model_node)
         end
     end
+
+    #TODO
+    #subgraphs
     return bgraph
 end
 
-#Convert JuMP Model ==> Bipartite Graph
-function getbipartitegraph(model::JuMP.Model)
-
-end
-
-#Convert JuMP Model ==> Unipartite Graph
-function getunipartitegraph(graph::JuMP.Model)
-
-end
+# #Convert JuMP Model ==> Bipartite Graph
+# function getbipartitegraph(model::JuMP.Model)
+#
+# end
+#
+# #Convert JuMP Model ==> Unipartite Graph
+# function getunipartitegraph(graph::JuMP.Model)
+#
+# end

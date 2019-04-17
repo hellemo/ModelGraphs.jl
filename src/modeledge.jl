@@ -27,7 +27,7 @@ function addlinkedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.Dense
     end
 end
 
-function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
+function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
 
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     nodes = getnodes(con)
@@ -36,6 +36,9 @@ function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
 
     edge = StructureGraphs.add_edge!(graph,nodes...)
     push!(edge.linkconstraints,ref)
+
+
+
 
     #STORE LINKCONSTRAINT REFERENCES ON NODES
     #NOTE: Is storing this information necessary?.  We can look at a node's incident edges and determine the linkconstraints.
@@ -51,5 +54,7 @@ function add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
     #         push!(node.linkconrefs[graph],ref)
     #     end
     # end
+
+
     return edge
 end
