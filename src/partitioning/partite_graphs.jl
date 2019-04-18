@@ -1,11 +1,11 @@
 #A Bipartite graph (Standard Graph) where one set of nodes corresponds to
-mutable struct BipartiteGraph <: AbstractModelGraph
+mutable struct BipartiteModelGraph <: AbstractModelGraph
     structuregraph::StructureGraphs.StructureGraph
     part1::Vector{Int64}   #partition 1 of the bipartite graph
     part2::Vector{Int64}   #partition 2 of the bipartite graph
 end
 
-BipartiteGraph() = BipartiteGraph(StructureGraph(LightGraphs.Graph()),Int64[],Int64[])
+BipartiteModelGraph() = BipartiteModelGraph(StructureGraph(LightGraphs.Graph()),Int64[],Int64[])
 
 StructureGraphs.create_node(graph::BipartiteGraph) = StructureNode()
 StructureGraphs.create_edge(graph::BipartiteGraph) = StructureEdge()

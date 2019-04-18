@@ -1,6 +1,6 @@
 """
     @linkconstraint(graph,args...)
-    macro for defining linkconstraints between nodes Link constraints are associated with nodes within their respective graph.
+    macro for defining linkconstraints between nodes.
 """
 macro linkconstraint(graph,args...)
         code = quote
@@ -9,8 +9,21 @@ macro linkconstraint(graph,args...)
 
             link_constraints = JuMP.@constraint(link_model,($(args...)))  #link model extends @constraint macro
 
-            #TODO Check hypergraph implementation.  Fixed issues with slowness.
+            #TODO  Check the hypergraph implementation. I fixed the issues with slowness, but haven't tested it enough.
+            #TODO: Create an add_constraint function for a ModelGraph.  It should add to the LinkModel and then add edges to the graph
             AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
         end
         return esc(code)
+end
+
+#TODO: Finish macros
+macro graphvariable
+end
+
+# A constraint between graph variables or graph variables and node variables
+# NOTE: Hierarchy should be enforced.
+macro graphconstraint
+end
+
+macro graphobjective
 end

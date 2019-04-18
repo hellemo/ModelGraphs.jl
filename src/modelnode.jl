@@ -68,8 +68,7 @@ getlinkconstraints(node::ModelNode)
 
 Return a Dictionary of LinkConstraints for each graph the node is a member of
 """
-#TODO JuMP 0.19
-#TODO get incident edges to node
+#TODO get incident edges to node and return those, or cache references on the node?
 # function getlinkconstraints(node::ModelNode)
 #     links = Dict()
 #     for (graph,refs) in node.linkconstraints
@@ -86,6 +85,7 @@ getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
 
 Return Array of LinkConstraints that cover the node
 """
+# TODO
 # function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
 #     links = []
 #     for ref in node.linkconrefs[graph]
@@ -162,12 +162,12 @@ end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)
 
-#TODO
+# TODO
 # removemodel(node::ModelNode) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 
 # TODO Rewrite
-#getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
-#getnodevariable(node::ModelNode)
+# getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
+# getnodevariable(node::ModelNode)
 
 #TODO Rewrite for new JuMP v0.19
 # This effectively return a mapping of symbols to different JuMP containers. This can be done better.

@@ -1,3 +1,5 @@
+#NOTE: This shouldn't be needed anymore.  PIPS-NLP should understand the LinkModel
+
 mutable struct PipsTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel

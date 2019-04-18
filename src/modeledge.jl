@@ -37,9 +37,6 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::GraphConstrain
     edge = StructureGraphs.add_edge!(graph,nodes...)
     push!(edge.linkconstraints,ref)
 
-
-
-
     #STORE LINKCONSTRAINT REFERENCES ON NODES
     #NOTE: Is storing this information necessary?.  We can look at a node's incident edges and determine the linkconstraints.
     # Depends how often we need to look up this information.  Could cache the references onto the nodes.
@@ -58,3 +55,37 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::GraphConstrain
 
     return edge
 end
+
+#IDEA Interface HyperGraph objects with LinkModel objects
+
+function StructureGraphs.getnodes(con::LinkConstraint)
+    #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
+    return [getnode(var) for var in keys(con.func.terms)]
+end
+getnumnodes(con::LinkConstraint) = length(getnodes(con))
+
+is_simplelinkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
+is_hyperlinkconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false
+
+
+"""
+getlinkconstraints(graph::AbstractModelGraph)
+
+Return Array of all LinkConstraints in the ModelGraph graph
+"""
+getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
+
+
+"""
+getsimplelinkconstraints(model::AbstractModelGraph)
+
+Retrieve link-constraints that only connect two nodes"
+"""
+getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
+
+"""
+gethyperlinkconstraints(model::AbstractModelGraph)
+
+Retrieve link-constraints that connect three or more nodes"
+"""
+gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)

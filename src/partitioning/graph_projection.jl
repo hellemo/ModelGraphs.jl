@@ -1,11 +1,9 @@
-#Functions that do graph transformations to facilitate different decomposition algorithms
-
-function convert_to_shared_variable(graph::ModelGraph)
-end
-
-function convert_to_shared_constraint(graph::ModelGraph)
-end
-
+# #Functions that do graph transformations to facilitate different decomposition algorithms
+# function convert_to_shared_variable(graph::ModelGraph)
+# end
+#
+# function convert_to_shared_constraint(graph::ModelGraph)
+# end
 
 # IDEA: Use a Unipartite graph to do partitioning
 #Convert Hypergraph ==> NodeUnipartite Graph
@@ -76,7 +74,7 @@ function getlinkunipartitegraph(graph::ModelGraph)
 end
 
 #Convert Hypergraph ==> Bipartite Graph
-function getbipartitegraph(graph::ModelGraph)
+function getmodelbipartitegraph(graph::ModelGraph)
     bgraph = BipartiteGraph()
 
     #model nodes

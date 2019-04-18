@@ -59,7 +59,7 @@ getsolution,setsolution,setvalue,getvalue,
 @linkconstraint,@graphobjective,
 
 #transformations
-getnodeunipartitegraph
+getnodeunipartitegraph,getlinkunipartitegraph,getmodelbipartitegraph
 
 #Abstract Types
 abstract type AbstractModelGraph <: AbstractStructureGraph end
@@ -67,21 +67,23 @@ abstract type AbstractModelNode <: AbstractStructureNode end
 abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
 abstract type AbstractGraphSolver end
 
-include("linkmodel.jl")         #A JuMP extension model to manage special variables and constraints
+include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
 
 include("modelgraph.jl")         #The ModelGraph
 
-include("modelnode.jl")         #ModelGraph nodes
+include("modelnode.jl")          #ModelGraph nodes
 
-include("linkconstraint.jl")    #LinkConstraints which create graph topology
+#include("linkconstraint.jl")    #LinkConstraints which create graph topology
 
-include("modeledge.jl")         #ModelGraph edges
+include("modeledge.jl")          #ModelGraph edges
 
-include("macros.jl")            #@linkconstraint, @graphobjective
+include("modelgraph_interface.jl")
 
-include("jumpgraph.jl")         #An aggregated JuMP model
+include("macros.jl")             #@linkconstraint, @graphobjective
 
-include("solve.jl")             #Aggregate and solve with an MOI Solver
+include("jumpgraph.jl")          #An aggregated JuMP model
+
+include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
 # include("solution.jl")  #SolutionGraph
 #

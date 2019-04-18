@@ -9,9 +9,9 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    hypergraph::StructureGraphs.StructureGraph           #Model graph structure.  edges in the graph have references to constraints.  The graph expresses the structure of the link model
-    linkmodel::LinkModel                                 #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
-    jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph.  Returned if requested by the solve
+    hypergraph::StructureGraphs.StructureGraph           #Model graph structure.  Edges and Nodes in the graph have references to LinkConstraints.  The graph expresses the structure of the link model
+    linkmodel::LinkModel                                 #Using composition to represent a graph as a "Model".
+    jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph if using an MOI solver.  Returned if requested by the solve.
 end
 
 ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),nothing)
@@ -34,16 +34,25 @@ getinternaljumpmodel(graph::AbstractModelGraph) = graph.serial_model
 getgraphvariables(graph::AbstractModelGraph) = getgraphvariables(getlinkmodel(graph))
 getgraphconstraints(graph::AbstractModelGraph) = getgraphconstraints(getlinkmodel(graph))
 
+"""
+get_all_linkconstraints(graph::AbstractModelGraph)
+
+Get a list containing every link constraint in the graph, including its subgraphs
+"""
+function get_all_linkconstraints(graph::AbstractModelGraph)
+    links = []
+    for subgraph in getsubgraphlist(graph)
+        append!(links,getlinkconstraints(subgraph))
+    end
+    append!(links,getlinkconstraints(graph))
+    return links
+end
+
 #################################
 # Solver setters and getters
 #################################
-#NOTE: JuMP doesn't hook solvers to models anymore.
-"""
-setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver)
-
-Set the graph solver to use an AbstractMathProg compliant solver
-"""
-set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
+#TODO Figure out how this works in JuMP 0.19.  Might have to hook into MOI here.
+#set_optimizer(model::AbstractModelGraph,graph_solver::AbstractGraphSolver) = set_optimizer(model.linkmodel,graph_solver)
 
 ####################################
 #Print Functions
@@ -55,6 +64,15 @@ link constraints (edges):"*string((getnumlinkconstraints(graph)))
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
+
+
+
+
+
+
+
+
+
 
 
 # """

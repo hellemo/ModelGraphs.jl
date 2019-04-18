@@ -1,5 +1,5 @@
 """
-JuMPGraph
+    JuMPGraph
     Extension Data attached to a constructed JuMPGraphModel.  The JuMPGraph retains a reference to the original hypergraph topology with references to
     graphvariables, graphconstraints, and linkconstraints.
 """
@@ -66,7 +66,6 @@ StructureGraphs.getnode(m::JuMP.Model,sid::Integer,nid::Integer) = getnode(getgr
 # StructureGraphs.getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
 
 JuMP.objective_function(node::JuMPNode) = node.objective
-#JuMP.getobjectivevalue(node::JuMPNode) = getvalue(node.objective)
 
 getnodevariables(node::JuMPNode) = node.variablelist
 getnodevariable(node::JuMPNode,index::Integer) = node.variablelist[index]
