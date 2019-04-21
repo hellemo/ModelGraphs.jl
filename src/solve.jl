@@ -1,31 +1,4 @@
 #TODO IndexMap with NonlinearConstraintIndex
-# const GraphConstraintIndex = Union{MOI.ConstraintIndex,JuMP.NonlinearConstraintIndex}
-#
-# struct IndexMap
-#     varmap::Dict{MOI.VariableIndex,MOI.VariableIndex}
-#     conmap::Dict{GraphConstraintIndex,GraphConstraintIndex}
-# end
-#
-# IndexMap() = IndexMap(Dict{MOI.VariableIndex, MOI.VariableIndex}(),Dict{GraphConstraintIndex, GraphConstraintIndex}())
-#
-# Base.getindex(idxmap::IndexMap, vi::MOI.VariableIndex) = idxmap.varmap[vi]
-#
-# function Base.getindex(idxmap::IndexMap, ci::MOI.ConstraintIndex{F, S}) where {F, S}
-#     idxmap.conmap[ci]::MOI.ConstraintIndex{F, S}
-# end
-# function Base.getindex(idxmap::IndexMap, ci::JuMP.NonlinearConstraintIndex)
-#     idxmap.conmap[ci]::JuMP.NonlinearConstraintIndex
-# end
-#
-# Base.setindex!(idxmap::IndexMap, vi1::MOI.VariableIndex, vi2::MOI.VariableIndex) = Base.setindex!(idxmap.varmap, vi1, vi2)
-# function Base.setindex!(idxmap::IndexMap, ci1::MOI.ConstraintIndex{F, S}, ci2::MOI.ConstraintIndex{F, S}) where {F, S}
-#     Base.setindex!(idxmap.conmap, ci1, ci2)
-# end
-#
-# Base.delete!(idxmap::IndexMap, vi::MOI.VariableIndex) = delete!(idxmap.varmap, vi)
-# Base.delete!(idxmap::IndexMap, ci::MOI.ConstraintIndex) = delete!(idxmap.conmap, ci)
-#
-# Base.keys(idxmap::IndexMap) = Iterators.flatten((keys(idxmap.varmap), keys(idxmap.conmap)))
 
 """
 GraphReferenceMap

@@ -1,9 +1,33 @@
-# #Functions that do graph transformations to facilitate different decomposition algorithms
-# function convert_to_shared_variable(graph::ModelGraph)
-# end
-#
-# function convert_to_shared_constraint(graph::ModelGraph)
-# end
+
+struct ProjectionMap
+    node_map::Dict{Int64,Int64}
+    edge_map::Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}
+end
+ProjectionMap() = ProjectMap(Dict{Int64,Int64}(),Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}())
+
+function Base.getindex(projection_map::ProjectionMap,node_index::Int64)
+    return projection_map.node_map[node_index]
+end
+function Base.getindex(projection_map::ProjectionMap, edge_index::LightGraphs.AbstractEdge)
+    return projection_map.edge_map[edge_index]
+end
+Base.broadcastable(projection_map::ProjectionMap) = Ref(projection_map)
+
+function Base.setindex!(projection_map::ProjectionMap,node_index_1::Int64,node_index_2::Int64)
+    projection_map.node_map[node_index_2] = node_index_1
+end
+function Base.setindex!(projection_map::ProjectionMap, edge_index_1::LightGraphs.AbstractEdge,edge_index_2::LightGraphs.AbstractEdge)
+    projection_map.edge_map[edge_index_2] = edge_index_1
+end
+
+function Base.merge!(proj_map1::ProjectionMap,proj_map2::ProjectionMap)
+    for (k,v) in proj_map2.node_map
+        proj_map1.node_map_map[k] = v
+    end
+    for (k,v) in proj_map2.edge_map
+        proj_map1.edge_map[k] = v
+    end
+end
 
 #A Unipartite graph (Standard Graph) where nodes correspond to model nodes and edges correspond to links between model nodes.
 #This structure can be used to convert a ModelGraph structure to a Shared Constraint structure
@@ -25,6 +49,7 @@ end
 #Convert Hypergraph ==> NodeUnipartite Graph
 function NodeUnipartiteGraph(graph::ModelGraph)
     ugraph = NodeUnipartiteGraph()
+    projection_map = ProjectionMap()
 
     #Add the model nodes to the Unipartite graph
     for node in getnodes(graph)
@@ -37,6 +62,8 @@ function NodeUnipartiteGraph(graph::ModelGraph)
         add_node!(ugraph,new_node,index = idx)
         new_index = getindex(ugraph,new_node)
         ugraph.v_weights[new_index] = n_vars  #node weights are number of variables
+
+        projection_map[new_index] = idx  #Map new node index to original node index
     end
 
     #Add the edges between nodes
@@ -55,6 +82,9 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                 else
                     ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                 end
+
+                projection_map[new_index] = hyperedge   #Map new simple edge to original hyperedge
+
             end
         end
     end
@@ -83,7 +113,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
         end
     end
 
-    return ugraph
+    return ugraph, projection_map
 end
 
 
@@ -154,6 +184,14 @@ function ModelBipartiteGraph(graph::ModelGraph)
     #subgraphs
     return bgraph
 end
+
+
+# #Functions that do graph transformations to facilitate different decomposition algorithms
+# function convert_to_shared_variable(graph::ModelGraph)
+# end
+#
+# function convert_to_shared_constraint(graph::ModelGraph)
+# end
 
 # #Convert JuMP Model ==> Bipartite Graph
 # function getbipartitegraph(model::JuMP.Model)

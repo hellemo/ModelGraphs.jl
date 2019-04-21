@@ -39,24 +39,24 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
     partitions = getpartitions(partition_data)
     shared_entities = getsharedentities(partition_data) #Could be linkconstraints, shared variables, shared models, or pairs
 
-    # m = create_aggregate_model(model_graph,partitions,shared_entities)
+    #m = create_aggregate_model(model_graph,partitions,shared_entities)
 
     reference_map = GraphReferenceMap()
     #Aggregate Partitions
     for partition in partitions  #create aggregate model for each partition
-        partition_objects = [getobject(model_graph,index) for index in partition]  #could be nodes or edges
-        aggregate_model,agg_ref_map = create_aggregate_model(mg,partition_objects)
+        partition_entities = [get_graph_entity(model_graph,index) for index in partition]  #could be nodes or edges
+        aggregate_model,agg_ref_map = create_aggregate_model(mg,partition_entities)
 
         #Update ReferenceMap
         merge!(reference_map,agg_ref_map)
 
-        aggregate_node = add_node!(pips_tree)
+        aggregate_node = add_node!(mg)
         setmodel(aggregate_node,aggregate_model)
     end
 
-    #LINK CONSTRAINTS
+    #NEW LINK CONSTRAINTS
     for entity in shared_entities #Could be e.g. LinkConstraints
-        #copy_link_constraint
+        #copy the LinkConstraint
         add_shared_entity!(mg,entity,reference_map)
     end
 
@@ -69,6 +69,7 @@ end
 #Build up an aggregate model given a set of nodes.
 function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode})
     #local_links, cross_links = _get_local_and_cross_links(model_graph,nodes)
+    #TODO: getcontainedlinks
     local_links = getcontainedlinks(model_graph,nodes)  #Inspect the edges of the subgraph made by these nodes.  Get the referenced links
 
 
@@ -76,7 +77,7 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
     jump_graph = getgraph(aggregate_model)
 
 
-    reference_map = GraphReferenceMap(aggregate_model,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(model_graph,MOIU.IndexMap())
 
     has_nonlinear_objective = false
 
@@ -92,7 +93,6 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
             has_nonlinear_objective = _has_nonlinear_obj(node_model)
         end
     end
-
 
 
     #LOCAL LINK CONSTRAINTS
