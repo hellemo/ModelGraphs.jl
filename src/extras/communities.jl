@@ -16,5 +16,5 @@ end
 function CommunityDetection.community_detection_louvain(graph::ModelGraph,args...;projection = NodeUnipartiteGraph,kwargs...)
 
     #NOTE: Return communities and shared entities.  These can be used to create an aggregated ModelGraph.
-    return _getpartitions(graph,CommunityDetection.community_detection_louvain(graph,args...;kwargs...))
+    return _getpartitions(graph,CommunityDetection.community_detection_louvain,projection = projection,args...;,kwargs...))
 end

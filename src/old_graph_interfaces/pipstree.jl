@@ -73,7 +73,7 @@ function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int6
         merge!(all_var_maps,var_maps)
 
         aggregate_master = add_master!(pips_tree)
-        setmodel(aggregate_master,agg_model)
+        setmodel(aggregate_master,aggregate_model)
     end
 
     #NOTE Need to catch objective terms

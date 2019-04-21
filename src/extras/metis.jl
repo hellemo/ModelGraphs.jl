@@ -5,9 +5,11 @@ partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) --> Vector{Vector{Int64}
 
 Return a graph partition containing a vector of a vectors of node indices.
 """
-function Metis.partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY)
-    ugraph = getunipartitegraph(graph)
+function Metis.partition(graph::ModelGraph,n_parts::Int64,projection::Function = NodeUnipartiteGraph;alg = :KWAY)
+    ugraph = projection(graph)
+
     lg = getlightgraph(ugraph)
+
     #TODO Make metis account for weights
     parts = Metis.partition(lg,n_parts,alg = alg)
     unique_parts = unique(parts)

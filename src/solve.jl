@@ -104,7 +104,6 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
 
                 #NOTE: Might be able to just convert AffExpr and QuadExpr into Julia Expressions to make this easier
                 id = getindex(jump_graph,jump_node)
-                #node_obj = JuMP.objective_function(jump_node)  # NOTE This should be a Julia expression
                 node_model = getmodel(getnode(model_graph,id))
                 JuMP.objective_sense(node_model) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
                 d = JuMP.NLPEvaluator(node_model)
