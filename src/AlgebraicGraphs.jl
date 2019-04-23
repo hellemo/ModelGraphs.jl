@@ -87,7 +87,7 @@ include("solve.jl")              #Aggregate and solve with an MOI Solver
 # include("community_detection.jl")
 #
 
-include("partitioning/partition.jl")   #Transformations that facilitate graph analysis (partitioning and community detection)
+#include("partitioning/partition.jl")   #Transformations that facilitate graph analysis (partitioning and community detection)
 #
 include("partitioning/graph_projections.jl")
 #

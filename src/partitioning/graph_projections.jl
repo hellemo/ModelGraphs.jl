@@ -3,7 +3,7 @@ struct ProjectionMap
     node_map::Dict{Int64,Int64}
     edge_map::Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}
 end
-ProjectionMap() = ProjectMap(Dict{Int64,Int64}(),Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}())
+ProjectionMap() = ProjectionMap(Dict{Int64,Int64}(),Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}())
 
 function Base.getindex(projection_map::ProjectionMap,node_index::Int64)
     return projection_map.node_map[node_index]
@@ -59,7 +59,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
         n_vars = JuMP.num_variables(getmodel(node))
         #n_vars = length(getmodel(node).colVal)
 
-        add_node!(ugraph,new_node,index = idx)
+        add_node!(ugraph,new_node,index = idx)   #index should be the same as the original graph
         new_index = getindex(ugraph,new_node)
         ugraph.v_weights[new_index] = n_vars  #node weights are number of variables
 
@@ -94,10 +94,12 @@ function NodeUnipartiteGraph(graph::ModelGraph)
         for edge in getedges(subgraph)
             hyperedge = getindex(subgraph,edge)
             vertices = hyperedge.vertices       #these are indices in the subgraph
+
+            #NOTE Need indices in graph, not the subgraph
             subgraph_nodes = [getnode(subgraph,i) for i in vertices]
             graph_vertices = [getindex(graph,node) for node in subgraph_nodes]  #these are the vertices in the original graph (and hence, the ugraph)
             for i = 1:length(graph_vertices)
-                node_from = getnode(ugraph,graph_vertices[i])
+                node_from = getnode(ugraph,graph_vertices[i]) #Actually, we need the right node index from the graph, note the ugraph
                 other_vertices = graph_vertices[i+1:end]
                 for j = 1:length(other_vertices)
                     node_to = getnode(ugraph,other_vertices[j])
@@ -108,6 +110,9 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                     else
                         ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                     end
+
+                    projection_map[new_index] = hyperedge
+
                 end
             end
         end
