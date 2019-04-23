@@ -57,7 +57,7 @@ end
 ####################################
 #Print Functions
 ####################################
-function string(graph::AbstractModelGraph)
+function string(graph::ModelGraph)
     "Model Graph:"*string(getlabel(graph))*"
 nodes:"*string((length(getnodes(graph))))*"
 link constraints (edges):"*string((getnumlinkconstraints(graph)))

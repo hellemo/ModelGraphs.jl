@@ -1,7 +1,7 @@
 
 struct ProjectionMap
-    node_map::Dict{Int64,Int64}
-    edge_map::Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}
+    node_map::Dict{Int64,ModelNode}
+    edge_map::Dict{LightGraphs.AbstractEdge,LinkingEdge}
 end
 ProjectionMap() = ProjectionMap(Dict{Int64,Int64}(),Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}())
 
@@ -13,11 +13,11 @@ function Base.getindex(projection_map::ProjectionMap, edge_index::LightGraphs.Ab
 end
 Base.broadcastable(projection_map::ProjectionMap) = Ref(projection_map)
 
-function Base.setindex!(projection_map::ProjectionMap,node_index_1::Int64,node_index_2::Int64)
-    projection_map.node_map[node_index_2] = node_index_1
+function Base.setindex!(projection_map::ProjectionMap,model_node::ModelNode,node_index::Int64)
+    projection_map.node_map[node_index] = model_node
 end
-function Base.setindex!(projection_map::ProjectionMap, edge_index_1::LightGraphs.AbstractEdge,edge_index_2::LightGraphs.AbstractEdge)
-    projection_map.edge_map[edge_index_2] = edge_index_1
+function Base.setindex!(projection_map::ProjectionMap, linking_edge::LinkingEdge,edge_index::LightGraphs.AbstractEdge)
+    projection_map.edge_map[edge_index] = linking_edge
 end
 
 function Base.merge!(proj_map1::ProjectionMap,proj_map2::ProjectionMap)
@@ -28,6 +28,13 @@ function Base.merge!(proj_map1::ProjectionMap,proj_map2::ProjectionMap)
         proj_map1.edge_map[k] = v
     end
 end
+
+# function string(proj_map::ProjectionMap)
+#     "Projection Map:"*string(length(getnodes(graph)))
+# end
+# print(io::IO, graph::NodeUnipartiteGraph) = print(io, string(graph))
+# show(io::IO,graph::NodeUnipartiteGraph) = print(io,graph)
+
 
 #A Unipartite graph (Standard Graph) where nodes correspond to model nodes and edges correspond to links between model nodes.
 #This structure can be used to convert a ModelGraph structure to a Shared Constraint structure
@@ -43,8 +50,10 @@ StructureGraphs.create_node(graph::NodeUnipartiteGraph) = StructureNode()
 StructureGraphs.create_edge(graph::NodeUnipartiteGraph) = StructureEdge()
 
 function string(graph::NodeUnipartiteGraph)
-    "Unipartite Graph\ngraph_id: "*string(getlabel(graph))*"\nnodes:"*string((length(getnodes(graph))))
+    "Unipartite Graph\nnodes:"*string(length(getnodes(graph)))
 end
+print(io::IO, graph::NodeUnipartiteGraph) = print(io, string(graph))
+show(io::IO,graph::NodeUnipartiteGraph) = print(io,graph)
 
 #Convert Hypergraph ==> NodeUnipartite Graph
 function NodeUnipartiteGraph(graph::ModelGraph)
@@ -63,7 +72,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
         new_index = getindex(ugraph,new_node)
         ugraph.v_weights[new_index] = n_vars  #node weights are number of variables
 
-        projection_map[new_index] = idx  #Map new node index to original node index
+        projection_map[new_index] = node  #Map new node index to original node index
     end
 
     #Add the edges between nodes
@@ -83,7 +92,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                     ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                 end
 
-                projection_map[new_index] = hyperedge   #Map new simple edge to original hyperedge
+                projection_map[new_index] = edge   #Map new simple edge to original hyperedge
 
             end
         end
@@ -111,7 +120,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                         ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
                     end
 
-                    projection_map[new_index] = hyperedge
+                    projection_map[new_index] = edge
 
                 end
             end

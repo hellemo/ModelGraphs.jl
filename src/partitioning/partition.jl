@@ -1,11 +1,22 @@
 const PartitionEntity = Union{ModelNode,LinkingEdge,Pair{ModelNode,LinkingEdge}}
 #Partition data pertaining to partitions of nodes, edges, or pairs depending on the projection used to create it
+# struct PartitionData
+#     partitions::Vector{Vector{Union{ModelNode,LinkingEdge}}}  #partitions of nodes or edges or both
+#     partition_entities::Vector{Vector}
+#     shared_entities::Vector{PartitionEntity}
+#     partition_type::Function  #Nodes, Edges, or Pairs
+# end
 struct PartitionData
-    partitions::Vector{Vector{Union{ModelNode,LinkingEdge}}}  #partitions of nodes or edges or both
+    partitions::Vector{Vector{}}  #partitions of nodes or edges or both
     partition_entities::Vector{Vector}
-    shared_entities::Vector{PartitionEntity}
-    partition_type::Function  #Nodes, Edges, or Pairs
+    shared_entities::Vector{}
+    #partition_type::Function  #Nodes, Edges, or Pairs
 end
+
+#TODO
+function get_shared_entities(partition_data::PartitionData)
+end
+
 
 #Helper function to convert vector of node membership in partitions into vectors of node indices
 function partition(graph::ModelGraph,partition_func::Function,projection::Function = NodeUnipartiteGraph,args...;kwargs...)
@@ -19,14 +30,14 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
     lg = getlightgraph(ugraph)
     membership_vector = partition_func(lg,args...;kwargs...)
 
-    partitions = _getpartitions(ugraph,projection_map,membership_vector)
+    partitions = _getpartitions(ugraph,membership_vector)
     local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
 
     return_partitions = _map_partitions(partitions,projection_map)
-    return_partition_entities = _map_entities(local_entities,projection_map)
-    return_shared_entities = _map_entities(shared_entities,projection_map)
+    return_shared_entities = unique(_map_entities(shared_entities,projection_map))
+    return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
 
-    return PartitionData(return_partitions,return_partition_entities,return_shared_entities,typeof(ugraph))
+    return PartitionData(return_partitions,return_partition_entities,return_shared_entities),#typeof(ugraph))
 end
 
 #Convert membership vector to lists of indices
@@ -42,12 +53,27 @@ function _getpartitions(graph::NodeUnipartiteGraph,membership_vector::Vector)
     end
 
     partitions = collect(values(partition_dict))  #returns partitions of original model graph nodes
+
+    # NOTE: A way to get a sparse group identity matrix
+    # make sure graph has no self loops
+    # I = []
+    # J = []
+    # for i = 1:nparts
+    #     for j in partitions[i]
+    #         push!(I,i)
+    #         push!(J,j)
+    #     end
+    # end
+    # V = ones(length(J))
+    # G = sparse(I,J,V)
+
     return partitions
 end
 
 #Get shared linkconstraints between partitions
 #TODO Take a LinearAlgebra approach for this (see some reference papers on how to do this)
 #NOTE: This function is too slow.  Look at other approaches to find shared entities
+#NOTE: Need to fix hypergraph implementation so I don't get self loops in the light graph
 function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
     println("Identifying Shared entities")
     n_partitions = length(partitions)
@@ -65,9 +91,9 @@ function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{
                     edge_nodes = getsupportingnodes(graph,edge)
                     node_indices = [getindex(graph,node) for node in edge_nodes]
                     if !(all(node -> node in partition,node_indices))
-                        push!(shared_edges,edge)
+                        push!(shared_edges,getindex(graph,edge))
                     else
-                        push!(partition_edges[i],edge)
+                        push!(partition_edges[i],getindex(graph,edge))
                     end
                 end
                 push!(checked_edges,edge)
@@ -79,7 +105,7 @@ end
 
 function _map_partitions(partitions::Vector{Vector{Int64}},projection_map::ProjectionMap)
     n_partitions = length(partitions)
-    mapped_partitions = Vector[Vector() for _ = 1:n_partitions]
+    mapped_partitions = Vector[Vector{Int64}() for _ = 1:n_partitions]
 
     for i = 1:n_partitions
         partition = partitions[i]
@@ -88,11 +114,27 @@ function _map_partitions(partitions::Vector{Vector{Int64}},projection_map::Proje
             push!(mapped_partitions[i],mapped_index)
         end
     end
+    return mapped_partitions
 end
 
-function _map_entities()
-
+function _map_entities(entities::Vector{LightGraphs.AbstractEdge},projection_map::ProjectionMap)
+    mapped_entities = []
+    for entity in entities
+        mapped_index = projection_map[entity]
+        push!(mapped_entities,mapped_index)
+    end
+    return mapped_entities
 end
+
+# function _map_entities(entities::Vector{Vector{LightGraphs.AbstractEdge}},projection_map::ProjectionMap)
+#     for vector in entities
+#
+#     mapped_entities = []
+#     for entity in entities
+#         mapped_index = projection_map[entity]
+#         push!(mapped_entities,mapped_index)
+#     end
+# end
 
 
 # #NOTE: Trying to update how this works

@@ -1,6 +1,4 @@
-#TODO
-function get_shared_entities(partition_data::PartitionData)
-end
+
 
 #Create an aggregated ModelGraph that can be used by decomposition algorithms
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
@@ -13,10 +11,11 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
     #Aggregate Partitions
     for i = 1:n_partitions  #create aggregate model for each partition
         partition = partitions[i]
-        #partition_entities = [get_graph_entity(model_graph,index) for index in partition]  #could be nodes or edges
-        local_entities = partition_data.partition_entities[i]
 
-        aggregate_model,agg_ref_map = create_aggregate_model(mg,partition,local_entities)
+        #Need to get LinkingEdges from subgraphs
+        local_shared_entities = partition_data.partition_entities[i]
+
+        aggregate_model,agg_ref_map = create_aggregate_model(mg,partition,local_shared_entities)
 
         #Update ReferenceMap
         merge!(reference_map,agg_ref_map)
@@ -33,14 +32,18 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
 end
 
 #Build up an aggregate model given a set of edges
-function create_aggregate_model(model_graph::ModelGraph,edges::Vector{LinkingEdge})
+function create_aggregate_model(model_graph::ModelGraph,edges::Vector{LinkingEdge},shared_variables::Vector{GraphVariableRef})
 end
 
 #Build up an aggregate model given a set of nodes.
-function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode},link_constraints::Vector{LinkConstraint})
+function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode},link_edges::Vector{LinkingEdge})
     #local_links, cross_links = _get_local_and_cross_links(model_graph,nodes)
-    #TODO: getcontainedlinks
-    #local_links = getcontainedlinks(model_graph,nodes)  #Inspect the edges of the subgraph made by these nodes.  Get the referenced links
+
+    #Get corresponding ModelNodes and LinkConstraints for given indices
+    #nodes = [getnode(model_graph,index) for index in node_indices]
+    link_constraints = [edge.linkconstraints for edge in link_edges]
+
+    #link_constraints = getcontainedlinks(model_graph,nodes)  #Inspect the edges of the subgraph made by these nodes.  Get the referenced links
 
     aggregate_model =  JuMPGraphModel()         #Use a JuMPGraphModel so we can track the internal structure
     jump_graph = getgraph(aggregate_model)

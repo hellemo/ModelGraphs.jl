@@ -89,3 +89,9 @@ gethyperlinkconstraints(model::AbstractModelGraph)
 Retrieve link-constraints that connect three or more nodes"
 """
 gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
+
+function string(edge::LinkingEdge)
+    "Linking edge w/ $(length(edge.linkconstraints))Constraint(s)"
+end
+print(io::IO,edge::LinkingEdge) = print(io, string(edge))
+show(io::IO,edge::LinkingEdge) = print(io,edge)
