@@ -10,7 +10,7 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 """
 mutable struct ModelGraph <: AbstractModelGraph
     hypergraph::StructureGraphs.StructureGraph           #Model graph structure.  Edges and Nodes in the graph have references to LinkConstraints.  The graph expresses the structure of the link model
-    linkmodel::AbstractLinkModel                                 #Using composition to represent a graph as a "Model".
+    linkmodel::AbstractLinkModel                         #A ModelGraph and its underlying LinkModel maintain references to eachother.
     jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph if using an MOI solver.  Returned if requested by the solve.
     function ModelGraph()
         graph = new()

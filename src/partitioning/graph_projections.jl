@@ -1,3 +1,4 @@
+abstract type ProjectionGraph <: AbstractModelGraph end
 
 struct ProjectionMap
     node_map::Dict{Int64,ModelNode}
@@ -29,16 +30,9 @@ function Base.merge!(proj_map1::ProjectionMap,proj_map2::ProjectionMap)
     end
 end
 
-# function string(proj_map::ProjectionMap)
-#     "Projection Map:"*string(length(getnodes(graph)))
-# end
-# print(io::IO, graph::NodeUnipartiteGraph) = print(io, string(graph))
-# show(io::IO,graph::NodeUnipartiteGraph) = print(io,graph)
-
-
 #A Unipartite graph (Standard Graph) where nodes correspond to model nodes and edges correspond to links between model nodes.
 #This structure can be used to convert a ModelGraph structure to a Shared Constraint structure
-mutable struct NodeUnipartiteGraph <: AbstractModelGraph
+mutable struct NodeUnipartiteGraph <: ProjectionGraph
     structuregraph::StructureGraphs.StructureGraph
     v_weights::Dict{Int64,Int64}                     #vertex weights
     e_weights::Dict{LightGraphs.AbstractEdge,Int64}  #edge weights
@@ -134,7 +128,7 @@ end
 
 #A Unipartite graph (Standard Graph) where nodes correspond to link constraints and edges correspond to shared model nodes.
 #This structure can be used to convert a ModelGraph structure to a Shared Model (Variable) structure
-mutable struct LinkUnipartiteGraph <: AbstractModelGraph
+mutable struct LinkUnipartiteGraph <: ProjectionGraph
     structuregraph::StructureGraphs.StructureGraph
     v_weights::Dict{Int64,Int64}                     #vertex weights
     e_weights::Dict{LightGraphs.AbstractEdge,Int64}  #edge weights
@@ -153,7 +147,7 @@ function LinkUnipartiteGraph(graph::ModelGraph)
 end
 
 #A Bipartite graph (Standard Graph) where one set of nodes corresponds to
-mutable struct ModelBipartiteGraph <: AbstractModelGraph
+mutable struct ModelBipartiteGraph <: ProjectionGraph
     structuregraph::StructureGraphs.StructureGraph
     part1::Vector{Int64}   #partition 1 of the bipartite graph
     part2::Vector{Int64}   #partition 2 of the bipartite graph

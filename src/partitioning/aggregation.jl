@@ -40,7 +40,7 @@ end
 
 function add_shared_entity!(graph::ModelGraph,link_constraint::LinkConstraint,variable_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
     constraint = _copy_constraint(link_constraint,variable_map)
-    JuMP.add_constraint(graph,constraint)
+    JuMP.add_constraint(graph.link_model,constraint)
 end
 
 function add_shared_entity!(graph::ModelGraph,graphvariable::JuMP.AbstractVariableRef,ref_map::GraphReferenceMap)

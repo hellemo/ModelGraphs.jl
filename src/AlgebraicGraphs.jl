@@ -20,7 +20,7 @@ import Base: ==,show,print,string,getindex,copy
 export AbstractModelGraph, ModelGraph, SolutionGraph, JuMPGraph,
 
 #Graph Projections
-BipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph,
+ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph,
 
 #Nodes and Edges,
 ModelNode,LinkingEdge,
@@ -35,15 +35,17 @@ AbstractGraphSolver,BendersSolver,LagrangeSolver,
 addnode!,add_node!,getnode,getnodes,getedges,collectnodes,
 
 #Model functions
-setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
+setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
 getnumnodes, getobjectivevalue, getinternalgraphmodel,
 
 #Link Constraints
 addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints, get_all_linkconstraints,
 
+#Partitioning
+partition,
 
-#Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,label_propagation,
+#Aggregation
+create_aggregate_model,create_aggregate_graph,
 
 #JuMP Interface functions
 create_jump_graph_model,

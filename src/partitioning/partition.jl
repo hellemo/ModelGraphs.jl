@@ -20,7 +20,7 @@ end
 
 
 #Helper function to convert vector of node membership in partitions into vectors of node indices
-function partition(graph::ModelGraph,partition_func::Function,projection::Function = NodeUnipartiteGraph,args...;kwargs...)
+function partition(graph::ModelGraph,partition_func::Function,projection = NodeUnipartiteGraph,args...;kwargs...)
     projected_graph,projection_map = projection(graph)          #Reference map maps projected graph entities to model_graph entities
     partition_data = partition(projected_graph,partition_func,projection_map,args...;kwargs...)
     return partition_data
