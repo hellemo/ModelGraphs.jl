@@ -6,8 +6,9 @@ const PartitionEntity = Union{ModelNode,LinkingEdge,Pair{ModelNode,LinkingEdge}}
 #     shared_entities::Vector{PartitionEntity}
 #     partition_type::Function  #Nodes, Edges, or Pairs
 # end
+#TODO Typing
 struct PartitionData
-    partitions::Vector{Vector{}}  #partitions of nodes or edges or both
+    partitions::Vector{Vector}  #partitions of nodes or edges or both
     partition_entities::Vector{Vector}
     shared_entities::Vector{}
     #partition_type::Function  #Nodes, Edges, or Pairs
@@ -37,7 +38,7 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
     return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
 
-    return PartitionData(return_partitions,return_partition_entities,return_shared_entities),#typeof(ugraph))
+    return PartitionData(return_partitions,return_partition_entities,return_shared_entities)#typeof(ugraph))
 end
 
 #Convert membership vector to lists of indices
@@ -103,9 +104,10 @@ function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{
     return partition_edges,shared_edges
 end
 
-function _map_partitions(partitions::Vector{Vector{Int64}},projection_map::ProjectionMap)
+#TODO Typing output
+function _map_partitions(partitions::Vector{Vector{Int64}},projection_map::AlgebraicGraphs.ProjectionMap)
     n_partitions = length(partitions)
-    mapped_partitions = Vector[Vector{Int64}() for _ = 1:n_partitions]
+    mapped_partitions = Vector[Vector() for _ = 1:n_partitions]
 
     for i = 1:n_partitions
         partition = partitions[i]
@@ -117,7 +119,9 @@ function _map_partitions(partitions::Vector{Vector{Int64}},projection_map::Proje
     return mapped_partitions
 end
 
-function _map_entities(entities::Vector{LightGraphs.AbstractEdge},projection_map::ProjectionMap)
+
+#TODO Typing input and output
+function _map_entities(entities::Vector,projection_map::AlgebraicGraphs.ProjectionMap)
     mapped_entities = []
     for entity in entities
         mapped_index = projection_map[entity]

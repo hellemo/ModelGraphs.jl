@@ -2,7 +2,7 @@
 
 """
 GraphReferenceMap
-    Mapping between variable and constraint reference of a node model and the Aggregated Model.
+    Mapping between variable and constraint reference of a node model to the Aggregated Model.
     The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding reference of the original node model.
 """
 struct GraphReferenceMap
@@ -49,7 +49,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     reference_map = GraphReferenceMap(jump_graph_model,MOIU.IndexMap())
 
     # COPY NODE MODELS INTO AGGREGATED MODEL
-    has_nonlinear_objective = false                           #check if any nodes have nonlinear objectives
+    has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
         jump_node = getnode(jump_graph,nodeindex)
@@ -284,6 +284,15 @@ function _copy_constraint_func(func::JuMP.GenericAffExpr,ref_map::GraphReference
     return new_func
 end
 
+function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+    terms = func.terms
+    new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
+    new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+    new_func.terms = new_terms
+    new_func.constant = func.constant
+    return new_func
+end
+
 function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::GraphReferenceMap)
     new_aff = copy_constraint_func(func.aff)
     new_terms = OrderedDict([(ref_map[var_ref],coeff) for (var_ref,coeff) in terms])
@@ -305,7 +314,6 @@ function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::GraphRefere
     return new_con
 end
 
-#NOTE Figure out whether I can do a broadcast for the array
 function _copy_constraint(constraints::JuMP.VectorConstraint,ref_map::GraphReferenceMap)
     new_funcs = [_copy_constraint_func(con.func) for con in constraints]
     new_con = JuMP.VectorConstraint(new_func,constraint.set,constraint.shape)
@@ -314,6 +322,12 @@ end
 
 function _copy_constraint(constraint::LinkConstraint,ref_map::GraphReferenceMap)
     new_func = _copy_constraint_func(constraint.func,ref_map)
+    new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+    return new_con
+end
+
+function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+    new_func = _copy_constraint_func(constraint.func,var_map)
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con
 end

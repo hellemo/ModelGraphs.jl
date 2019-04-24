@@ -11,7 +11,7 @@ macro linkconstraint(graph,args...)
 
             #TODO  Check the hypergraph implementation. I fixed the issues with slowness, but haven't tested it enough.
             #TODO: Create an add_constraint function for a ModelGraph.  It should add to the LinkModel and then add edges to the graph
-            AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
+            #AlgebraicGraphs.addlinkedges!($graph,link_constraints) #Go through each link constraint and add the appropriate edge
         end
         return esc(code)
 end

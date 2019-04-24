@@ -10,11 +10,18 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 """
 mutable struct ModelGraph <: AbstractModelGraph
     hypergraph::StructureGraphs.StructureGraph           #Model graph structure.  Edges and Nodes in the graph have references to LinkConstraints.  The graph expresses the structure of the link model
-    linkmodel::LinkModel                                 #Using composition to represent a graph as a "Model".
+    linkmodel::AbstractLinkModel                                 #Using composition to represent a graph as a "Model".
     jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph if using an MOI solver.  Returned if requested by the solve.
+    function ModelGraph()
+        graph = new()
+        graph.hypergraph = StructureGraphs.StructuredHyperGraph()
+        graph.linkmodel = LinkModel(graph)
+        graph.jump_model = nothing
+        return graph
+    end
 end
 
-ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),nothing)
+#ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),nothing)
 StructureGraphs.getstructuregraph(graph::ModelGraph) = graph.hypergraph
 
 getlinkmodel(graph::AbstractModelGraph) = graph.linkmodel
@@ -64,9 +71,6 @@ link constraints (edges):"*string((getnumlinkconstraints(graph)))
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-
-
 
 
 

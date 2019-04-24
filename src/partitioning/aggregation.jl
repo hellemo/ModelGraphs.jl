@@ -4,9 +4,12 @@
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
     mg = ModelGraph()  #The new aggregated ModelGraph
 
-    partitions = getpartitions(partition_data)
-    shared_entities = getsharedentities(partition_data) #Could be linkconstraints, shared variables, shared models, or pairs
-    reference_map = GraphReferenceMap()
+    partitions = partition_data.partitions
+    shared_entities = partition_data.shared_entities #Could be linkconstraints, shared variables, shared models, or pairs
+
+    #What kind of reference map do we need?  multiple?
+    #reference_map = AlgebraicGraphs.GraphReferenceMap()  What should this have?
+    variable_map = Dict()
 
     #Aggregate Partitions
     for i = 1:n_partitions  #create aggregate model for each partition
@@ -18,17 +21,29 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
         aggregate_model,agg_ref_map = create_aggregate_model(mg,partition,local_shared_entities)
 
         #Update ReferenceMap
-        merge!(reference_map,agg_ref_map)
+        #merge!(reference_map,agg_ref_map)
+        merge!(variable_map,agg_ref_map.index_map.varmap)
+
 
         aggregate_node = add_node!(mg)
         setmodel(aggregate_node,aggregate_model)
+
     end
 
     #NEW LINK CONSTRAINTS
     for entity in shared_entities #Could be e.g. LinkConstraints
-        add_shared_entity!(mg,entity,reference_map)  #e.g. copy the LinkConstraint
+        add_shared_entity!(mg,entity,var_map)  #e.g. copy the LinkConstraints onto a new ModelGraph
     end
 
+
+end
+
+function add_shared_entity!(graph::ModelGraph,link_constraint::LinkConstraint,variable_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+    constraint = _copy_constraint(link_constraint,variable_map)
+    JuMP.add_constraint(graph,constraint)
+end
+
+function add_shared_entity!(graph::ModelGraph,graphvariable::JuMP.AbstractVariableRef,ref_map::GraphReferenceMap)
 end
 
 #Build up an aggregate model given a set of edges
@@ -48,7 +63,7 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
     aggregate_model =  JuMPGraphModel()         #Use a JuMPGraphModel so we can track the internal structure
     jump_graph = getgraph(aggregate_model)
 
-    reference_map = GraphReferenceMap(model_graph,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(aggregate_model,MOIU.IndexMap())
 
     has_nonlinear_objective = false
 
@@ -59,11 +74,18 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
 
         node_reference_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)
 
+        merge!(reference_map,node_reference_map)
+        # m,var_map = _buildnodemodel!(aggregate_model,jump_node,model_node)  #build model nodes into new jump node.  var_map is a mapping of model node variable indices to new jump node variables
+        # var_maps[model_node] = var_map
+
         node_model = getmodel(model_node)
         if has_nonlinear_objective != true
             has_nonlinear_objective = _has_nonlinear_obj(node_model)
         end
     end
+
+
+
 
     #LOCAL LINK CONSTRAINTS
     for linkconstraint in link_constraints
@@ -93,6 +115,8 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
         end
         JuMP.set_NL_objective(jump_graph_model, MOI.OptimizationSense(0), graph_obj)
     end
+
+    #Need to return multiple reference maps
 
     return aggregate_model,reference_map
 

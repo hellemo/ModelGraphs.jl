@@ -18,7 +18,7 @@ mutable struct ModelNode <: AbstractModelNode
 end
 #Constructor
 ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
-StructureGraphs.create_node(graph::ModelGraph) = ModelNode()
+StructureGraphs.create_node(graph::AbstractModelGraph) = ModelNode()
 StructureGraphs.getstructurenode(node::ModelNode) = node.structurenode
 
 """

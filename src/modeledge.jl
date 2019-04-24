@@ -3,31 +3,31 @@
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
     structureedge::StructureGraphs.StructureEdge
-    linkconstraints::Vector{GraphConstraintRef}  #Link constraints this edge represents
+    linkconstraints::Vector{AbstractGraphConstraintRef}  #Link constraints this edge represents
 end
 #Edge constructors
 LinkingEdge() = LinkingEdge(StructureGraphs.StructureEdge(),JuMP.ConstraintRef[])
-StructureGraphs.create_edge(graph::ModelGraph) = LinkingEdge()
+StructureGraphs.create_edge(graph::AbstractModelGraph) = LinkingEdge()
 StructureGraphs.getstructureedge(edge::LinkingEdge) = edge.structureedge
 
 #Add a hyperedge to graph using a linkconstraint reference
-function addlinkedges!(graph::AbstractModelGraph,con_ref::GraphConstraintRef)
+function addlinkedges!(graph::AbstractModelGraph,con_ref::AbstractGraphConstraintRef)
     add_edge!(graph,con_ref)
 end
 
-function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{GraphConstraintRef}) #TODO make sure this always works
+function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{AbstractGraphConstraintRef}) #TODO make sure this always works
     for con_ref in con_refs
         add_edge!(graph,con_ref)
     end
 end
 
-function addlinkedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{GraphConstraintRef}) #TODO make sure this always works
+function addlinkedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{AbstractGraphConstraintRef}) #TODO make sure this always works
     for con_ref in con_refs.data
         add_edge!(graph,con_ref)
     end
 end
 
-function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::GraphConstraintRef)
+function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphConstraintRef)
 
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     nodes = getnodes(con)
@@ -58,14 +58,14 @@ end
 
 #IDEA Interface HyperGraph objects with LinkModel objects
 
-function StructureGraphs.getnodes(con::LinkConstraint)
+function StructureGraphs.getnodes(con::AbstractLinkConstraint)
     #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
     return [getnode(var) for var in keys(con.func.terms)]
 end
-getnumnodes(con::LinkConstraint) = length(getnodes(con))
+getnumnodes(con::AbstractLinkConstraint) = length(getnodes(con))
 
-is_simplelinkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
-is_hyperlinkconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false
+is_simplelinkconstr(con::AbstractLinkConstraint) = getnumnodes(con) == 2 ? true : false
+is_hyperlinkconstr(con::AbstractLinkConstraint) = getnumnodes(con) > 2 ? true : false
 
 
 """

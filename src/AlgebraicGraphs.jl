@@ -59,20 +59,25 @@ getsolution,setsolution,setvalue,getvalue,
 @linkconstraint,@graphobjective
 
 #Abstract Types
+
+#ModelGraph
 abstract type AbstractModelGraph <: AbstractStructureGraph end
 abstract type AbstractModelNode <: AbstractStructureNode end
 abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
 abstract type AbstractGraphSolver end
 
-include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
+#Link Model
+abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
+abstract type AbstractGraphConstraintRef end
+abstract type AbstractLinkModel <: JuMP.AbstractModel end
 
-include("modelgraph.jl")         #The ModelGraph
+include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
 
 include("modelnode.jl")          #ModelGraph nodes
 
-#include("linkconstraint.jl")    #LinkConstraints which create graph topology
-
 include("modeledge.jl")          #ModelGraph edges
+
+include("modelgraph.jl")         #The ModelGraph
 
 include("macros.jl")             #@linkconstraint, @graphobjective
 
@@ -86,10 +91,9 @@ include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
 # include("community_detection.jl")
 #
+include("partitioning/graph_projections.jl")  #Projections that facilitate graph analysis (partitioning and community detection)
 
-#include("partitioning/partition.jl")   #Transformations that facilitate graph analysis (partitioning and community detection)
-#
-include("partitioning/graph_projections.jl")
+include("partitioning/partition.jl")
 #
 function __init__()
     #@require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")

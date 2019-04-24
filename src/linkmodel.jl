@@ -1,10 +1,9 @@
-#abstract type AbstractGraphVariableRef <: JuMP.AbstractVariableRef
-abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 #####################################################
 # Link Model
 # A link model stores model data about graph links
 #####################################################
-mutable struct LinkModel <: JuMP.AbstractModel
+mutable struct LinkModel <:  AbstractLinkModel
+    graph::AbstractModelGraph
 
     graphvariables::Dict{Int,JuMP.AbstractVariable}                        #global level variables.  Defined over an entire graph.  Can be used by sub-problems.
     graphvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of graph variables to children variables
@@ -28,8 +27,9 @@ mutable struct LinkModel <: JuMP.AbstractModel
     #TODO nlp_data.  GraphConstraints could be nonlinear.
 
     #Constructor
-    function LinkModel()
-        model = new(Dict{Int, JuMP.AbstractVariable}(),
+    function LinkModel(graph::AbstractModelGraph)
+        model = new(graph,
+                    Dict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
                     Dict{Int, JuMP.AbstractConstraint}(),
                     Dict{Int, AbstractLinkConstraint}(),
@@ -94,7 +94,7 @@ JuMP.num_variables(m::LinkModel) = length(m.graphvariables)
 const GraphAffExpr = JuMP.GenericAffExpr{Float64,GraphVariableRef}
 
 # Graph Constraint Reference
-struct GraphConstraintRef
+struct GraphConstraintRef <: AbstractGraphConstraintRef
     model::LinkModel # `model` owning the constraint
     idx::Int         #  index in `model.graphconstraints`
 end
@@ -147,6 +147,7 @@ function JuMP.add_constraint(m::LinkModel, con::ScalarGraphConstraint, name::Str
     return cref
 end
 
+
 # Model Extras
 JuMP.show_constraints_summary(::IOContext,m::LinkModel) = ""
 JuMP.show_backend_summary(::IOContext,m::LinkModel) = ""
@@ -172,6 +173,11 @@ function JuMP.add_constraint(m::LinkModel, con::JuMP.ScalarConstraint, name::Str
     link_con = LinkConstraint(con)      #convert ScalarConstraint to a LinkConstraint
     m.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
+
+    #Add LinkingEdges to the Graph
+    graph = m.graph
+    addlinkedges!(graph,cref)
+
     return cref
 end
 
