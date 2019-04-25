@@ -5,33 +5,45 @@ GraphReferenceMap
     Mapping between variable and constraint reference of a node model to the Aggregated Model.
     The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding reference of the original node model.
 """
+#TODO Make sure this is working correctly
 struct GraphReferenceMap
-    model::JuMP.Model
-    index_map::MOIU.IndexMap
+    model::JuMP.Model   #An aggregate model
+    #index_map::MOIU.IndexMap
+    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}
+    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
 end
-function Base.getindex(reference_map::GraphReferenceMap, vref::JuMP.VariableRef)
-    return JuMP.VariableRef(reference_map.model,reference_map.index_map[JuMP.index(vref)])
+function Base.getindex(reference_map::GraphReferenceMap, vref::JuMP.VariableRef)  #reference_map[node_var] --> aggregated_copy_var
+    #return JuMP.VariableRef(reference_map.model,reference_map.index_map[JuMP.index(vref)])
+    return reference_map.varmap[vref]
 end
 function Base.getindex(reference_map::GraphReferenceMap, cref::JuMP.ConstraintRef)
-    return JuMP.ConstraintRef(reference_map.model,reference_map.index_map[JuMP.index(cref)],cref.shape)
+    #return JuMP.ConstraintRef(reference_map.model,reference_map.index_map[JuMP.index(cref)],cref.shape)
+    return reference_map.conmap[cref]
 end
 Base.broadcastable(reference_map::GraphReferenceMap) = Ref(reference_map)
 
 function Base.setindex!(reference_map::GraphReferenceMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
-    reference_map.index_map.conmap[node_cref.index] = graph_cref.index
+    reference_map.conmap[node_cref] = graph_cref
+    #reference_map.index_map.conmap[node_cref.index] = graph_cref.index
 end
 function Base.setindex!(reference_map::GraphReferenceMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
-    reference_map.index_map.varmap[node_vref.index] = graph_vref.index
+    reference_map.varmap[node_vref] = graph_vref
+    #reference_map.index_map.varmap[node_vref.index] = graph_vref.index
 end
 
+GraphReferenceMap(m::JuMP.Model) = GraphReferenceMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
+
 #TODO #Check this works
+#NOTE: I think this is overriding values
 function Base.merge!(ref_map1::GraphReferenceMap,ref_map2::GraphReferenceMap)
-    for (k,v) in ref_map2.index_map.varmap
-        ref_map1.index_map.varmap[k] = v
-    end
-    for (k,v) in ref_map2.index_map.conmap
-        ref_map1.index_map.conmap[k] = v
-    end
+    merge!(ref_map1.varmap,ref_map2.varmap)
+    merge!(ref_map1.conmap,ref_map2.conmap)
+    # for (k,v) in ref_map2.index_map.varmap
+    #     ref_map1.index_map.varmap[k] = v
+    # end
+    # for (k,v) in ref_map2.index_map.conmap
+    #     ref_map1.index_map.conmap[k] = v
+    # end
 end
 
 """
@@ -41,22 +53,26 @@ create_jump_graph_model
 """
 #THE IDEA : Create a JuMP model by aggregating all of the nodes in a ModelGraph together
 function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
+    println("Creating JuMP Model")
     jump_graph_model = JuMPGraphModel()
 
     jump_graph = StructureGraphs.copy_graph_to(model_graph,to_graph_type = JuMPGraph)  #Create empty JuMP graph with nodes and edges
     jump_graph_model.ext[:Graph] = jump_graph
 
-    reference_map = GraphReferenceMap(jump_graph_model,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(jump_graph_model)
 
     # COPY NODE MODELS INTO AGGREGATED MODEL
+    println("Aggregating Models")
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
+        println(nodeindex)
         jump_node = getnode(jump_graph,nodeindex)
 
         node_reference_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
 
         #Update the reference_map
+        #NOTE: this might be too much data to store
         merge!(reference_map,node_reference_map)
 
         #Check for nonlinear objective functions unless we know we already have one
@@ -82,7 +98,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
                 d = JuMP.NLPEvaluator(node_model)
                 MOI.initialize(d,[:ExprGraph])
                 node_obj = MOI.objective_expr(d)
-                _splice_nonlinear_variables!(node_obj,ref_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
+                _splice_nonlinear_variables!(node_obj,node_model,ref_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
 
                 node_obj = Expr(:call,:*,:($sense),node_obj)
                 graph_obj = Expr(:call,:+,graph_obj,node_obj)
@@ -93,6 +109,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
         #TODO. Use GraphObjective
     end
 
+    println("Adding Link Constraints")
     #LINK CONSTRAINTS
     for linkconstraint in get_all_linkconstraints(model_graph)
         new_constraint = _copy_constraint(linkconstraint,reference_map)
@@ -120,7 +137,8 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
               "able to aggregate into a new JuMP Model.")
     end
 
-    reference_map = GraphReferenceMap(m,MOIU.IndexMap())
+    #reference_map = GraphReferenceMap(m,MOIU.IndexMap())
+    reference_map = GraphReferenceMap(m)
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
         new_x = JuMP.@variable(m)    #create an anonymous variable
@@ -172,7 +190,7 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         nlp_initialized = true
         for i = 1:length(node_model.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
-            _splice_nonlinear_variables!(expr,reference_map)        #splice the variables from var_map into the expression
+            _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
             #println(expr)
             new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
@@ -258,14 +276,17 @@ end
 
 #COPY OBJECTIVE FUNCTIONS
 #splice variables into a constraint expression
-function _splice_nonlinear_variables!(expr::Expr,reference_map::GraphReferenceMap)  #var_map needs to map the node_model index to the new model variable
+#TODO Fix this
+function _splice_nonlinear_variables!(expr::Expr,model::JuMP.Model,reference_map::GraphReferenceMap)  #var_map needs to map the node_model index to the new model variable
     for i = 1:length(expr.args)
         if typeof(expr.args[i]) == Expr
             if expr.args[i].head != :ref   #keep calling _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
-                _splice_nonlinear_variables!(expr.args[i],reference_map)
+                _splice_nonlinear_variables!(expr.args[i],model,reference_map)
             else  #it's a variable
-                var_index = expr.args[i].args[2]     #this is the actual index in x[1], x[2], etc...
-                new_var = :($(reference_map.index_map.varmap[var_index].value))
+                var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
+                #new_var = :($(reference_map.index_map.varmap[var_index].value))  #Get MOIIndex.value
+                #Need index --> new variable
+                new_var = :($(reference_map.varmap[JuMP.VariableRef(model,var_index)]))
                 #new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
             end
@@ -349,7 +370,7 @@ end
 
 function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::GraphReferenceMap)#variablemap::Dict{Int,VariableRef})
     new_obj = MOI.objective_expr(d)
-    _splice_nonlinear_variables!(new_obj,reference_map)
+    _splice_nonlinear_variables!(new_obj,d.m,reference_map)
     JuMP.objective_sense(d.m) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
     new_obj = Expr(:call,:*,:($sense),obj)
     return new_obj

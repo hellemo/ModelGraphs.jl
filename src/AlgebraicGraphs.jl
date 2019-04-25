@@ -87,15 +87,15 @@ include("jumpgraph.jl")          #An aggregated JuMP model
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
-# include("solution.jl")  #SolutionGraph
-#
-# include("aggregation.jl")  #Aggregate pieces of a ModelGraph
+# include("solution.jl")         #SolutionGraph
 #
 # include("community_detection.jl")
 #
 include("partitioning/graph_projections.jl")  #Projections that facilitate graph analysis (partitioning and community detection)
 
 include("partitioning/partition.jl")
+
+include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
 #
 function __init__()
     #@require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
