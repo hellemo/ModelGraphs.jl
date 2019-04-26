@@ -1,12 +1,10 @@
 
-
 using JuMP
 using AlgebraicGraphs
 using Ipopt
 
 graph = ModelGraph()
 optimizer = with_optimizer(Ipopt.Optimizer)
-#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
 n1 = add_node!(graph)

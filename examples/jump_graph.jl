@@ -1,13 +1,14 @@
 using JuMP
-using Plasmo
+using AlgebraicGraphs
 using Ipopt
 
 graph = ModelGraph()
-setsolver(graph,Ipopt.IpoptSolver())
+optimizer = with_optimizer(Ipopt.Optimizer)
+#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = add_node(graph)
-n2 = add_node(graph)
+n1 = add_node!(graph)
+n2 = add_node!(graph)
 
 m1 = JuMP.Model()
 @variable(m1,0 <= x <= 2)
@@ -33,11 +34,9 @@ for link in links
     println(link)
 end
 
-jump_model = create_jump_graph_model(graph)
-jump_model.solver = IpoptSolver()
+jump_model,reference_map = create_jump_graph_model(graph)
+optimize!(jump_model,optimizer)
 
-solve(jump_model)
-
-links = getlinkconstraints(jump_model)
-
-getdual(links[1])
+#links = getlinkconstraints(jump_model)
+#
+#getdual(links[1])

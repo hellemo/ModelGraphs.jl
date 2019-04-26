@@ -24,7 +24,6 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
         #TODO: This is not correct.  Values get overridden
         merge!(variable_map,agg_ref_map.varmap)
 
-
         aggregate_node = add_node!(new_model_graph)
         setmodel(aggregate_node,aggregate_model)
 
@@ -39,10 +38,10 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
 
 end
 
-function add_shared_entity!(graph::ModelGraph,edge::LinkingEdge,variable_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+function add_shared_entity!(graph::ModelGraph,edge::LinkingEdge,variable_map::Dict)
     link_constraints = [LinkConstraint(link_ref) for link_ref in edge.linkconstraints]
     for link_constraint in link_constraints
-        copy_constraint = _copy_constraint(link_constraint,variable_map)
+        copy_constraint = AlgebraicGraphs._copy_constraint(link_constraint,variable_map)
         JuMP.add_constraint(graph.link_model,copy_constraint)
     end
 end
@@ -56,7 +55,7 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
     #local_links, cross_links = _get_local_and_cross_links(model_graph,nodes)
 
     #Get corresponding ModelNodes and LinkConstraints for given indices
-    #nodes = [getnode(model_graph,index) for index in node_indices]
+    #Extract LinkConstraints from the Edges
     link_constraints = []
     for edge in link_edges
         for link_ref in edge.linkconstraints
@@ -65,10 +64,10 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
         end
     end
 
-    aggregate_model =  JuMPGraphModel()         #Use a JuMPGraphModel so we can track the internal structure
+    aggregate_model =  AlgebraicGraphs.JuMPGraphModel()         #Use a JuMPGraphModel so we can track the internal structure
     jump_graph = getgraph(aggregate_model)
 
-    reference_map = GraphReferenceMap(aggregate_model,Dict(),Dict())
+    reference_map = AlgebraicGraphs.GraphReferenceMap(aggregate_model,Dict(),Dict())
     #variable_map = Dict()
 
     has_nonlinear_objective = false
@@ -78,7 +77,7 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
         nodeindex = getindex(model_graph,model_node)
         jump_node = add_node!(aggregate_model,index = nodeindex)  #add at the same index
 
-        node_reference_map = _buildnodemodel!(aggregate_model,jump_node,model_node)
+        node_reference_map = AlgebraicGraphs._buildnodemodel!(aggregate_model,jump_node,model_node)
 
 
         merge!(reference_map,node_reference_map)
@@ -86,16 +85,17 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
         # var_maps[model_node] = var_map
 
         node_model = getmodel(model_node)
+
         if has_nonlinear_objective != true
-            has_nonlinear_objective = _has_nonlinear_obj(node_model)
+            has_nonlinear_objective = AlgebraicGraphs._has_nonlinear_obj(node_model)
         end
     end
 
     #LOCAL LINK CONSTRAINTS
     #TODO: Typing is causing issues here
-    println(reference_map.varmap)
+    #BUG: Some nodes in the link constraint are NOT in the set of nodes.  Identifying shared entities is either wrong, or the mapping is incorrect.
     for linkconstraint in link_constraints
-        new_constraint = _copy_constraint(linkconstraint,reference_map)
+        new_constraint = AlgebraicGraphs._copy_constraint(linkconstraint,reference_map)
         JuMP.add_constraint(aggregate_model,new_constraint)
     end
 

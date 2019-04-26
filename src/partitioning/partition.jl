@@ -35,8 +35,14 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
     local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
 
     return_partitions = _map_partitions(partitions,projection_map)
+
     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
     return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
+
+    #Make sure no partition entities are not in shared entities.  It's possible that local entity maps to a linkconstraint that's shared.
+    for return_part in return_partition_entities
+        filter!(e ->  !(e in return_shared_entities),return_part)
+    end
 
     return PartitionData(return_partitions,return_partition_entities,return_shared_entities)#typeof(ugraph))
 end
