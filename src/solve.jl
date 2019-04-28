@@ -8,7 +8,6 @@ GraphReferenceMap
 #TODO Make sure this is working correctly
 struct GraphReferenceMap
     model::JuMP.Model   #An aggregate model
-    #index_map::MOIU.IndexMap
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
 end
@@ -33,8 +32,6 @@ end
 
 GraphReferenceMap(m::JuMP.Model) = GraphReferenceMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
 
-#TODO #Check this works
-#NOTE: I think this is overriding values
 function Base.merge!(ref_map1::GraphReferenceMap,ref_map2::GraphReferenceMap)
     merge!(ref_map1.varmap,ref_map2.varmap)
     merge!(ref_map1.conmap,ref_map2.conmap)
@@ -66,7 +63,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
-        println(nodeindex)
+        #println(nodeindex)
         jump_node = getnode(jump_graph,nodeindex)
 
         node_reference_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)  #updates jump_graph_model,the jump_node, and the ref_map

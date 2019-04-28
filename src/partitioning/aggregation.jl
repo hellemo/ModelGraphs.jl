@@ -6,9 +6,7 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
     shared_entities = partition_data.shared_entities #Could be linkconstraints, shared variables, shared models, or pairs
 
     #What kind of reference map do we need?  multiple?
-    #reference_map = AlgebraicGraphs.GraphReferenceMap()  What should this have?
-    variable_map = Dict()
-
+    variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
     n_partitions = length(partitions)
     #Aggregate Partitions
     for i = 1:n_partitions  #create aggregate model for each partition
@@ -19,9 +17,7 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
 
         aggregate_model,agg_ref_map = create_aggregate_model(model_graph,part,local_shared_entities)
 
-        #Update ReferenceMap
-        #merge!(reference_map,agg_ref_map)
-        #TODO: This is not correct.  Values get overridden
+        #Update VariableMap
         merge!(variable_map,agg_ref_map.varmap)
 
         aggregate_node = add_node!(new_model_graph)
@@ -31,7 +27,7 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
 
     #NEW LINK CONSTRAINTS
     for entity in shared_entities #Could be e.g. LinkConstraints
-        add_shared_entity!(new_model_graph,entity,variable_map)  #e.g. copy the LinkConstraints onto a new ModelGraph
+        add_shared_entity!(new_model_graph,entity,variable_map)
     end
 
     return new_model_graph
@@ -42,7 +38,7 @@ function add_shared_entity!(graph::ModelGraph,edge::LinkingEdge,variable_map::Di
     link_constraints = [LinkConstraint(link_ref) for link_ref in edge.linkconstraints]
     for link_constraint in link_constraints
         copy_constraint = AlgebraicGraphs._copy_constraint(link_constraint,variable_map)
-        JuMP.add_constraint(graph.link_model,copy_constraint)
+        JuMP.add_constraint(graph.linkmodel,copy_constraint)
     end
 end
 
@@ -67,7 +63,7 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
     aggregate_model =  AlgebraicGraphs.JuMPGraphModel()         #Use a JuMPGraphModel so we can track the internal structure
     jump_graph = getgraph(aggregate_model)
 
-    reference_map = AlgebraicGraphs.GraphReferenceMap(aggregate_model,Dict(),Dict())
+    reference_map = GraphReferenceMap(aggregate_model,Dict(),Dict())
     #variable_map = Dict()
 
     has_nonlinear_objective = false
@@ -77,25 +73,21 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
         nodeindex = getindex(model_graph,model_node)
         jump_node = add_node!(aggregate_model,index = nodeindex)  #add at the same index
 
-        node_reference_map = AlgebraicGraphs._buildnodemodel!(aggregate_model,jump_node,model_node)
-
+        node_reference_map = _buildnodemodel!(aggregate_model,jump_node,model_node)
 
         merge!(reference_map,node_reference_map)
-        # m,var_map = _buildnodemodel!(aggregate_model,jump_node,model_node)  #build model nodes into new jump node.  var_map is a mapping of model node variable indices to new jump node variables
-        # var_maps[model_node] = var_map
 
         node_model = getmodel(model_node)
 
         if has_nonlinear_objective != true
-            has_nonlinear_objective = AlgebraicGraphs._has_nonlinear_obj(node_model)
+            has_nonlinear_objective = _has_nonlinear_obj(node_model)
         end
     end
 
     #LOCAL LINK CONSTRAINTS
     #TODO: Typing is causing issues here
-    #BUG: Some nodes in the link constraint are NOT in the set of nodes.  Identifying shared entities is either wrong, or the mapping is incorrect.
     for linkconstraint in link_constraints
-        new_constraint = AlgebraicGraphs._copy_constraint(linkconstraint,reference_map)
+        new_constraint = _copy_constraint(linkconstraint,reference_map)
         JuMP.add_constraint(aggregate_model,new_constraint)
     end
 
@@ -132,6 +124,9 @@ end
 function create_aggregate_model(model_graph::ModelGraph,edges::Vector{LinkingEdge},shared_variables::Vector{GraphVariableRef})
 end
 
+
+
+
 # #NOTE: This function can still be useful
 # function _get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNode})
 #     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given
@@ -159,76 +154,4 @@ end
 #
 # #TODO
 # function get_local_and_shared_variables(model_graph::ModelGraph,edges::Vector{LinkingEdge})
-# end
-
-
-#Given a model graph and a set of node partitions, create a new aggregated model graph
-# #NOTE: I'll have an option to transform linkconstraints into shared variables
-# function create_lifted_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
-#     new_model_graph = ModelGraph()
-#
-#     aggregate_models = []
-#     all_cross_links = []
-#     variable_mapping = Dict()
-#     all_var_maps = Dict()
-#     for partition in partitions  #create aggregate model for each partition
-#         aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
-#         push!(aggregate_models,aggregate_model)
-#         append!(all_cross_links,cross_links)
-#         merge!(all_var_maps,var_maps)
-#     end
-#     all_cross_links = unique(all_cross_links)  #remove duplicate cross links
-#
-#     for agg_model in aggregate_models
-#         aggregate_node = add_node!(new_model_graph)
-#         setmodel(aggregate_node,agg_model)
-#     end
-#
-#     sub_nodes = collectnodes(new_model_graph)
-#     #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
-#     master_node = add_node!(new_model_graph,Model())
-#
-#     for linkconstraint in all_cross_links
-#         linear_terms = []
-#         for terms in linearterms(linkconstraint.terms)
-#             push!(linear_terms,terms)
-#         end
-#
-#         #Get references to variables in the aggregated models
-#         t_new = []
-#         for i = 1:length(linear_terms)
-#             coeff = linear_terms[i][1]
-#             var = linear_terms[i][2]
-#             model_node = getnode(var)                #the original model node
-#             var_index = JuMP.linearindex(var)        #variable index in the model node
-#             var_map = all_var_maps[model_node]       #model node variable map {index => aggregate_variable}
-#             agg_var = var_map[var_index]
-#             push!(t_new,(coeff,agg_var))
-#         end
-#
-#         #For simple links, create a single lifted variable and 2 linkconstraints
-#         if length(t_new) == 2 && (linkconstraint.lb == linkconstraint.ub) && (linear_terms[1][1]) == -linear_terms[2][1]
-#             lifted_var = @variable(getmodel(master_node))
-#             for term in t_new
-#                 var = term[2]
-#                 @linkconstraint(new_model_graph,lifted_var == var)
-#             end
-# #        end
-#
-#         else  #else create multiple duplicates and lift the constraints into the master
-#             lift_terms = []
-#             for term in t_new
-#                 coeff = term[1]
-#                 var = term[2]
-#                 lifted_var = @variable(getmodel(master_node) , start = JuMP.getvalue(var))
-#                 @linkconstraint(new_model_graph,lifted_var == var)
-#                 push!(lift_terms,(coeff,lifted_var))
-#             end
-#             @constraint(getmodel(master_node), linkconstraint.lb <= sum(lift_terms[i][1]*lift_terms[i][2] for i = 1:length(lift_terms)) + linkconstraint.terms.constant <= linkconstraint.ub)
-#         end
-#
-#         #For simple links, create a single lifted variable and 2 linkconstraints
-#         @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
-#     end
-#     return new_model_graph , master_node, sub_nodes
 # end

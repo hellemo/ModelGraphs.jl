@@ -56,16 +56,7 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphC
     return edge
 end
 
-#IDEA Interface HyperGraph objects with LinkModel objects
 
-function StructureGraphs.getnodes(con::AbstractLinkConstraint)
-    #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
-    return [getnode(var) for var in keys(con.func.terms)]
-end
-getnumnodes(con::AbstractLinkConstraint) = length(getnodes(con))
-
-is_simplelinkconstr(con::AbstractLinkConstraint) = getnumnodes(con) == 2 ? true : false
-is_hyperlinkconstr(con::AbstractLinkConstraint) = getnumnodes(con) > 2 ? true : false
 
 
 """

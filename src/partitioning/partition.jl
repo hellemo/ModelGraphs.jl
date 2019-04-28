@@ -32,10 +32,10 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
     membership_vector = partition_func(lg,args...;kwargs...)
 
     partitions = _getpartitions(ugraph,membership_vector)
+
     local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
 
     return_partitions = _map_partitions(partitions,projection_map)
-
     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
     return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
 
@@ -61,19 +61,6 @@ function _getpartitions(graph::NodeUnipartiteGraph,membership_vector::Vector)
 
     partitions = collect(values(partition_dict))  #returns partitions of original model graph nodes
 
-    # NOTE: A way to get a sparse group identity matrix
-    # make sure graph has no self loops
-    # I = []
-    # J = []
-    # for i = 1:nparts
-    #     for j in partitions[i]
-    #         push!(I,i)
-    #         push!(J,j)
-    #     end
-    # end
-    # V = ones(length(J))
-    # G = sparse(I,J,V)
-
     return partitions
 end
 
@@ -83,30 +70,52 @@ end
 #NOTE: Need to fix hypergraph implementation so I don't get self loops in the light graph
 function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
     println("Identifying Shared entities")
-    n_partitions = length(partitions)
-    partition_edges = Vector[Vector() for _ = 1:n_partitions]
-    shared_edges = []
-    checked_edges = []
-    for i = 1:n_partitions
-        partition = partitions[i]
-        #NOTE: We effectively need to iterate the edges and check for supporting nodes that are outside the partition
-        for node_index in partition
-            node = getnode(graph,node_index)
-            edges = getsupportingedges(graph,node)
-            for edge in edges
-                if !(edge in checked_edges)
-                    edge_nodes = getsupportingnodes(graph,edge)
-                    node_indices = [getindex(graph,node) for node in edge_nodes]
-                    if !(all(node -> node in partition,node_indices))
-                        push!(shared_edges,getindex(graph,edge))
-                    else
-                        push!(partition_edges[i],getindex(graph,edge))
-                    end
-                end
-                push!(checked_edges,edge)
-            end
+    nparts = length(partitions)
+
+    #FIND THE SHARED EDGES
+    #Setup sparse partition matrix
+    I = []
+    J = []
+    for i = 1:nparts
+        for j in partitions[i]
+            push!(I,i)
+            push!(J,j)
         end
     end
+    V = ones(length(J))
+    G = sparse(I,J,V)  #Node partition matrix
+    lg = getlightgraph(graph)
+    A = LightGraphs.incidence_matrix(lg)
+    C = G*A  #Edge partitions
+
+    #Get indices of shared edges
+    sum_vector = sum(C,dims = 1)
+    max_vector = maximum(C,dims = 1)
+    cross_vector = sum_vector - max_vector
+    indices = findall(cross_vector .!= 0)
+    indices = [indices[i].I[2] for i = 1:length(indices)]  #some data unpacking to get the indices
+
+    cross_matrix = A[:,indices]
+    n_cross_edges = size(cross_matrix)[2]
+    shared_edges = LightGraphs.Edge[]
+    #TODO: Need to check edges in both directions.  This change would be fundamental to my graph interface
+    for i = 1:n_cross_edges
+        node_indices = cross_matrix[:,i].nzind
+        push!(shared_edges,LightGraphs.Edge(node_indices[1],node_indices[2]))
+    end
+
+    #GET THE EDGES LOCAL TO EACH PARTITION
+     partition_edges = Vector[Vector{LightGraphs.Edge}() for _ = 1:nparts]
+     for i = 1:nparts
+         inds = findall(C[i,:] .!= 0)
+         new_inds = filter(x -> !(x in indices), inds)
+         local_matrix = A[:,new_inds]
+         for j = 1:length(new_inds)
+             node_indices = local_matrix[:,j].nzind
+             push!(partition_edges[i],LightGraphs.Edge(node_indices[1],node_indices[2]))
+         end
+     end
+
     return partition_edges,shared_edges
 end
 
@@ -127,7 +136,7 @@ end
 
 
 #TODO Typing input and output
-function _map_entities(entities::Vector,projection_map::AlgebraicGraphs.ProjectionMap)
+function _map_entities(entities::Vector{Any},projection_map::AlgebraicGraphs.ProjectionMap)
     mapped_entities = []
     for entity in entities
         mapped_index = projection_map[entity]
@@ -135,6 +144,22 @@ function _map_entities(entities::Vector,projection_map::AlgebraicGraphs.Projecti
     end
     return mapped_entities
 end
+
+function _map_entities(edge_list::Vector{LightGraphs.SimpleGraphs.SimpleEdge},projection_map::AlgebraicGraphs.ProjectionMap)
+    mapped_entities = []
+    for edge in edge_list
+        try
+            mapped_index = projection_map[edge]
+            push!(mapped_entities,mapped_index)
+        catch KeyError
+            rev_edge = LightGraphs.Edge(edge.dst,edge.src)
+            mapped_index = projection_map[rev_edge]
+            push!(mapped_entities,mapped_index)
+        end
+    end
+    return mapped_entities
+end
+
 
 # function _map_entities(entities::Vector{Vector{LightGraphs.AbstractEdge}},projection_map::ProjectionMap)
 #     for vector in entities
@@ -171,3 +196,32 @@ end
 #     end
 #     return local_link_constraints , cross_link_constraints
 # end
+
+#function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
+    #println("Identifying Shared entities")
+    # n_partitions = length(partitions)
+    # partition_edges = Vector[Vector() for _ = 1:n_partitions]
+    # shared_edges = []
+    # checked_edges = []
+    # for i = 1:n_partitions
+    #     partition = partitions[i]
+    #     #NOTE: We effectively need to iterate the edges and check for supporting nodes that are outside the partition
+    #     for node_index in partition
+    #         node = getnode(graph,node_index)
+    #         edges = getsupportingedges(graph,node)
+    #         for edge in edges
+    #             if !(edge in checked_edges)
+    #                 edge_nodes = getsupportingnodes(graph,edge)
+    #                 node_indices = [getindex(graph,node) for node in edge_nodes]
+    #                 if !(all(node -> node in partition,node_indices))
+    #                     push!(shared_edges,getindex(graph,edge))
+    #                 else
+    #                     push!(partition_edges[i],getindex(graph,edge))
+    #                 end
+    #             end
+    #             push!(checked_edges,edge)
+    #         end
+    #     end
+    # end
+    #return partition_edges,shared_edges
+#end

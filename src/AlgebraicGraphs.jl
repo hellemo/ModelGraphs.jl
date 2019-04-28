@@ -7,6 +7,7 @@ using Requires
 using Distributed
 using LinearAlgebra
 using DataStructures
+using SparseArrays
 
 using MathOptInterface
 const MOI = MathOptInterface

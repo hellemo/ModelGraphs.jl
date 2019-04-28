@@ -159,30 +159,46 @@ JuMP.show_backend_summary(::IOContext,m::LinkModel) = ""
 struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
     func::F
     set::S
-    #NOTE:
-    #Could cache other data on the LinkConstraint
+    #Caching data on the LinkConstraint
+    graph::AbstractModelGraph
+    node_indices::Vector{Int64}
+end
+LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
+
+function LinkConstraint(con::JuMP.ScalarConstraint,graph::AbstractModelGraph)
+    node_indices = sort(unique([getindex(graph,getnode(var)) for var in keys(con.func.terms)]))
+    #node_indices = Int64[]
+    return LinkConstraint(con.func,con.set,graph,node_indices)
 end
 
-LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
-LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
+function StructureGraphs.getnodes(con::LinkConstraint)
+    #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
+    #return [getnode(var) for var in keys(con.func.terms)]
+    return map(n -> getnode(con.graph,n),con.node_indices)
+end
+getnumnodes(con::LinkConstraint) = length(getnodes(con))
+
+is_simplelinkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
+is_hyperlinkconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false
 
 #Add a LinkConstraint to a LinkModel
 function JuMP.add_constraint(m::LinkModel, con::JuMP.ScalarConstraint, name::String="")
     m.graph_constraint_index += 1
     cref = GraphConstraintRef(m, m.graph_constraint_index)
-    link_con = LinkConstraint(con)      #convert ScalarConstraint to a LinkConstraint
+
+    graph = m.graph
+    link_con = LinkConstraint(con,graph)      #convert ScalarConstraint to a LinkConstraint
     m.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
 
     #Add LinkingEdges to the Graph
-    graph = m.graph
     addlinkedges!(graph,cref)
 
     return cref
 end
 
 function JuMP.add_constraint(m::LinkModel, con::JuMP.AbstractConstraint, name::String="")
-    error("Link Models only support graph constraints and link constraints")
+    error("Link Models only support GraphConstraints and LinkConstraints")
 end
 
 jump_function(constraint::LinkConstraint) = constraint.func
