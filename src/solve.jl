@@ -228,23 +228,18 @@ function jump_solve(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;scale = 1
     JuMP.optimize!(m_jump,optimizer;kwargs...)
     status = JuMP.termination_status(m_jump)
 
-    #TODO Get all the correct status codes
-    if JuMP.has_values(m_jump)
-        #_copysolution!(getgraph(m_jump),graph,reference_map)          #Now get our solution data back into the original ModelGraph
-    end
+    #TODO Get all the correct status codes for copying a solution
+    # if JuMP.has_values(m_jump)
+    #     _copysolution!(getgraph(m_jump),graph,reference_map)          #Now get our solution data back into the original ModelGraph
+    # end
+    graph.jump_model = m_jump
     return status
 end
 
 #check if graph has a MOI connected solver
 #TODO Remove scale argument.  Allow direct interface with the graph objective function
 function JuMP.optimize!(graph::AbstractModelGraph,optimizer::JuMP.OptimizerFactory;scale = 1.0,kwargs...)
-    if isa(optimizer,JuMP.OptimizerFactory)
-        status = jump_solve(graph,optimizer,scale = scale,kwargs...)
-    elseif isa(getoptimizer(graph),AbstractPlasmoSolver)
-        status = solve(graph,getoptimizer(graph))
-    else
-        throw(error("Given solver not recognized"))
-    end
+    status = jump_solve(graph,optimizer,scale = scale,kwargs...)
     return status
 end
 
@@ -253,10 +248,13 @@ end
 #     for node in getnodes(jump_graph) #graph 1 is the JuMPGraph
 #         idx = getindex(jump_graph,node)
 #         model_node = getnode(model_graph,idx)       #get the corresponding node or edge in graph2
+#
 #         for variable in node.variablelist
 #             model_node_var = ref_map[variable]
-#             JuMP.set_start_value(model_node_var,JuMP.value(variable))
+#
+#             #JuMP.set_start_value(model_node_var,JuMP.value(variable))
 #         end
+#
 #     end
 #     #TODO Set dual solution values for constraints
 # end

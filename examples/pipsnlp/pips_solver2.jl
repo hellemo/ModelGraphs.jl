@@ -1,3 +1,5 @@
+#NOTE: This file contains proposed (not yet implemented syntax)
+
 using JuMP
 using Ipopt
 using Plasmo
@@ -25,7 +27,7 @@ graph = ModelGraph()
 for j in 1:Ns
     scenm = get_electricity_model(demand[j])
     node = addnode!(graph,scenm)
-    linkvariable!(graph[:gas_purcahsed],node[:gas_purchased])
+    linkvariable!(graph[:gas_purchased],node[:gas_purchased])
     #connect children and parent variables
     #@linkconstraint(graph, master[:gas_purchased] == scenm[j][:gas_purchased])
     #Create child objective
@@ -35,7 +37,7 @@ end
 
 #create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in 1:Ns) == 8)
-@graphobjective(graph,Min,graph[:gas_purchased] + sum(node_objectives(graph))
+@graphobjective(graph,Min,graph[:gas_purchased] + sum(node_objectives(graph)))
 
 solver = PipsSolver(n_workers = 2)
 solve(graph,solver)

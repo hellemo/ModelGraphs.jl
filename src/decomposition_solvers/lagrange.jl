@@ -3,15 +3,15 @@
 
   Solve a ModelGraph object using lagrange decomposition
 """
-function lagrangesolve(graph;
+function lagrangesolve(graph::ModelGraph;
     max_iterations=10,
-    update_method=:subgradient, #probingsubgradient
-    ϵ=0.001, # ϵ-convergence tolerance
+    update_method=:subgradient,         #probingsubgradient
+    ϵ=0.001,                            # ϵ-convergence tolerance
     timelimit=3600,
-    α=2, # default subgradient step
-    lagrangeheuristic=fixbinaries, # function to calculate the upper bound
-    initialmultipliers=:zero, # :relaxation for LP relaxation
-    δ = 0.5, # Factor to shrink step when subgradient stuck
+    α=2,                                # default subgradient step
+    lagrangeheuristic=fixbinaries,      # function to calculate the upper bound
+    initialmultipliers=:zero,           # relaxation for LP relaxation
+    δ = 0.5,                            # Factor to shrink step when subgradient stuck
     maxnoimprove = 3,
     cpbound=1e6,  # Amount of iterations that no improvement is allowed before shrinking step
     cutting_plane_solver = ClpSolver(),
@@ -19,6 +19,7 @@ function lagrangesolve(graph;
 
     ### INITIALIZATION ###
     lgprepare(graph,cutting_plane_solver,node_solver,δ,maxnoimprove,cpbound)
+
     n = getattribute(graph,:normalized)
 
     if initialmultipliers == :relaxation
@@ -32,7 +33,7 @@ function lagrangesolve(graph;
     res = getattribute(graph,:res)[end]
     nmult = getattribute(graph,:numlinks)
     nodes = [node for node in getnodes(graph)]
-    setattribute(graph,:α, [1.0α])
+    setattribute(graph,:α, [1.0*α])
     iterval = 0
 
     ### ITERATIONS ###
@@ -96,7 +97,7 @@ function lagrangesolve(graph;
     return s
 end
 
-# Preprocess function
+# Initialization
 """
   lgprepare(graph::ModelGraph)
 

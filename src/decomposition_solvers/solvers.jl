@@ -1,5 +1,5 @@
 #Benders Decomposition Solver
-mutable struct BendersSolver <: AbstractPlasmoSolver
+mutable struct BendersSolver <: AbstractGraphSolver
     options::Dict{Any,Any}
     lp_solver::AbstractMathProgSolver
     node_solver::AbstractMathProgSolver
@@ -26,7 +26,7 @@ function solve(tree::ModelTree,bsolver::BendersSolver)
 end
 
 #Lagrange decomposition solver
-mutable struct LagrangeSolver <: AbstractPlasmoSolver
+mutable struct LagrangeSolver <: AbstractGraphSolver
     options::Dict{Any,Any}
     cutting_plane_solver::AbstractMathProgSolver
     node_solver::AbstractMathProgSolver
@@ -57,9 +57,9 @@ function LagrangeSolver(;max_iterations=10,
 
 end
 
-function solve(graph::ModelGraph,lagsolver::LagrangeSolver)
-    solution = lagrangesolve(graph; cutting_plane_solver = lagsolver.cutting_plane_solver,node_solver = lagsolver.node_solver,lagsolver.options...)
-    lagsolver.solution = solution
+function solve(graph::ModelGraph,solver::LagrangeSolver)
+    solution = lagrangesolve(graph; cutting_plane_solver = solver.cutting_plane_solver,node_solver = solver.node_solver,solver.options...)
+    solver.solution = solution
     return solution
 end
 

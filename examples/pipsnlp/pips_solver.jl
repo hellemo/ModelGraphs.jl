@@ -1,6 +1,6 @@
 using JuMP
 using Ipopt
-using Plasmo
+using AlgebraicGraphs
 using PlasmoSolverInterface
 
 function get_electricity_model(demand)
@@ -42,9 +42,8 @@ end
 #create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in 1:Ns) == 8)
 
-master_index = 1
-children = collect(2:16)
-
-solver = PipsSolver(n_workers = 2, master = master_index , children = children)
+# master_index = 1
+# children = collect(2:16)
+#solver = PipsSolver(n_workers = 2, master = master_index , children = children)
 
 solve(graph,solver)
