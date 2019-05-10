@@ -5,7 +5,7 @@
 """
 function lagrangesolve(graph::ModelGraph;
     max_iterations=10,
-    update_method=:subgradient,         #probingsubgradient
+    update_method=:subgradient,         # probingsubgradient
     ϵ=0.001,                            # ϵ-convergence tolerance
     timelimit=3600,
     α=2,                                # default subgradient step
@@ -18,39 +18,45 @@ function lagrangesolve(graph::ModelGraph;
     node_solver = ClpSolver())
 
     ### INITIALIZATION ###
-    lgprepare(graph,cutting_plane_solver,node_solver,δ,maxnoimprove,cpbound)
+    lg_initialize!(graph,cutting_plane_solver,node_solver,δ,maxnoimprove,cpbound)
 
+    #switch objective signs
     n = getattribute(graph,:normalized)
 
+    #initialize multipliers with lp relaxation
     if initialmultipliers == :relaxation
-        initialrelaxation(graph)
+        initialrelaxation!(graph)
     end
 
     starttime = time()
+
     s = Solution(method=:dual_decomposition)
-    λ = getattribute(graph,:λ)[end]
-    x = getattribute(graph,:x)[end]
-    res = getattribute(graph,:res)[end]
-    nmult = getattribute(graph,:numlinks)
-    nodes = [node for node in getnodes(graph)]
+
+    λ = getattribute(graph,:λ)[end]  #latest multipliers
+    x = getattribute(graph,:x)[end]  #latest primal solution
+    residual = getattribute(graph,:res)[end]
+    n_multipliers = getattribute(graph,:numlinks)
+    #nodes = [node for node in getnodes(graph)]
     setattribute(graph,:α, [1.0*α])
     iterval = 0
 
     ### ITERATIONS ###
     for iter in 1:max_iterations
-        variant = iter == 1 ? :default : update_method # Use default version in the first iteration
+        variant = iter == 1 ? :default : update_method # Use default method in the first iteration
 
         iterstart = time()
         # Solve subproblems
-        Zk = 0
-        for node in nodes
+        Zk = 0  #objective value
+        #NOTE: We can parallelize here
+        for node in getnodes(graph)
            (x,Zkn) = solvenode(node,λ,x,variant)
-           Zk += Zkn
+           Zk += Zkn        #add objective values
         end
         setattribute(graph, :steptaken, true)
 
-        # If no improvement, increase counter
+        # If no improvement, increase no improvement counter
         if Zk < getattribute(graph, :Zk)[end]
+            #graph[:noimprove] = graph[:noimprove] + 1
             setattribute(graph, :noimprove, getattribute(graph, :noimprove) + 1)
         end
         # If too many iterations without improvement, decrease :α
@@ -99,17 +105,26 @@ end
 
 # Initialization
 """
-  lgprepare(graph::ModelGraph)
+  lg_initialize!(graph::ModelGraph)
 
-  Prepares the graph to apply lagrange decomposition algorithm
+  Prepares the graph to apply a lagrange decomposition algorithm
 """
-function lgprepare(graph::ModelGraph,cutting_plane_solver::AbstractMathProgSolver,node_solver::AbstractMathProgSolver, δ=0.5, maxnoimprove=3,cpbound=nothing)
+function lg_initialize!(graph::ModelGraph,
+    cutting_plane_solver::JuMP.OptimizerFactory,
+    node_solver::JuMP.OptimizerFactory,
+    δ=0.5,
+    maxnoimprove=3,
+    cpbound=nothing)
+
     if hasattribute(graph,:preprocessed)
         return true
     end
+
     n = normalizegraph(graph)
+
     links = getlinkconstraints(graph)
-    nmult = length(links)   # Number of multipliers
+    nmult = length(links)                   # Number of multipliers
+
     setattribute(graph, :numlinks, nmult)
     setattribute(graph, :λ, [zeros(nmult)]) # Array{Float64}(nmult)
     setattribute(graph, :x, [zeros(nmult,2)]) # Linking variables values
@@ -122,15 +137,15 @@ function lgprepare(graph::ModelGraph,cutting_plane_solver::AbstractMathProgSolve
     setattribute(graph, :explore, [])
     setattribute(graph, :steptaken, false)
 
-    # Create Lagrange Master
+    # Create Lagrange Master.  Used for cutting plane multiplier updates
     ms = Model(solver = cutting_plane_solver)
-    @variable(ms, η, upperbound=cpbound)
+    @variable(ms, η, upperbound=cpbound)  #single cut master
     @variable(ms, λ[1:nmult])
     @objective(ms, Max, η)
 
     setattribute(graph, :lgmaster, ms)
 
-    # Each node saves its initial objective and sets a solver if it don't have one
+    # Each node saves its initial objective and sets a solver if it doesn't have one
     for n in getnodes(graph)
         mn = getmodel(n)
         if mn.solver == JuMP.UnsetSolver()
@@ -154,29 +169,41 @@ function lgprepare(graph::ModelGraph,cutting_plane_solver::AbstractMathProgSolve
     setattribute(graph, :preprocessed, true)
 end
 
-# Solve a single subproblem
-function solvenode(node,λ,x,variant=:default)
+# Solve a single subproblem (node)
+function solvenode(node::ModelNode,λ,x,variant=:default)
     m = getmodel(node)
+
     # Restore objective function
-    m.obj = m.ext[:preobj]
+    #m.obj = m.ext[:preobj]
+    JuMP.set_objective_function(m,m.ext[:preobj])
+
     m.ext[:lgobj] = m.ext[:preobj]
+
     # Add dualized part to objective function
     for k in keys(m.ext[:multmap])
         coef = m.ext[:multmap][k][1]
         var = m.ext[:multmap][k][2]
-        m.ext[:lgobj] += λ[k]*coef*var
-        m.obj += λ[k]*coef*var
+        m.ext[:lgobj] += λ[k]*coef*var #Add to objective
+
+        obj = JuMP.objective_function(m)
+        obj += λ[k]*coef*var
+
+
+        #Add ADMM piece to objective function
         if variant == :ADMM
             j = 3 - m.ext[:varmap][var][2]
-            m.obj += 1/2*(coef*var - coef*x[k,j])^2
+            obj += 1/2*(coef*var - coef*x[k,j])^2
         end
+
+        JuMP.set_objective_function(m,obj)
+
     end
     # Solve
-    solve(m)
+    optimize!(m)
     # Pass output
-    for v in keys(m.ext[:varmap])
-        val = JuMP.getvalue(v)
-        x[m.ext[:varmap][v]...] = val
+    for variable in keys(m.ext[:varmap])
+        val = JuMP.value(variable)
+        x[m.ext[:varmap][variable]...] = val  #hold onto variable values
     end
     objval = JuMP.getvalue(m.ext[:lgobj])
     setattribute(node, :objective, objval)
@@ -185,41 +212,77 @@ function solvenode(node,λ,x,variant=:default)
     return x, objval
 end
 
+#NOTE: functions I might write here
+function dual_decomposition_objective
+end
+
+function admm_objective
+end
+
 # Multiplier Initialization
-function initialrelaxation(graph)
-    if !hasattribute(graph,:mflat)
-        setattribute(graph, :mflat, create_jump_graph_model(graph))
-        getattribute(graph, :mflat).solver = getsolver(graph)
+function initialrelaxation!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory)
+    #if graph.jump_model == nothing
+    if !hasattribute(graph,:m_relaxation)
+        #setattribute(graph, :mflat, create_jump_graph_model(graph))
+        relaxed_model = create_jump_graph_model(graph,with_optimizer = optimizer)
+        #Relax integrality and binary constraints
+        for variable in JuMP.all_variables(relaxed_model)
+            if JuMP.is_binary(variable)
+                JuMP.unset_binary(variable)
+            end
+            if JuMP.is_integer(variable)
+                JuMP.unset_integer(variable)
+            end
+        end
+        setattribute(graph,relaxed_model)
     end
+
     n = getattribute(graph , :normalized)
-    nmult = getattribute(graph , :numlinks)
-    mf = getattribute(graph , :mflat)
-    solve(mf,relaxation=true)
-    getattribute(graph , :λ)[end] = n*mf.linconstrDuals[end-nmult+1:end]
-    return getobjectivevalue(mf)
+    n_multipliers = getattribute(graph , :numlinks)
+    relaxed_model = getattribute(graph , :m_relaxation)
+
+    JuMP.optimize!(relaxed_model)
+
+    #initialize multipliers
+    #NOTE: Shouldn't n depend on the node that flipped objective signs?
+    #get duals for the linkconstraints
+    link_duals = [JuMP.dual(link) for link in relaxed_model.ext[:Graph].linkconstraints]  #grab the link constraints from the aggregated model
+    #duals = n*mf.linconstrDuals[end-nmult+1:end]
+    #getattribute(graph , :λ)[end] = n*mf.linconstrDuals[end-nmult+1:end]
+
+    #get the last element because it's a multiplier history?
+    setattribute(graph , :λ)[end] = link_duals
+
+    return JuMP.objective_value(relaxed_model)
 end
 
 
-function updatemultipliers(graph,λ,res,method,lagrangeheuristic=nothing)
+function updatemultipliers(graph::ModelGraph,λ::Vector,residual::Vector,method::Symbol,lagrangeheuristic=nothing)
     if method == :subgradient
-        subgradient(graph,λ,res,lagrangeheuristic)
+        subgradient(graph,λ,residual,lagrangeheuristic)
     elseif method == :probingsubgradient
-        probingsubgradient(graph,λ,res,lagrangeheuristic)
+        probingsubgradient(graph,λ,residual,lagrangeheuristic)
     elseif method == :cuttingplanes
-        cuttingplanes(graph,λ,res)
+        cuttingplanes(graph,λ,residual)
     elseif  method == :interactive
-        interactive(graph,λ,res,lagrangeheuristic)
+        interactive(graph,λ,residual,lagrangeheuristic)
     end
 end
 
 
 # Update functions
-function subgradient(graph,λ,res,lagrangeheuristic)
+function subgradient(graph::ModelGraph,λ,residual,lagrangeheuristic)
     α = getattribute(graph , :α)[end]
     n = getattribute(graph , :normalized)
+
+    #bound
     bound = n*lagrangeheuristic(graph)
+
+
     Zk = getattribute(graph , :Zk)[end]
-    step = α*abs(Zk-bound)/(norm(res)^2)
+
+    step = α*abs(Zk-bound)/(norm(residual)^2)
+
     λ += step*res
     return λ,bound
 end

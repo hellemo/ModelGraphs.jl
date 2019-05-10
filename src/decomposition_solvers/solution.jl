@@ -7,12 +7,14 @@ mutable struct Solution
     gap::Float64
     numiterations::Int64
     termination
+
     # Iteration Data
     iterval::Array{Float64,1}
     iterbound::Array{Float64,1}
     itertime::Array{Float64,1} # in seconds
     clocktime::Array{Float64,1}
-    # Lagrange
+
+    # Algorithm Data
     α
     step
 end

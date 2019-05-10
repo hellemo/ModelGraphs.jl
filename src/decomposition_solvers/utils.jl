@@ -1,10 +1,12 @@
+#set objective values to minimize for each node
 function normalizegraph(graph::AbstractModelGraph)
     n = 1
     for node in getnodes(graph)
         m = getmodel(node)
-        if m.objSense == :Max
-            m.objSense = :Min
-            m.obj = -m.obj
+        #Maximize --> Minimize the negative
+        if JuMP.objective_sense == MOI.MAX_SENSE
+            JuMP.set_objective_sense(m,MOI.MIN_SENSE)
+            JuMP.set_objective_function(m,-1*JuMP.objective_function)
             n = -1
         end
     end
@@ -17,6 +19,7 @@ function fix(var::JuMP.Variable,value::Real)
     setupperbound(var,value)
 end
 
+#NOTE: I'm getting rid of the ModelTree object.  Everything is a graph now.  children nodes are nodes in a subgraph
 """
 Checks if n1 is a child node of n2
 """

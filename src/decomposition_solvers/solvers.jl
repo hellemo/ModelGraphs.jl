@@ -1,9 +1,8 @@
 #Benders Decomposition Solver
 mutable struct BendersSolver <: AbstractGraphSolver
     options::Dict{Any,Any}
-    lp_solver::AbstractMathProgSolver
-    node_solver::AbstractMathProgSolver
-    structure           #structure has solver data
+    lp_solver::JuMP.OptimizerFactory
+    node_solver::JuMP.OptimizerFactory
     solution
 end
 
@@ -18,6 +17,7 @@ end
 setlpsolver(bsolver::BendersSolver,lpsolver::AbstractMathProgSolver) = bsolver.lp_solver = lpsolver
 
 #TODO: Create a duplicate model that includes the algorithm additions to the structure.  This would facilitate multiple solves of the same model.
+#NOTE: Getting rid of tree
 function solve(tree::ModelTree,bsolver::BendersSolver)
     solution = bendersolve(tree;max_iterations = bsolver.options[:max_iterations], cuts = bsolver.options[:cuts],  ϵ = bsolver.options[:ϵ], UBupdatefrequency = bsolver.options[:UBupdatefrequency],
     timelimit = bsolver.options[:timelimit],verbose = bsolver.options[:verbose],lp_solver = bsolver.lp_solver,node_solver = bsolver.node_solver)
@@ -28,14 +28,13 @@ end
 #Lagrange decomposition solver
 mutable struct LagrangeSolver <: AbstractGraphSolver
     options::Dict{Any,Any}
-    cutting_plane_solver::AbstractMathProgSolver
-    node_solver::AbstractMathProgSolver
-    structure
-    solution
+    cutting_plane_solver::Union{Nothing,JuMP.OptimizerFactory}
+    node_solver::Union{Nothing,JuMP.OptimizerFactory}
+    solution::Solution
 end
 
 function LagrangeSolver(;max_iterations=10,
-    update_method=:subgradient,     #probingsubgradient
+    update_method=:subgradient,     # probingsubgradient
     ϵ=0.001,                        # ϵ-convergence tolerance
     timelimit=3600,
     α=2,                            # default subgradient step
@@ -44,17 +43,23 @@ function LagrangeSolver(;max_iterations=10,
     δ = 0.5,                        # Factor to shrink step when subgradient stuck
     maxnoimprove = 3,
     cpbound=1e6,
-    cutting_plane_solver = JuMP.UnsetSolver(),
-    node_solver = JuMP.UnsetSolver())
+    cutting_plane_solver = nothing,
+    node_solver = nothing)
 
-    solver = LagrangeSolver(Dict(:max_iterations => max_iterations,:update_method => update_method,:ϵ => ϵ,:timelimit => timelimit,:α => α, :lagrangeheuristic => lagrangeheuristic,
-            :initialmultipliers => initialmultipliers,:δ => δ, :maxnoimprove => maxnoimprove,:cpbound => cpbound),
-            cutting_plane_solver,
-            node_solver,
-            nothing,
-            nothing
-    )
-
+    solver = LagrangeSolver(Dict(
+    :max_iterations => max_iterations,
+    :update_method => update_method,
+    :ϵ => ϵ,
+    :timelimit => timelimit,
+    :α => α,
+    :lagrangeheuristic => lagrangeheuristic,
+    :initialmultipliers => initialmultipliers,
+    :δ => δ, :maxnoimprove => maxnoimprove,
+    :cpbound => cpbound),
+    cutting_plane_solver,
+    node_solver,
+    nothing,
+    Solution() )
 end
 
 function solve(graph::ModelGraph,solver::LagrangeSolver)
