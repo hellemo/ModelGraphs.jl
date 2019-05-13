@@ -1,16 +1,16 @@
 using JuMP
-using Plasmo
+using AlgebraicGraphs
 using Ipopt
 
 graph = ModelGraph()
 
-setsolver(graph,Ipopt.IpoptSolver())
+#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = Plasmo.add_node!(graph)
-n2 = Plasmo.add_node!(graph)
-n3 = Plasmo.add_node!(graph)
-n4 = Plasmo.add_node!(graph)
+n1 = add_node!(graph)
+n2 = add_node!(graph)
+n3 = add_node!(graph)
+n4 = add_node!(graph)
 #Add edges between the nodes
 
 
@@ -53,14 +53,14 @@ setmodel(n4,m4)
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
 
-#Get all of the link constraints in a graph
-links = Plasmo.getlinkconstraints(graph)
-for link in links
-    println(link)
-end
+# #Get all of the link constraints in a graph
+# links = Plasmo.getlinkconstraints(graph)
+# for link in links
+#     println(link)
+# end
 
-solve(graph)
-#
-println("n1[:x]= ",JuMP.getvalue(n1[:x]))
-println("n1[:y]= ",JuMP.getvalue(n1[:y]))
-println("n4[:x]= ",JuMP.getvalue(n4[:x]))
+# solve(graph)
+# #
+# println("n1[:x]= ",JuMP.getvalue(n1[:x]))
+# println("n1[:y]= ",JuMP.getvalue(n1[:y]))
+# println("n4[:x]= ",JuMP.getvalue(n4[:x]))

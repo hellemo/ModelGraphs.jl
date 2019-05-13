@@ -51,13 +51,16 @@ getmodel(node::ModelNode) = node.model
 
 "Get an underlying model variable"
 #look for variables, if no variable, look for an attribute
-function getindex(node::ModelNode,symbol::Symbol)
+function Base.getindex(node::ModelNode,symbol::Symbol)
     if haskey(node.model.obj_dict,symbol)
         return getmodel(node)[symbol]
     else
         return getattribute(node,symbol)
     end
+end
 
+function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
+    setattribute(node,symbol,value)
 end
 #getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]  #get a variable on a node
 
