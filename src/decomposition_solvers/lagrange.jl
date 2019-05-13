@@ -1,9 +1,17 @@
+mutable struct LagrangeSolverData
+    max_iterations::Int
+    update_method::Symbol
+    epsilon::Float64
+    timelimit::Float64
+    alpha::Float64
+end
+
 """
   lagrangesolve(graph)
 
   Solve a ModelGraph object using lagrange decomposition
 """
-function lagrangesolve(graph::ModelGraph;
+function lagrangesolve(graph::ModelGraph,solver_data = LagrangeSolverData(),
     max_iterations=10,
     update_method=:subgradient,         # probingsubgradient
     ϵ=0.001,                            # ϵ-convergence tolerance
@@ -18,22 +26,24 @@ function lagrangesolve(graph::ModelGraph;
     node_solver = ClpSolver())
 
     ### INITIALIZATION ###
-    lg_initialize!(graph,cutting_plane_solver,node_solver,δ,maxnoimprove,cpbound)
+    lagrange_initialize!(graph,cutting_plane_solver,node_solver,δ,maxnoimprove,cpbound)
 
     #switch objective signs
     n = getattribute(graph,:normalized)
 
     #initialize multipliers with lp relaxation
     if initialmultipliers == :relaxation
-        initialrelaxation!(graph)
+        solve_lp_relaxation!(graph)
     end
 
     starttime = time()
 
+    #create solution object
     s = Solution(method=:dual_decomposition)
 
     λ = getattribute(graph,:λ)[end]  #latest multipliers
     x = getattribute(graph,:x)[end]  #latest primal solution
+
     residual = getattribute(graph,:res)[end]
     n_multipliers = getattribute(graph,:numlinks)
     #nodes = [node for node in getnodes(graph)]
@@ -49,7 +59,7 @@ function lagrangesolve(graph::ModelGraph;
         Zk = 0  #objective value
         #NOTE: We can parallelize here
         for node in getnodes(graph)
-           (x,Zkn) = solvenode(node,λ,x,variant)
+           (x,Zkn) = solvenode(node,λ,x,variant) #x gets updated by solvenode.
            Zk += Zkn        #add objective values
         end
         setattribute(graph, :steptaken, true)
@@ -71,7 +81,7 @@ function lagrangesolve(graph::ModelGraph;
         push!(getattribute(graph, :α), α)
 
         # Update residuals
-        res = x[:,1] - x[:,2]
+        res = x[:,1] - x[:,2]   #NOTE: This assumes very simple equality constraints
         push!(getattribute(graph, :res),res)
 
         # Save iteration data
@@ -109,9 +119,7 @@ end
 
   Prepares the graph to apply a lagrange decomposition algorithm
 """
-function lg_initialize!(graph::ModelGraph,
-    cutting_plane_solver::JuMP.OptimizerFactory,
-    node_solver::JuMP.OptimizerFactory,
+function lg_initialize!(graph::ModelGraph,cutting_plane_solver::JuMP.OptimizerFactory,node_solver::JuMP.OptimizerFactory,
     δ=0.5,
     maxnoimprove=3,
     cpbound=nothing)
@@ -126,7 +134,7 @@ function lg_initialize!(graph::ModelGraph,
     nmult = length(links)                   # Number of multipliers
 
     setattribute(graph, :numlinks, nmult)
-    setattribute(graph, :λ, [zeros(nmult)]) # Array{Float64}(nmult)
+    setattribute(graph, :λ, [zeros(nmult)])   # Array{Float64}(nmult)
     setattribute(graph, :x, [zeros(nmult,2)]) # Linking variables values
     setattribute(graph, :res, [zeros(nmult)]) # Residuals
     setattribute(graph, :Zk, [0.0]) # Bounds
@@ -146,40 +154,46 @@ function lg_initialize!(graph::ModelGraph,
     setattribute(graph, :lgmaster, ms)
 
     # Each node saves its initial objective and sets a solver if it doesn't have one
-    for n in getnodes(graph)
-        mn = getmodel(n)
-        if mn.solver == JuMP.UnsetSolver()
-            JuMP.setsolver(mn, node_solver)
-        end
-        mn.ext[:preobj] = mn.obj
-        mn.ext[:multmap] = Dict()
-        mn.ext[:varmap] = Dict()
+    for node in getnodes(graph)
+        m = getmodel(node)
+        # if mn.solver == JuMP.UnsetSolver()
+        #     JuMP.setsolver(mn, node_solver)
+        # end
+        m.ext[:preobj] = JuMP.objective_function(m)
+        m.ext[:multmap] = Dict()  #multiplier map
+        m.ext[:varmap] = Dict()   #variable map
     end
 
     # Maps
     # Multiplier map to know which component of λ to take
     # Varmap knows what values to post where
+
+    #IDEA: Take a more graph-based approach here
     for (i,lc) in enumerate(links)
+
         for j in 1:length(lc.terms.vars)
             var = lc.terms.vars[j]
-            var.m.ext[:multmap][i] = (lc.terms.coeffs[j],lc.terms.vars[j])
+            #NOTE: This is getting over-written for every variable
+            var.m.ext[:multmap][i] = (lc.terms.coeffs[j],lc.terms.vars[j])  ##NOTE: This won't work for .  link[i] --> (coeff[j],var[j]) where j is the last variable in the link constraint
             var.m.ext[:varmap][var] = (i,j)
         end
+
     end
     setattribute(graph, :preprocessed, true)
 end
 
 # Solve a single subproblem (node)
+# NOTE: Need to get multiplier, need to store primal result
 function solvenode(node::ModelNode,λ,x,variant=:default)
     m = getmodel(node)
 
     # Restore objective function
-    #m.obj = m.ext[:preobj]
+    # m.obj = m.ext[:preobj]
     JuMP.set_objective_function(m,m.ext[:preobj])
-
     m.ext[:lgobj] = m.ext[:preobj]
 
     # Add dualized part to objective function
+
     for k in keys(m.ext[:multmap])
         coef = m.ext[:multmap][k][1]
         var = m.ext[:multmap][k][2]
@@ -188,25 +202,27 @@ function solvenode(node::ModelNode,λ,x,variant=:default)
         obj = JuMP.objective_function(m)
         obj += λ[k]*coef*var
 
-
         #Add ADMM piece to objective function
         if variant == :ADMM
             j = 3 - m.ext[:varmap][var][2]
             obj += 1/2*(coef*var - coef*x[k,j])^2
         end
-
         JuMP.set_objective_function(m,obj)
 
     end
-    # Solve
+    # Solve sub-problem
     optimize!(m)
+
     # Pass output
+    # This updates the solution on other nodes
     for variable in keys(m.ext[:varmap])
         val = JuMP.value(variable)
-        x[m.ext[:varmap][variable]...] = val  #hold onto variable values
+        x[m.ext[:varmap][variable]...] = val  #store variable values in x.  varmap[variable]... is the (i,j) pair of coordinates for link
     end
-    objval = JuMP.getvalue(m.ext[:lgobj])
+    objval = JuMP.value(m.ext[:lgobj])
+    #store node objective value
     setattribute(node, :objective, objval)
+
     #setattribute(node, :solvetime, getsolvetime(m))
 
     return x, objval
@@ -220,7 +236,7 @@ function admm_objective
 end
 
 # Multiplier Initialization
-function initialrelaxation!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory)
+function solve_lp_relaxation!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory)
     #if graph.jump_model == nothing
     if !hasattribute(graph,:m_relaxation)
         #setattribute(graph, :mflat, create_jump_graph_model(graph))

@@ -27,10 +27,8 @@ end
 
 #Lagrange decomposition solver
 mutable struct LagrangeSolver <: AbstractGraphSolver
-    options::Dict{Any,Any}
-    cutting_plane_solver::Union{Nothing,JuMP.OptimizerFactory}
-    node_solver::Union{Nothing,JuMP.OptimizerFactory}
-    solution::Solution
+    solver_data::LagrangeSolverData
+    solution_data::LagrangeSolution
 end
 
 function LagrangeSolver(;max_iterations=10,
@@ -39,27 +37,15 @@ function LagrangeSolver(;max_iterations=10,
     timelimit=3600,
     α=2,                            # default subgradient step
     lagrangeheuristic=fixbinaries,  # function to calculate the upper bound
-    initialmultipliers=:zero,       # :relaxation for LP relaxation
+    multiplier_initialization = 0,       # :relaxation for LP relaxation
     δ = 0.5,                        # Factor to shrink step when subgradient stuck
     maxnoimprove = 3,
     cpbound=1e6,
-    cutting_plane_solver = nothing,
+    cutting_plane_solver = nothing, #Empty Optimizer?
     node_solver = nothing)
 
-    solver = LagrangeSolver(Dict(
-    :max_iterations => max_iterations,
-    :update_method => update_method,
-    :ϵ => ϵ,
-    :timelimit => timelimit,
-    :α => α,
-    :lagrangeheuristic => lagrangeheuristic,
-    :initialmultipliers => initialmultipliers,
-    :δ => δ, :maxnoimprove => maxnoimprove,
-    :cpbound => cpbound),
-    cutting_plane_solver,
-    node_solver,
-    nothing,
-    Solution() )
+    solver_data = LagrangeSolverData(max_iterations,update_method,epsilon,timelimit,alpha,heursitic,multiplier_initialization,delta,cp_bound,cutting_plane_solver,node_solver)
+    return LagrangeSolver(solver_data,LagrangeSolution())
 end
 
 function solve(graph::ModelGraph,solver::LagrangeSolver)

@@ -1,4 +1,6 @@
-mutable struct Solution
+abstract type AbstractSolution end
+
+mutable struct LagrangeSolution <:AbstractSolution
     problemname
     method::Symbol
     solvetime
@@ -14,12 +16,33 @@ mutable struct Solution
     itertime::Array{Float64,1} # in seconds
     clocktime::Array{Float64,1}
 
-    # Algorithm Data
-    α
+    # Lagrange data
+    α::Float64
     step
 end
 
-function Solution(;method=:none)
+mutable struct BendersSolution <:AbstractSolution
+    problemname
+    method::Symbol
+    solvetime
+    objval::Float64
+    bestbound::Float64
+    gap::Float64
+    numiterations::Int64
+    termination
+
+    # Iteration Data
+    iterval::Array{Float64,1}
+    iterbound::Array{Float64,1}
+    itertime::Array{Float64,1} # in seconds
+    clocktime::Array{Float64,1}
+end
+
+function LagrangeSolution(;method=:none)
+    return Solution("",method,0,NaN,NaN,NaN,0,"Not Executed",Float64[],Float64[],Float64[],Float64[],Float64[],Float64[])
+end
+
+function BendersSolution(;method=:none)
     return Solution("",method,0,NaN,NaN,NaN,0,"Not Executed",Float64[],Float64[],Float64[],Float64[],Float64[],Float64[])
 end
 
