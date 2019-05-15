@@ -1,7 +1,6 @@
 abstract type AbstractSolution end
 
 mutable struct LagrangeSolution <:AbstractSolution
-    problemname
     method::Symbol
     solvetime
     objval::Float64
@@ -18,7 +17,7 @@ mutable struct LagrangeSolution <:AbstractSolution
 
     # Lagrange data
     α::Float64
-    step
+    step::Float64
 end
 
 mutable struct BendersSolution <:AbstractSolution

@@ -6,6 +6,7 @@ mutable struct LagrangeSolverData
     alpha::Float64
 end
 
+
 """
   lagrangesolve(graph)
 

@@ -98,11 +98,12 @@ include("partitioning/partition.jl")
 
 include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
 #
-function __init__()
-    #@require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
-    @require Metis = "2679e427-3c69-5b7f-982b-ece356f1e94b" include("extras/metis.jl")
-    #@require CommunityDetection = "d427f087-d71a-5a1b-ace0-b93392eea9ff" include("extras/communities.jl")
-end
+#TODO: Update Metis to use JuliaSparse
+# function __init__()
+#     #@require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
+#     @require Metis = "2679e427-3c69-5b7f-982b-ece356f1e94b" include("extras/metis.jl")
+#     #@require CommunityDetection = "d427f087-d71a-5a1b-ace0-b93392eea9ff" include("extras/communities.jl")
+# end
 
 
 # if haskey(Pkg.installed(),"MPI")
