@@ -3,6 +3,7 @@ using JuMP
 using GLPK
 using AlgebraicGraphs
 
+include("/home/jordan/.julia/dev/AlgebraicGraphs/src/decomposition_solvers/lagrange/dual_decomposition.jl")
 
 m1 = Model(with_optimizer(GLPK.Optimizer))
 @variable(m1, xm[i in 1:2],Bin)
@@ -27,21 +28,21 @@ m3 = Model(with_optimizer(GLPK.Optimizer))
 graph = ModelGraph()
 
 #Add nodes
-n1 = add_node!(graph)
-setmodel(n1,m1)
-n2 = add_node!(graph)
-setmodel(n2,m2)
-n3 = add_node!(graph)
-setmodel(n3,m3)
+n1 = add_node!(graph,m1)
+n2 = add_node!(graph,m2)
+n3 = add_node!(graph,m3)
 
-## Linking
-# m1[x] = m2[x]  ∀i ∈ {1,2}
+#link constraints between models
 @linkconstraint(graph, [i in 1:2], n1[:xm][i] == n2[:xs][i])
-@linkconstraint(graph, n3[:x3][1] + n1[:xm][1] + n2[:xs][1] == 4)
+@linkconstraint(graph, n3[:x3][1] + n1[:xm][1] + n2[:xs][1] <= 2)
 @linkconstraint(graph, n1[:xm][2] <= n3[:y][1])
 
+lmodel = LagrangeModel(graph)
+solve(lmodel)
 
-link_eq_constraints = get_link_eq_constraints(graph)         #equality
-link_ineq_constraints = get_link_ineq_constraints(graph)
+#print solution
 
-link_eq_matrix,b_eq,link_eq_variables,link_eq_map = prepare_link_matrix(link_eq_constraints)
+#verify with full problem
+glpk = with_optimizer(GLPK.Optimizer)
+m,ref_map = create_jump_graph_model(graph)
+optimize!(m,glpk)

@@ -37,7 +37,7 @@ function prepare_link_matrix(link_constraints::Vector{LinkConstraint})
     return A,b,link_vars,link_map
 end
 
-function _unpack_constraint!(constraint::LinkConstraint{GenericAffExpr{Float64,VariableRef},MOI.EqualTo{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
+function _unpack_constraint!(constraint::LinkConstraint{JuMP.GenericAffExpr{Float64,JuMP.VariableRef},MOI.EqualTo{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
     push!(b,constraint.set.value)
     for (var,coeff) in constraint.func.terms
         #find a new link variable
@@ -56,7 +56,7 @@ function _unpack_constraint!(constraint::LinkConstraint{GenericAffExpr{Float64,V
 end
 
 #NOTE: Might make this into a macro
-function _unpack_constraint!(constraint::LinkConstraint{GenericAffExpr{Float64,VariableRef},MOI.LessThan{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
+function _unpack_constraint!(constraint::LinkConstraint{JuMP.GenericAffExpr{Float64,JuMP.VariableRef},MOI.LessThan{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
     push!(b,constraint.set.upper)
     for (var,coeff) in constraint.func.terms
         #find a new link variable
@@ -74,7 +74,7 @@ function _unpack_constraint!(constraint::LinkConstraint{GenericAffExpr{Float64,V
     end
 end
 
-function _unpack_constraint!(constraint::LinkConstraint{GenericAffExpr{Float64,VariableRef},MOI.GreaterThan{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
+function _unpack_constraint!(constraint::LinkConstraint{JuMP.GenericAffExpr{Float64,JuMP.VariableRef},MOI.GreaterThan{Float64}},row::Integer,I::Vector,J::Vector,V::Vector,b::Vector,link_vars::Vector,link_map::Dict)
     push!(b,-1*constraint.set.lower)
     for (var,coeff) in constraint.func.terms
         #find a new link variable

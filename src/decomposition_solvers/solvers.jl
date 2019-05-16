@@ -1,20 +1,20 @@
-#Benders Decomposition Solver
-mutable struct BendersSolver <: AbstractGraphSolver
-    options::Dict{Any,Any}
-    lp_solver::JuMP.OptimizerFactory
-    node_solver::JuMP.OptimizerFactory
-    solution
-end
-
-function BendersSolver(;max_iterations::Int64=10, cuts::Array{Symbol,1}=[:LP], ϵ=1e-5,UBupdatefrequency=1,timelimit=3600,verbose=false,lp_solver = JuMP.UnsetSolver(),node_solver = JuMP.UnsetSolver())
-    solver = BendersSolver(Dict(:max_iterations => max_iterations,:cuts => cuts,:ϵ => ϵ, :UBupdatefrequency => UBupdatefrequency, :timelimit=>timelimit,:verbose => verbose),
-    lp_solver,
-    node_solver,
-    nothing,
-    nothing)
-end
-
-setlpsolver(bsolver::BendersSolver,lpsolver::AbstractMathProgSolver) = bsolver.lp_solver = lpsolver
+# #Benders Decomposition Solver
+# mutable struct BendersSolver <: AbstractGraphSolver
+#     options::Dict{Any,Any}
+#     lp_solver::JuMP.OptimizerFactory
+#     node_solver::JuMP.OptimizerFactory
+#     solution
+# end
+#
+# function BendersSolver(;max_iterations::Int64=10, cuts::Array{Symbol,1}=[:LP], ϵ=1e-5,UBupdatefrequency=1,timelimit=3600,verbose=false,lp_solver = JuMP.UnsetSolver(),node_solver = JuMP.UnsetSolver())
+#     solver = BendersSolver(Dict(:max_iterations => max_iterations,:cuts => cuts,:ϵ => ϵ, :UBupdatefrequency => UBupdatefrequency, :timelimit=>timelimit,:verbose => verbose),
+#     lp_solver,
+#     node_solver,
+#     nothing,
+#     nothing)
+# end
+#
+# setlpsolver(bsolver::BendersSolver,lpsolver::AbstractMathProgSolver) = bsolver.lp_solver = lpsolver
 
 #TODO: Create a duplicate model that includes the algorithm additions to the structure.  This would facilitate multiple solves of the same model.
 #NOTE: Getting rid of tree

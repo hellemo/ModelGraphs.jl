@@ -53,7 +53,7 @@ create_jump_graph_model,
 getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 
 #solve handles
-solve_jump,bendersolve,solve,
+solve_jump,bendersolve,solve,dual_decomposition_solve,
 
 #Solution management
 getsolution,setsolution,setvalue,getvalue,
@@ -97,6 +97,14 @@ include("partitioning/graph_projections.jl")  #Projections that facilitate graph
 include("partitioning/partition.jl")
 
 include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
+
+
+# #Decomposition-based solvers
+# include("decomposition_solvers/utils.jl")
+#
+# include("decomposition_solvers/solution.jl")
+#
+# include("decomposition_solvers/lagrange/dual_decomposition.jl")
 #
 #TODO: Update Metis to use JuliaSparse
 # function __init__()
