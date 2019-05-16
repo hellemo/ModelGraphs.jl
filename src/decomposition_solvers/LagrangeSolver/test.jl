@@ -40,8 +40,18 @@ lmodel = LagrangeModel(graph)
 LagrangeSolver.solve(lmodel)
 
 #print solution
+println("Dual decomposition solution: ")
+solution = Float64[]
+for subproblem in lmodel.subproblems
+    append!(solution,value.(all_variables(subproblem)))
+end
+println(solution)
 
 # #verify with full problem
-# glpk = with_optimizer(GLPK.Optimizer)
-# m,ref_map = create_jump_graph_model(graph)
-# optimize!(m,glpk)
+glpk = with_optimizer(GLPK.Optimizer)
+m,ref_map = create_jump_graph_model(graph)
+optimize!(m,glpk)
+
+println()
+println("Pure glpk solution:")
+println(JuMP.value.(all_variables(m)))
