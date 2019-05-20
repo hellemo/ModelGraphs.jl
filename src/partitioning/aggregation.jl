@@ -1,6 +1,6 @@
 #Create an aggregated ModelGraph that can be used by decomposition algorithms
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
-    println("createing aggregated model graph")
+    println("Creating aggregated model graph")
     new_model_graph = ModelGraph()  #The new aggregated ModelGraph
 
     partitions = partition_data.partitions

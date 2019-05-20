@@ -50,7 +50,7 @@ create_jump_graph_model
 """
 #THE IDEA : Create a JuMP model by aggregating all of the nodes in a ModelGraph together
 function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
-    println("Creating JuMP Model")
+    #println("Creating JuMP Model")
     jump_graph_model = JuMPGraphModel()
 
     jump_graph = StructureGraphs.copy_graph_to(model_graph,to_graph_type = JuMPGraph)  #Create empty JuMP graph with nodes and edges
@@ -59,7 +59,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     reference_map = GraphReferenceMap(jump_graph_model)
 
     # COPY NODE MODELS INTO AGGREGATED MODEL
-    println("Aggregating Models")
+    #println("Aggregating Models")
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
@@ -106,7 +106,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
         #TODO. Use GraphObjective
     end
 
-    println("Adding Link Constraints")
+    #println("Adding Link Constraints")
     #LINK CONSTRAINTS
     for linkconstraint in get_all_linkconstraints(model_graph)
         new_constraint = _copy_constraint(linkconstraint,reference_map)
