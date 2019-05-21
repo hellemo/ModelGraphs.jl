@@ -66,8 +66,6 @@ end
 
 #Get shared linkconstraints between partitions
 #TODO Take a LinearAlgebra approach for this (see some reference papers on how to do this)
-#NOTE: This function is too slow.  Look at other approaches to find shared entities
-#NOTE: Need to fix hypergraph implementation so I don't get self loops in the light graph
 function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
     println("Identifying Shared entities")
     nparts = length(partitions)
@@ -139,8 +137,9 @@ end
 function _map_entities(entities::Vector{Any},projection_map::AlgebraicGraphs.ProjectionMap)
     mapped_entities = []
     for entity in entities
-        mapped_index = projection_map[entity]
-        push!(mapped_entities,mapped_index)
+        mapped_indices = projection_map[entity]   #this is a vector
+        append!(mapped_entities,mapped_indices)
+        #push!(mapped_entities,mapped_index)
     end
     return mapped_entities
 end
@@ -149,12 +148,16 @@ function _map_entities(edge_list::Vector{LightGraphs.SimpleGraphs.SimpleEdge},pr
     mapped_entities = []
     for edge in edge_list
         try
-            mapped_index = projection_map[edge]
-            push!(mapped_entities,mapped_index)
+            # mapped_index = projection_map[edge]
+            # push!(mapped_entities,mapped_index)
+            mapped_indices = projection_map[edge]
+            append!(mapped_entities,mapped_indices)
         catch KeyError
             rev_edge = LightGraphs.Edge(edge.dst,edge.src)
-            mapped_index = projection_map[rev_edge]
-            push!(mapped_entities,mapped_index)
+            # mapped_index = projection_map[rev_edge]
+            # push!(mapped_entities,mapped_index)
+            mapped_indices = projection_map[rev_edge]
+            append!(mapped_entities,mapped_indices)
         end
     end
     return mapped_entities
@@ -197,7 +200,7 @@ end
 #     return local_link_constraints , cross_link_constraints
 # end
 
-#function _identifyentities(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
+#function _identifyentities2(graph::NodeUnipartiteGraph,partitions::Vector{Vector{Int64}})
     #println("Identifying Shared entities")
     # n_partitions = length(partitions)
     # partition_edges = Vector[Vector() for _ = 1:n_partitions]

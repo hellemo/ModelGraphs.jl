@@ -2,7 +2,7 @@ abstract type ProjectionGraph <: AbstractModelGraph end
 
 struct ProjectionMap
     node_map::Dict{Int64,ModelNode}
-    edge_map::Dict{LightGraphs.AbstractEdge,LinkingEdge}
+    edge_map::Dict{LightGraphs.AbstractEdge,Vector{LinkingEdge}}
 end
 ProjectionMap() = ProjectionMap(Dict{Int64,Int64}(),Dict{LightGraphs.AbstractEdge,LightGraphs.AbstractEdge}())
 
@@ -14,11 +14,13 @@ function Base.getindex(projection_map::ProjectionMap, edge_index::LightGraphs.Ab
 end
 Base.broadcastable(projection_map::ProjectionMap) = Ref(projection_map)
 
+
 function Base.setindex!(projection_map::ProjectionMap,model_node::ModelNode,node_index::Int64)
     projection_map.node_map[node_index] = model_node
 end
-function Base.setindex!(projection_map::ProjectionMap, linking_edge::LinkingEdge,edge_index::LightGraphs.AbstractEdge)
-    projection_map.edge_map[edge_index] = linking_edge
+
+function Base.setindex!(projection_map::ProjectionMap, linking_edges::Vector{LinkingEdge},edge_index::LightGraphs.AbstractEdge)
+    projection_map.edge_map[edge_index] = linking_edges
 end
 
 function Base.merge!(proj_map1::ProjectionMap,proj_map2::ProjectionMap)
@@ -82,11 +84,14 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                 new_index = getindex(ugraph,new_edge)
                 if !haskey(ugraph.e_weights,new_index)
                     ugraph.e_weights[new_index] = 1
+                    projection_map[new_index] = [edge]
                 else
                     ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
+                    push!(projection_map[new_index],edge)
                 end
 
-                projection_map[new_index] = edge   #Map new simple edge to original hyperedge
+                #NOTE: I think I need to story an array of edges since I can have duplicates of new_index
+                #projection_map[new_index] = edge   #Map new simple edge to original hyperedge
 
             end
         end
@@ -110,11 +115,13 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                     new_index = getindex(ugraph,new_edge)
                     if !haskey(ugraph.e_weights,new_index)
                         ugraph.e_weights[new_index] = 1
+                        projection_map[new_index] = [edge]
                     else
                         ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
+                        push!(projection_map[new_index],edge)
                     end
 
-                    projection_map[new_index] = edge
+                    #projection_map[new_index] = edge
 
                 end
             end

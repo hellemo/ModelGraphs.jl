@@ -1,6 +1,6 @@
 using JuMP
-using GLPKMathProgInterface
-using Plasmo
+using GLPK
+using AlgebraicGraphs
 
 m1 = Model(solver=GLPKSolverMIP())
 

@@ -38,7 +38,7 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphC
     push!(edge.linkconstraints,ref)
 
     #STORE LINKCONSTRAINT REFERENCES ON NODES
-    #NOTE: Is storing this information necessary?.  We can look at a node's incident edges and determine the linkconstraints.
+    #NOTE: Consider storing linkconstraint references on nodes
     # Depends how often we need to look up this information.  Could cache the references onto the nodes.
     # for node in nodes
     #     push!(node.linkconrefs[graph],ref)
