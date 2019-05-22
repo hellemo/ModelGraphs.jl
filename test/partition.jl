@@ -1,17 +1,19 @@
 using JuMP
-using Plasmo
+using AlgebraicGraphs
 using Ipopt
 using Metis
 
+using Revise
+
 graph = ModelGraph()
 
-setsolver(graph,Ipopt.IpoptSolver())
+#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = Plasmo.add_node!(graph)
-n2 = Plasmo.add_node!(graph)
-n3 = Plasmo.add_node!(graph)
-n4 = Plasmo.add_node!(graph)
+n1 = add_node!(graph)
+n2 = add_node!(graph)
+n3 = add_node!(graph)
+n4 = add_node!(graph)
 #Add edges between the nodes
 
 #Set a model on node 1
@@ -52,7 +54,12 @@ setmodel(n4,m4)
 @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
+partition_data = partition(graph,Metis.partition,NodeUnipartiteGraph,2,alg = :RECURSIVE)
+new_graph = create_aggregate_graph(graph,partition_data)
+#Metis.partition(graph,2,alg = :RECURSIVE)
 
-Metis.partition(graph,2,alg = :RECURSIVE)
+
+
+
 
 true

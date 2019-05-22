@@ -49,3 +49,5 @@ setmodel(n4,m4)
 @linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
 @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
+
+ugraph,proj_map = NodeUnipartiteGraph(graph)

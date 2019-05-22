@@ -1,6 +1,6 @@
 #Create an aggregated ModelGraph that can be used by decomposition algorithms
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
-    println("Creating aggregated model graph")
+    println("Building Aggregated Model Graph")
     new_model_graph = ModelGraph()  #The new aggregated ModelGraph
 
     partitions = partition_data.partitions
@@ -13,7 +13,7 @@ function create_aggregate_graph(model_graph::ModelGraph,partition_data::Partitio
     for i = 1:n_partitions  #create aggregate model for each partition
         part = partitions[i]
 
-        #Need to get LinkingEdges from subgraphs
+        #Get LinkingEdges from subgraphs if there are any.
         local_shared_entities = partition_data.partition_entities[i]
 
         aggregate_model,agg_ref_map = create_aggregate_model(model_graph,part,local_shared_entities)

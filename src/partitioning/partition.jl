@@ -37,9 +37,13 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
 
     return_partitions = _map_partitions(partitions,projection_map)
     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
-    return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
 
-    #Make sure no partition entities are not in shared entities.  It's possible that local entity maps to a linkconstraint that's shared.
+    #return_partition_entities = unique(map(x -> _map_entities(x,projection_map),local_entities))
+    #NOTE: Need to keep vector the same size
+    #If there are duplicate entries across partitions, then they must also show up in shared
+    return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
+
+    #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
     for return_part in return_partition_entities
         filter!(e ->  !(e in return_shared_entities),return_part)
     end
