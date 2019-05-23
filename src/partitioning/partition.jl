@@ -1,11 +1,6 @@
 const PartitionEntity = Union{ModelNode,LinkingEdge,Pair{ModelNode,LinkingEdge}}
 #Partition data pertaining to partitions of nodes, edges, or pairs depending on the projection used to create it
-# struct PartitionData
-#     partitions::Vector{Vector{Union{ModelNode,LinkingEdge}}}  #partitions of nodes or edges or both
-#     partition_entities::Vector{Vector}
-#     shared_entities::Vector{PartitionEntity}
-#     partition_type::Function  #Nodes, Edges, or Pairs
-# end
+
 #TODO Typing
 struct PartitionData
     partitions::Vector{Vector}  #partitions of nodes or edges or both
@@ -43,28 +38,10 @@ end
 
 #return partition data
 function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,args...;kwargs...)
-    #lg = getlightgraph(ugraph)
-    #membership_vector = partition_func(lg,args...;kwargs...)
     membership_vector = partition_func(ugraph,args...;kwargs...)
-
     partitions = _getpartitions(ugraph,membership_vector)
-
     local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
-
     return partitions,local_entities,shared_entities
-
-    # return_partitions = _map_partitions(partitions,projection_map)
-    # return_shared_entities = unique(_map_entities(shared_entities,projection_map))
-    #
-    # #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
-    # return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
-    #
-    # #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
-    # for return_part in return_partition_entities
-    #     filter!(e ->  !(e in return_shared_entities),return_part)
-    # end
-    #
-    # return PartitionData(return_partitions,return_partition_entities,return_shared_entities)#typeof(ugraph))
 end
 
 #Convert membership vector to lists of indices
