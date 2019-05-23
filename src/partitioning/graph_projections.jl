@@ -90,7 +90,7 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                     push!(projection_map[new_index],edge)
                 end
 
-                #NOTE: I think I need to story an array of edges since I can have duplicates of new_index
+                #NOTE: I think I need to storyan array of edges since I can have duplicates of new_index
                 #projection_map[new_index] = edge   #Map new simple edge to original hyperedge
 
             end
