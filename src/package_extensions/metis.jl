@@ -27,7 +27,7 @@ Return a graph partition containing a vector of a vectors of node indices.
 #     return partitions
 # end
 
-function Metis.partition(ugraph::NodeUnipartiteGraph,proj_map::ProjectionMap,n_parts::Int64; alg = :KWAY, vertex_weights = :model_size, edge_weights = :constraints)
+function Metis.partition(ugraph::NodeUnipartiteGraph,nparts::Int64; alg = :KWAY, vertex_weights = :model_size, edge_weights = :n_constraints)
 
     lightgraph = getlightgraph(ugraph)
     G = Metis.graph(lightgraph)  #Metis Graph object
@@ -36,47 +36,48 @@ function Metis.partition(ugraph::NodeUnipartiteGraph,proj_map::ProjectionMap,n_p
     v_weights = C_NULL
     if vertex_weights == :model_size
         v_weights = Vector{Metis.idx_t}(undef, G.nvtxs)
-        for (vertex,node) in proj_map.node_map
-            v_weights[vertex] = JuMP.num_variables(node)
+        for (vertex,weight) in ugraph.v_weights
+             v_weights[vertex] = weight
         end
     end
 
     #Fill in edge weights with number of linking constraints for each edge
     e_weights = C_NULL
-    if edge_weights == :constraints
+    if edge_weights == :n_constraints
         e_weights = Vector{Metis.idx_t}(undef, length(G.adjncy))
         adj_start = 1
         edge_count = 0
         for v = 1:G.nvtxs
-            adj_end = G.xadj[v+1] - 1
+            v = Int32(v)                #Metis uses 32 bit Integers
+            adj_end = G.xadj[v+1] - 1   #This is the positions in G.adjncy corresponding to the current vertex neighbors
             for out_vertex in G.adjncy[adj_start:adj_end]
-                edge = Edge(v,out_vertex)
+                edge = Edge(Int64(v),Int64(out_vertex))
                 edge_count += 1
-                if haskey(proj_map.edge_map,edge)
-                    hyper_edge = proj_map[edge]
+                if haskey(ugraph.e_weights,edge)
+                    e_weights[edge_count] = ugraph.e_weights[edge]
                 else
-                    edge = Edge(out_vertex,v)
-                    hyper_edge = proj_map[edge]
+                    edge = Edge(Int64(out_vertex),Int64(v))
+                    @assert haskey(ugraph.e_weights,edge)
+                    e_weights[edge_count] = ugraph.e_weights[edge]
                 end
-                n_links = sum([length(hyper_edge[i].linkconstraints) for i = 1:length(hyper_edge)])
-                e_weights[edge_count] = n_links
             end
+            adj_start = adj_end + 1
         end
     end
-
 
     part = Vector{Metis.idx_t}(undef, G.nvtxs)
     edgecut = fill(Metis.idx_t(0), 1)
 
+    #Recursive bisection
     if alg === :RECURSIVE
-        Metis.METIS_PartGraphRecursive(G.nvtxs, idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL,e_weights,
-                                 idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
+        Metis.METIS_PartGraphRecursive(G.nvtxs, idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL, e_weights, idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
+
+    #Multi-level kway partitioning
     elseif alg === :KWAY
-        Metis.METIS_PartGraphKway(G.nvtxs, Metis.idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL,e_weights,
-                            Metis.idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
+        Metis.METIS_PartGraphKway(G.nvtxs, Metis.idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL, e_weights, Metis.idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
+
     else
         throw(ArgumentError("unknown algorithm $(repr(alg))"))
     end
-    return part
-
+    return part #membership vector
 end

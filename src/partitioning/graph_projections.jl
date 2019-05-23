@@ -54,7 +54,7 @@ show(io::IO,graph::NodeUnipartiteGraph) = print(io,graph)
 #Convert Hypergraph ==> NodeUnipartite Graph
 function NodeUnipartiteGraph(graph::ModelGraph)
     ugraph = NodeUnipartiteGraph()
-    projection_map = ProjectionMap()
+    projection_map = AlgebraicGraphs.ProjectionMap()
 
     #Add the model nodes to the Unipartite graph
     for node in getnodes(graph)
@@ -82,8 +82,9 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                 node_to = getnode(ugraph,other_vertices[j])
                 new_edge = add_edge!(ugraph,node_from,node_to)
                 new_index = getindex(ugraph,new_edge)
+
                 if !haskey(ugraph.e_weights,new_index)
-                    ugraph.e_weights[new_index] = 1
+                    ugraph.e_weights[new_index] = length(edge.linkconstraints)
                     projection_map[new_index] = [edge]
                 else
                     ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
@@ -96,6 +97,9 @@ function NodeUnipartiteGraph(graph::ModelGraph)
             end
         end
     end
+
+    # n_links = sum([length(hyper_edge[i].linkconstraints) for i = 1:length(hyper_edge)])
+    # e_weights[edge_count] = n_links
 
     #Add edges from subgraphs to the unipartite graph
     for subgraph in getsubgraphlist(graph)
@@ -113,8 +117,9 @@ function NodeUnipartiteGraph(graph::ModelGraph)
                     node_to = getnode(ugraph,other_vertices[j])
                     new_edge = add_edge!(ugraph,node_from,node_to)
                     new_index = getindex(ugraph,new_edge)
+                    #Edge weights and projection map
                     if !haskey(ugraph.e_weights,new_index)
-                        ugraph.e_weights[new_index] = 1
+                        ugraph.e_weights[new_index] = length(edge.linkconstraints)
                         projection_map[new_index] = [edge]
                     else
                         ugraph.e_weights[new_index] += length(edge.linkconstraints)  #edge weights are number of link constraints
