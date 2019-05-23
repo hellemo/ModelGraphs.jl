@@ -20,25 +20,16 @@ end
 
 
 #Helper function to convert vector of node membership in partitions into vectors of node indices
-function partition(graph::ModelGraph,partition_func::Function,projection = NodeUnipartiteGraph,args...;kwargs...)
+function partition(graph::ModelGraph,projection = NodeUnipartiteGraph,partition_func::Function = Metis.partition,args...;kwargs...)
+
     projected_graph,projection_map = projection(graph)          #Reference map maps projected graph entities to model_graph entities
-    partition_data = partition(projected_graph,partition_func,projection_map,args...;kwargs...)
-    return partition_data
-end
 
-#return partition data
-function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projection_map::ProjectionMap,args...;kwargs...)
-    #lg = getlightgraph(ugraph)
-    #membership_vector = partition_func(lg,args...;kwargs...)
-    membership_vector = partition_func(ugraph,projection_map,args...;kwargs...)
+    partitions,local_entities,shared_entities = partition(projected_graph,partition_func,args...;kwargs...)
 
-    partitions = _getpartitions(ugraph,membership_vector)
-
-    local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
-
+    #now map partition data back to original graph
     return_partitions = _map_partitions(partitions,projection_map)
-    return_shared_entities = unique(_map_entities(shared_entities,projection_map))
 
+    return_shared_entities = unique(_map_entities(shared_entities,projection_map))
     #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
     return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
 
@@ -47,7 +38,33 @@ function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,projecti
         filter!(e ->  !(e in return_shared_entities),return_part)
     end
 
-    return PartitionData(return_partitions,return_partition_entities,return_shared_entities)#typeof(ugraph))
+    return PartitionData(return_partitions,return_partition_entities,return_shared_entities)
+end
+
+#return partition data
+function partition(ugraph::NodeUnipartiteGraph,partition_func::Function,args...;kwargs...)
+    #lg = getlightgraph(ugraph)
+    #membership_vector = partition_func(lg,args...;kwargs...)
+    membership_vector = partition_func(ugraph,args...;kwargs...)
+
+    partitions = _getpartitions(ugraph,membership_vector)
+
+    local_entities,shared_entities = _identifyentities(ugraph,partitions)  #Should be vector of edges in the graph
+
+    return partitions,local_entities,shared_entities
+
+    # return_partitions = _map_partitions(partitions,projection_map)
+    # return_shared_entities = unique(_map_entities(shared_entities,projection_map))
+    #
+    # #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
+    # return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
+    #
+    # #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
+    # for return_part in return_partition_entities
+    #     filter!(e ->  !(e in return_shared_entities),return_part)
+    # end
+    #
+    # return PartitionData(return_partitions,return_partition_entities,return_shared_entities)#typeof(ugraph))
 end
 
 #Convert membership vector to lists of indices

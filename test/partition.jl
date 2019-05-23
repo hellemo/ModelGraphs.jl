@@ -54,12 +54,9 @@ setmodel(n4,m4)
 @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
-partition_data = partition(graph,Metis.partition,NodeUnipartiteGraph,2,alg = :RECURSIVE)
+partition_data = partition(graph,NodeUnipartiteGraph,Metis.partition,2,alg = :RECURSIVE)
 new_graph = create_aggregate_graph(graph,partition_data)
+
 #Metis.partition(graph,2,alg = :RECURSIVE)
-
-
-
-
 
 true

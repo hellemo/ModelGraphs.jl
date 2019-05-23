@@ -51,12 +51,12 @@ function Metis.partition(ugraph::NodeUnipartiteGraph,nparts::Int64; alg = :KWAY,
             v = Int32(v)                #Metis uses 32 bit Integers
             adj_end = G.xadj[v+1] - 1   #This is the positions in G.adjncy corresponding to the current vertex neighbors
             for out_vertex in G.adjncy[adj_start:adj_end]
-                edge = Edge(Int64(v),Int64(out_vertex))
+                edge = LightGraphs.Edge(Int64(v),Int64(out_vertex))
                 edge_count += 1
                 if haskey(ugraph.e_weights,edge)
                     e_weights[edge_count] = ugraph.e_weights[edge]
                 else
-                    edge = Edge(Int64(out_vertex),Int64(v))
+                    edge = LightGraphs.Edge(Int64(out_vertex),Int64(v))
                     @assert haskey(ugraph.e_weights,edge)
                     e_weights[edge_count] = ugraph.e_weights[edge]
                 end
@@ -70,7 +70,7 @@ function Metis.partition(ugraph::NodeUnipartiteGraph,nparts::Int64; alg = :KWAY,
 
     #Recursive bisection
     if alg === :RECURSIVE
-        Metis.METIS_PartGraphRecursive(G.nvtxs, idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL, e_weights, idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
+        Metis.METIS_PartGraphRecursive(G.nvtxs, Metis.idx_t(1), G.xadj, G.adjncy, v_weights, C_NULL, e_weights, Metis.idx_t(nparts), C_NULL, C_NULL, Metis.options, edgecut, part)
 
     #Multi-level kway partitioning
     elseif alg === :KWAY
