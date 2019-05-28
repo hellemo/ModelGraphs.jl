@@ -228,23 +228,23 @@ function JuMP.optimize!(graph::AbstractModelGraph,optimizer::JuMP.OptimizerFacto
     return status
 end
 
-#TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
-function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph,ref_map::GraphReferenceMap)
-    for node in getnodes(jump_graph)
-        idx = getindex(jump_graph,node)
-        model_node = getnode(model_graph,idx)
-
-        for variable in all_variables(node)
-            model_node_var = ref_map[variable]
-            model_node.
-
-            # NOTE: This doesn't work anymore.  Using custom solution object now.
-            #JuMP.set_start_value(model_node_var,JuMP.value(variable))
-        end
-
-    end
-    #TODO Set dual solution values for Graph Constraints
-end
+# #TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
+# function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph,ref_map::GraphReferenceMap)
+#     for node in getnodes(jump_graph)
+#         idx = getindex(jump_graph,node)
+#         model_node = getnode(model_graph,idx)
+#
+#         for variable in all_variables(node)
+#             model_node_var = ref_map[variable]
+#             model_node.
+#
+#             # NOTE: This doesn't work anymore.  Using custom solution object now.
+#             #JuMP.set_start_value(model_node_var,JuMP.value(variable))
+#         end
+#
+#     end
+#     #TODO Set dual solution values for Graph Constraints
+# end
 
 #INTERNAL HELPER FUNCTIONS
 function _has_nonlinear_obj(m::JuMP.Model)
@@ -310,6 +310,7 @@ function _copy_constraint_func(func::JuMP.VariableRef,ref_map::GraphReferenceMap
 end
 
 function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::GraphReferenceMap)
+    println("test")
     new_func = _copy_constraint_func(constraint.func,ref_map)
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con

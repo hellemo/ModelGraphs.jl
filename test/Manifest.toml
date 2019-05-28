@@ -1,6 +1,6 @@
 [[AlgebraicGraphs]]
 deps = ["Cbc", "Clp", "DataStructures", "Distributed", "EzXML", "GLPK", "JuMP", "LightGraphs", "LinearAlgebra", "MPI", "MathOptInterface", "Metis", "ParameterJuMP", "ParserCombinator", "Plots", "Requires", "SparseArrays", "StructureGraphs"]
-git-tree-sha1 = "b16ea4b1d1ac070f6d9d83dd30e42b3100fa2367"
+git-tree-sha1 = "7aa876b4427383dcb3fa3d6de421aa4e03a409a8"
 repo-rev = "master"
 repo-url = "/home/jordan/.julia/dev/AlgebraicGraphs"
 uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"
