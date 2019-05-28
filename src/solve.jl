@@ -175,7 +175,6 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
             new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
             #push!(jump_node.nl_constraints,constraint_ref)
-            #TODO: test
             jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
         end
     end
@@ -237,6 +236,13 @@ function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph)
         for (jnodeconstraint,modelconstraint) in node.constraintmap
             try
                 model_node.constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
+            catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
+                continue
+            end
+        end
+        for (jnodeconstraint,modelconstraint) in node.nl_constraintmap
+            try
+                model_node.nl_constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
             catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
                 continue
             end
