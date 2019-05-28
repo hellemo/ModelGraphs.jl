@@ -56,10 +56,10 @@ getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,ge
 solve_jump,bendersolve,solve,dual_decomposition_solve,
 
 #Solution management
-getsolution,setsolution,setvalue,getvalue,
+nodevalue,nodedual,
 
 #macros
-@linkconstraint,@graphobjective
+@linkconstraint,@graphobjective,@graphvariable
 
 #Abstract Types
 
@@ -88,7 +88,7 @@ include("jumpgraph.jl")          #An aggregated JuMP model
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
-# include("solution.jl")         #SolutionGraph
+# include("solutiongraph.jl")         #SolutionGraph
 #
 # include("community_detection.jl")
 #

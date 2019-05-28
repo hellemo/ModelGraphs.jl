@@ -11,19 +11,17 @@ Creates an empty ModelNode.  Does not add it to a graph.
 mutable struct ModelNode <: AbstractModelNode
     structurenode::StructureGraphs.StructureNode
     model::JuMP.AbstractModel
-
-    # NOTE: Thinking whether we store linkconstraint references.  Depends how often this would have to be accessed.
-    #linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
-    #linkconstraints::DefaultDict{AbstractModelGraph, Vector{GraphConstraintRef}}(GraphConstraintRef[])
-
+    variable_values::Dict{MOI.VariableIndex,Float64}               #VariableIndex to Value
+    constraint_dual_values::Dict{MOI.ConstraintIndex,Float64}
+    nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 end
 #Constructor
-ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model())#,Dict{AbstractModelGraph,Vector{ConstraintRef}}())
+ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
 StructureGraphs.create_node(graph::AbstractModelGraph) = ModelNode()
 StructureGraphs.getstructurenode(node::ModelNode) = node.structurenode
 
 """
-addnode!(graph::AbstractModelGraph)
+add_node!(graph::AbstractModelGraph)
 
 Add a ModelNode to a ModelGraph.
 """
@@ -46,6 +44,14 @@ function StructureGraphs.getnode(var::JuMP.VariableRef)
     end
 end
 
+function StructureGraphs.getnode(con::JuMP.ConstraintRef)
+    if haskey(con.model.ext,:node)
+        return getnode(con.model)
+    else
+        error("constraint $con does not belong to a node")
+    end
+end
+
 #Model Management
 "Get the underlying JuMP model for a node"
 getmodel(node::ModelNode) = node.model
@@ -63,25 +69,24 @@ end
 function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
     setattribute(node,symbol,value)
 end
-#getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]  #get a variable on a node
 
 """
-getobjective(node::ModelNode)
+JuMP.objective_function(node::ModelNode)
 
-Get a node objective.
+Get a node objective function.
 """
 JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
 
 "Get node objective value"
-JuMP.getobjectivevalue(node::ModelNode) = getobjectivevalue(node.model)
+JuMP.objective_value(node::ModelNode) = JuMP.objective_value(node.model)
 
 """
-getlinkconstraints(node::ModelNode)
+linkconstraints(node::ModelNode)
 
 Return a Dictionary of LinkConstraints for each graph the node is a member of
 """
 #TODO get incident edges to node and return those, or cache references on the node?
-# function getlinkconstraints(node::ModelNode)
+# function linkconstraints(node::ModelNode)
 #     links = Dict()
 #     for (graph,refs) in node.linkconstraints
 #         links[graph] = Vector{LinkConstraint}()
@@ -93,12 +98,12 @@ Return a Dictionary of LinkConstraints for each graph the node is a member of
 # end
 
 """
-getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
+linkconstraints(graph::AbstractModelGraph,node::ModelNode)
 
 Return Array of LinkConstraints that cover the node
 """
 # TODO
-# function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
+# function linkconstraints(graph::AbstractModelGraph,node::ModelNode)
 #     links = []
 #     for ref in node.linkconrefs[graph]
 #         push!(links,LinkConstraint(ref))
@@ -115,21 +120,23 @@ is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
 Check whether a JuMP variable belongs to a ModelNode
 """
 is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
+
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:node)                      #checks whether a model is assigned to a node
+
 JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 
 ########################################
 #Get model nodes corresponding to models or variables
 ########################################
 """
-getnode(model::AbstractModel)
+StructureGraphs.getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Model
 """
 StructureGraphs.getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
 
 """
-getnode(model::AbstractModel)
+StructureGraphs.getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
@@ -163,7 +170,7 @@ end
 #This will not break link constraints by default but will make sure they match the old model
 #switch out variables in any connected linkconstraints
 #throw warnings if link constraints break
-function resetmodel(node::ModelNode,m::AbstractModel)
+function resetmodel(node::ModelNode,m::JuMP.AbstractModel)
     #reassign the model
     node.model = m
 end
@@ -175,12 +182,17 @@ print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)
 
 # TODO
-# removemodel(node::ModelNode) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
+# clearmodel(node::ModelNode) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),index)
 
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
+nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con.index]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con.index]
 
 
-# getlinkreferences(node::ModelNode) = node.linkconrefs
-# getlinkreferences(graph::AbstractModelGraph,node::ModelNode) = node.linkconrefs[graph]
+
+# NOTE: Thinking whether we store linkconstraint references.  Depends how often this would have to be accessed.
+#linkconstraints::Dict{AbstractModelGraph,Vector{ConstraintRef}}
+#linkconstraints::DefaultDict{AbstractModelGraph, Vector{GraphConstraintRef}}(GraphConstraintRef[])

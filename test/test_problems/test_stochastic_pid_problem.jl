@@ -103,8 +103,9 @@ end
 ipopt = with_optimizer(Ipopt.Optimizer)
 optimize!(PID,ipopt)
 
-@assert round(getvalue(Kc),digits = 4) == 4.3186
-@assert round(getvalue(tauI),digits = 4) == 2.2479
-@assert round(getvalue(tauD),digits = 4) == -3.1009
+#Query solution from graph
+@assert round(nodevalue(Kc),digits = 4) == 4.3186
+@assert round(nodevalue(tauI),digits = 4) == 2.2479
+@assert round(nodevalue(tauD),digits = 4) == -3.1009
 
 true

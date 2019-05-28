@@ -20,11 +20,9 @@ Base.broadcastable(reference_map::GraphReferenceMap) = Ref(reference_map)
 
 function Base.setindex!(reference_map::GraphReferenceMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
     reference_map.conmap[node_cref] = graph_cref
-    #reference_map.index_map.conmap[node_cref.index] = graph_cref.index
 end
 function Base.setindex!(reference_map::GraphReferenceMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
     reference_map.varmap[node_vref] = graph_vref
-    #reference_map.index_map.varmap[node_vref.index] = graph_vref.index
 end
 
 GraphReferenceMap(m::JuMP.Model) = GraphReferenceMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
@@ -51,13 +49,10 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for model_node in getnodes(model_graph)             #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
-        #println(nodeindex)
         jump_node = getnode(jump_graph,nodeindex)
-
         node_reference_map = _buildnodemodel!(jump_graph_model,jump_node,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
 
         #Update the reference_map
-        #NOTE: this might be too much data to store
         merge!(reference_map,node_reference_map)
 
         #Check for nonlinear objective functions unless we know we already have one
@@ -134,7 +129,8 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         if JuMP.start_value(var) != nothing
             JuMP.set_start_value(new_x,JuMP.start_value(var))
         end
-        push!(jump_node.variablelist,new_x)
+        jump_node.variablemap[new_x] = var
+        #push!(jump_node.variablelist,new_x)
     end
 
     #COPY CONSTRAINTS
@@ -154,13 +150,14 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
 
             #reference_map[constraint] = new_constraint
 
-            ref= JuMP.add_constraint(m,new_constraint)
-            push!(jump_node.constraintlist,ref)
+            new_ref= JuMP.add_constraint(m,new_constraint)
+            #push!(jump_node.constraintlist,ref)
+            jump_node.constraintmap[new_ref] = constraint_ref
         end
     end
 
-    #TODO Get nonlinear to work
-    #COPY OBJECT DATA (JUMP CONTAINERS)
+    #TODO Get nonlinear object data to work
+    #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
     # for (name, value) in JuMP.object_dictionary(node_model)
     #     jump_node.obj_dict[name] = reference_map[value]
     #     #jump_node.obj_dict[name] = getindex.(reference_map, value)
@@ -175,11 +172,11 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
         for i = 1:length(node_model.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
-            #println(expr)
             new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            #reference_map[constraint_ref] = new_nl_constraint
-            push!(jump_node.constraintlist,new_nl_constraint)
+            #push!(jump_node.nl_constraints,constraint_ref)
+            #TODO: test
+            jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
         end
     end
 
@@ -212,13 +209,13 @@ function jump_solve(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;scale = 1
     JuMP.optimize!(m_jump,optimizer;kwargs...)
     status = JuMP.termination_status(m_jump)
 
-    #TODO Get all the correct status codes for copying a solution
-    # if JuMP.has_values(m_jump)
-    #     _copysolution!(getgraph(m_jump),graph,reference_map)          #Now get our solution data back into the original ModelGraph
-    # end
-    #Store the created JuMP model
-
     graph.jump_model = m_jump
+
+    # TODO Get all the correct status codes for copying a solution
+    if JuMP.has_values(m_jump)
+        _copysolution!(getgraph(m_jump),graph)          #Now get our solution data back into the original ModelGraph
+    end
+
     return status
 end
 
@@ -229,22 +226,24 @@ function JuMP.optimize!(graph::AbstractModelGraph,optimizer::JuMP.OptimizerFacto
 end
 
 # #TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
-# function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph,ref_map::GraphReferenceMap)
-#     for node in getnodes(jump_graph)
-#         idx = getindex(jump_graph,node)
-#         model_node = getnode(model_graph,idx)
-#
-#         for variable in all_variables(node)
-#             model_node_var = ref_map[variable]
-#             model_node.
-#
-#             # NOTE: This doesn't work anymore.  Using custom solution object now.
-#             #JuMP.set_start_value(model_node_var,JuMP.value(variable))
-#         end
-#
-#     end
-#     #TODO Set dual solution values for Graph Constraints
-# end
+function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph)
+    for node in getnodes(jump_graph)
+        idx = getindex(jump_graph,node)
+        model_node = getnode(model_graph,idx)
+        #NOTE: This SHOULD work as long as Variable and Constraint Index always align
+        for (jnodevar,modelvar) in node.variablemap
+            model_node.variable_values[modelvar.index] = JuMP.value(jnodevar)
+        end
+        for (jnodeconstraint,modelconstraint) in node.constraintmap
+            try
+                model_node.constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
+            catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
+                continue
+            end
+        end
+    end
+    #TODO Set dual solution values for Graph Constraints (LinkConstraints)
+end
 
 #INTERNAL HELPER FUNCTIONS
 function _has_nonlinear_obj(m::JuMP.Model)
@@ -295,12 +294,12 @@ function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.Vari
 end
 
 function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::GraphReferenceMap)
-    new_aff = _copy_constraint_func(func.aff)
-    new_terms = OrderedDict([(ref_map[var_ref],coeff) for (var_ref,coeff) in terms])
+    new_aff = _copy_constraint_func(func.aff,ref_map)
+    new_terms = OrderedDict([(JuMP.UnorderedPair(ref_map[pair.a],ref_map[pair.b]),coeff) for (pair,coeff) in func.terms])
     new_func = JuMP.GenericQuadExpr{Float64,JuMP.VariableRef}()
     new_func.terms = new_terms
     new_func.aff = new_aff
-    new_func.constant = func.constant
+    #new_func.constant = func.constant
     return new_func
 end
 
@@ -310,7 +309,6 @@ function _copy_constraint_func(func::JuMP.VariableRef,ref_map::GraphReferenceMap
 end
 
 function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::GraphReferenceMap)
-    println("test")
     new_func = _copy_constraint_func(constraint.func,ref_map)
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con
