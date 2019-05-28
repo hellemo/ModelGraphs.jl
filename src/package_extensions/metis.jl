@@ -1,32 +1,5 @@
 import Metis
 
-"""
-partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) --> Vector{Vector{Int64}}
-
-Return a graph partition containing a vector of a vectors of node indices.
-"""
-# function Metis.partition(graph::ModelGraph,n_parts::Int64,projection::Function = NodeUnipartiteGraph;alg = :KWAY)
-#     ugraph = projection(graph)
-#
-#     lg = getlightgraph(ugraph)
-#
-#     #TODO Make metis account for weights
-#     parts = Metis.partition(lg,n_parts,alg = alg)
-#     unique_parts = unique(parts)
-#     nparts = length(unique_parts)
-#
-#     partition_dict = Dict{Int64,Vector{Int64}}((k,[]) for k in unique_parts)
-#     for modelnode in getnodes(graph)
-#         index = getindex(graph,modelnode)
-#         part = parts[index]
-#         push!(partition_dict[part],index)
-#     end
-#
-#     partitions = collect(values(partition_dict))
-#
-#     return partitions
-# end
-
 function Metis.partition(ugraph::NodeUnipartiteGraph,nparts::Int64; alg = :KWAY, vertex_weights = :model_size, edge_weights = :n_constraints)
 
     lightgraph = getlightgraph(ugraph)
@@ -81,3 +54,31 @@ function Metis.partition(ugraph::NodeUnipartiteGraph,nparts::Int64; alg = :KWAY,
     end
     return part #membership vector
 end
+
+
+"""
+partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) --> Vector{Vector{Int64}}
+
+Return a graph partition containing a vector of a vectors of node indices.
+"""
+# function Metis.partition(graph::ModelGraph,n_parts::Int64,projection::Function = NodeUnipartiteGraph;alg = :KWAY)
+#     ugraph = projection(graph)
+#
+#     lg = getlightgraph(ugraph)
+#
+#     #TODO Make metis account for weights
+#     parts = Metis.partition(lg,n_parts,alg = alg)
+#     unique_parts = unique(parts)
+#     nparts = length(unique_parts)
+#
+#     partition_dict = Dict{Int64,Vector{Int64}}((k,[]) for k in unique_parts)
+#     for modelnode in getnodes(graph)
+#         index = getindex(graph,modelnode)
+#         part = parts[index]
+#         push!(partition_dict[part],index)
+#     end
+#
+#     partitions = collect(values(partition_dict))
+#
+#     return partitions
+# end

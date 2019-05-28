@@ -115,12 +115,4 @@ include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
 #     #@require CommunityDetection = "d427f087-d71a-5a1b-ace0-b93392eea9ff" include("extras/communities.jl")
 # end
 
-# if haskey(Pkg.installed(),"MPI")
-# #External Solver Interfaces
-#     include("solver_interfaces/wrapped_solvers.jl")
-#
-#     include("solver_interfaces/plasmoPipsNlpInterface.jl")
-#     using .PlasmoPipsNlpInterface
-# end
-
 end

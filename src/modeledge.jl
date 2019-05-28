@@ -37,7 +37,6 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphC
     edge = StructureGraphs.add_edge!(graph,nodes...)
     push!(edge.linkconstraints,ref)
 
-    #STORE LINKCONSTRAINT REFERENCES ON NODES
     #NOTE: Consider storing linkconstraint references on nodes
     # Depends how often we need to look up this information.  Could cache the references onto the nodes.
     # for node in nodes
@@ -51,7 +50,6 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphC
     #         push!(node.linkconrefs[graph],ref)
     #     end
     # end
-
 
     return edge
 end
@@ -67,19 +65,19 @@ Return Array of all LinkConstraints in the ModelGraph graph
 getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
 
 
-"""
-getsimplelinkconstraints(model::AbstractModelGraph)
-
-Retrieve link-constraints that only connect two nodes"
-"""
-getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
-
-"""
-gethyperlinkconstraints(model::AbstractModelGraph)
-
-Retrieve link-constraints that connect three or more nodes"
-"""
-gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
+# """
+# getsimplelinkconstraints(model::AbstractModelGraph)
+#
+# Retrieve link-constraints that only connect two nodes"
+# """
+# getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
+#
+# """
+# gethyperlinkconstraints(model::AbstractModelGraph)
+#
+# Retrieve link-constraints that connect three or more nodes"
+# """
+# gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
 function string(edge::LinkingEdge)
     "Linking edge w/ $(length(edge.linkconstraints)) Constraint(s)"

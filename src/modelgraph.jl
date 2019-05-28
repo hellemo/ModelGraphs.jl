@@ -71,18 +71,3 @@ link constraints (edges):"*string((getnumlinkconstraints(graph)))
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-
-
-
-
-
-
-
-# """
-# setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver)
-#
-# Set the graph solver to use an AbstractMathProg compliant solver
-# """
-# #setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
-# set_optimizer(model::AbstractModelGraph,optimizer_factory::JuMP.OptimizerFactory) = set_optimizer(model.linkmodel,optimizer_factory)

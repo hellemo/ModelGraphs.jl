@@ -1,11 +1,10 @@
-
 # Optimal PID controller tuning
 # Victor M. Zavala
 # UW-Madison, 2017
-
 using Ipopt
-using Plasmo
+using AlgebraicGraphs
 using JuMP
+using Revise
 
 function get_scenario_model(s)
     m=Model()
@@ -79,7 +78,7 @@ xsp[3] =  1.0;
 # create two-stage graph moddel
 PID = ModelGraph()
 master = Model()
-master_node = add_node(PID,master)
+master_node = add_node!(PID,master)
 
 # add variables to parent node
 @variable(master, -10<= Kc <=10)
@@ -91,7 +90,7 @@ PIDch=Array{ModelNode}(undef,NS)
 for s in 1:NS
    # get scenario model
    bl = get_scenario_model(s)
-   child = add_node(PID,bl)
+   child = add_node!(PID,bl)
    # add children to parent node
    PIDch[s] = child
    # link children to parent variables
@@ -101,8 +100,8 @@ for s in 1:NS
 end
 
 # solve with Ipopt
-setsolver(PID,IpoptSolver())
-solve(PID)
+ipopt = with_optimizer(Ipopt.Optimizer)
+optimize!(PID,ipopt)
 
 @assert round(getvalue(Kc),digits = 4) == 4.3186
 @assert round(getvalue(tauI),digits = 4) == 2.2479

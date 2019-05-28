@@ -5,6 +5,7 @@ LightGraphs.label_propagation(graph::ModelGraph)
 
 Return partitions corresponding to detected communities using the LightGraphs label propagation algorithm.
 """
+#TODO: Update to Plasmo v0.3
 function CommunityDetection.community_detection_nback(graph::ModelGraph,args...;kwargs...)
     return _getpartitions(graph,CommunityDetection.community_detection_nback,args...;kwargs...)
 end
