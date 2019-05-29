@@ -51,3 +51,6 @@ setmodel(n4,m4)
 
 ipopt = with_optimizer(Ipopt.Optimizer)
 optimize!(graph,ipopt)
+
+#Query solution
+nodevalue(n2[:x])

@@ -43,7 +43,6 @@ owned = []
 s = 1
 #split scenarios between processors
 for j in 1:Ns
-    global s
     if round(Int, floor((s-1)/SPP)) == rank
         push!(owned, s)
         #get scenario model and append to parent node
