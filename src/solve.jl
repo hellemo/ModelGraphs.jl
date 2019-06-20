@@ -148,11 +148,12 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
             constraint = JuMP.constraint_object(constraint_ref)
             new_constraint = _copy_constraint(constraint,reference_map)
 
-            #reference_map[constraint] = new_constraint
 
             new_ref= JuMP.add_constraint(m,new_constraint)
             #push!(jump_node.constraintlist,ref)
             jump_node.constraintmap[new_ref] = constraint_ref
+
+            reference_map[constraint_ref] = new_ref
         end
     end
 
@@ -176,6 +177,8 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
             #push!(jump_node.nl_constraints,constraint_ref)
             jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
+
+            #reference_map[constraint_ref] = new_nl_constraint
         end
     end
 
@@ -250,7 +253,7 @@ function _copysolution!(jump_graph::JuMPGraph,model_graph::ModelGraph)
     end
 
     #TODO Set dual solution values for Graph Constraints (LinkConstraints)
-    
+
 
 
 

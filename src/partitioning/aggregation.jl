@@ -83,6 +83,13 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector,link_edges
         if has_nonlinear_objective != true
             has_nonlinear_objective = _has_nonlinear_obj(node_model)
         end
+
+        #TODO Get nonlinear object data to work
+        #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
+        # for (name, value) in JuMP.object_dictionary(node_model)
+        #     jump_node.obj_dict[name] = reference_map[value]
+        #     #jump_node.obj_dict[name] = getindex.(reference_map, value)
+        # end
     end
 
     #LOCAL LINK CONSTRAINTS

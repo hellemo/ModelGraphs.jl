@@ -1,5 +1,10 @@
 abstract type ProjectionGraph <: AbstractModelGraph end
 
+# NodeCliqueExpandedGraph (node_clique_expansion)
+# BipartiteGraph  (star_expansion)
+# EdgeCliqueExpandedGraph (edge_clique_expansion)
+
+
 struct ProjectionMap
     node_map::Dict{Int64,ModelNode}
     edge_map::Dict{LightGraphs.AbstractEdge,Vector{LinkingEdge}}
@@ -34,6 +39,7 @@ end
 
 #A Unipartite graph (Standard Graph) where nodes correspond to model nodes and edges correspond to links between model nodes.
 #This structure can be used to convert a ModelGraph structure to a Shared Constraint structure
+# mutable struct CliqueExpandedGraph <: ProjectionGraph
 mutable struct NodeUnipartiteGraph <: ProjectionGraph
     structuregraph::StructureGraphs.StructureGraph
     v_weights::Dict{Int64,Int64}                     #vertex weights
@@ -52,6 +58,7 @@ print(io::IO, graph::NodeUnipartiteGraph) = print(io, string(graph))
 show(io::IO,graph::NodeUnipartiteGraph) = print(io,graph)
 
 #Convert Hypergraph ==> NodeUnipartite Graph
+# function clique_expansion(graph::ModelGraph)
 function NodeUnipartiteGraph(graph::ModelGraph)
     ugraph = NodeUnipartiteGraph()
     projection_map = AlgebraicGraphs.ProjectionMap()
