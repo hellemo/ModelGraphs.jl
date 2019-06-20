@@ -178,7 +178,7 @@ function _buildnodemodel!(m::JuMP.Model,jump_node::JuMPNode,model_node::ModelNod
             #push!(jump_node.nl_constraints,constraint_ref)
             jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
 
-            #reference_map[constraint_ref] = new_nl_constraint
+            reference_map[constraint_ref] = new_nl_constraint
         end
     end
 

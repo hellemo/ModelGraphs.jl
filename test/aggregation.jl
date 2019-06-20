@@ -19,7 +19,7 @@ n4 = add_node!(graph)
 m1 = Model()
 @variable(m1,0 <= x <= 2)
 @variable(m1,0 <= y <= 3)
-@constraint(m1,x+y <= 4)
+@constraint(m1,ref,x+y <= 4)
 @objective(m1,Min,x)
 
 #Set a model on node 2
@@ -30,7 +30,7 @@ grid = 1:3
 @variable(m2,0 <= y <= 5)
 @variable(m2,z[1:5] >= 0)
 @variable(m2,a[vals,grid] >=0 )
-@NLconstraint(m2,exp(x)+y <= 7)
+@NLconstraint(m2,nl_con_ref,exp(x)+y <= 7)
 @objective(m2,Min,x)
 
 m3 = Model()
@@ -78,3 +78,11 @@ for (func,set) in constraint_types
         println(constraint)
     end
 end
+
+#an aggregated model has an associated graph
+aggregate_graph = aggregated_model.ext[:Graph]
+
+n1 = getnode(aggregate_graph,1)
+n2 = getnode(aggregate_graph,2)
+n1.obj_dict
+n2.obj_dict

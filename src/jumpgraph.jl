@@ -15,13 +15,13 @@ StructureGraphs.getstructuregraph(graph::JuMPGraph) = graph.hypergraph
 
 mutable struct JuMPNode <: AbstractModelNode
     structurenode::StructureNode
-    #obj_dict::Dict{Symbol,Any}
+    obj_dict::Dict{Symbol,Any}
     variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}
     constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     nl_constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     objective::Union{JuMP.AbstractJuMPScalar,Expr}
 end
-StructureGraphs.create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
+StructureGraphs.create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),Dict{Symbol,Any}(),Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
 zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}))
 
 StructureGraphs.getstructurenode(node::JuMPNode) = node.structurenode
