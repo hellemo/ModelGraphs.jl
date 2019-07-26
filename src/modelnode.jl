@@ -8,34 +8,42 @@ ModelNode()
 
 Creates an empty ModelNode.  Does not add it to a graph.
 """
-mutable struct ModelNode <: AbstractModelNode
-    structurenode::StructureGraphs.StructureNode
+mutable struct ModelNode <: JuMP.AbstractModel
+    #Meta data and index information for the hypergraph
+    hypernode::GraphNode
+
+    #The model
     model::JuMP.AbstractModel
+
+    #Solution Data
     variable_values::Dict{MOI.VariableIndex,Float64}               #VariableIndex to Value
     constraint_dual_values::Dict{MOI.ConstraintIndex,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 end
 #Constructor
-ModelNode() = ModelNode(StructureGraphs.StructureNode(),JuMP.Model(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
-StructureGraphs.create_node(graph::AbstractModelGraph) = ModelNode()
-StructureGraphs.getstructurenode(node::ModelNode) = node.structurenode
+ModelNode(hypernode::GraphNode) = ModelNode(hypernode,JuMP.Model(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+
+# StructuredGraphs.create_node(graph::AbstractModelGraph) = ModelNode()
+# StructuredGraphs.getstructurenode(node::ModelNode) = node.structurenode
 
 """
 add_node!(graph::AbstractModelGraph)
 
 Add a ModelNode to a ModelGraph.
 """
-function StructureGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
-    node = StructureGraphs.add_node!(graph)
+function StructuredGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
+    hypergraph = gethypergraph(graph)
+    hypernode = add_node!(hypergraph)
+    node = ModelNode(hypernode)
     setmodel(node,m)
     return node
 end
 
 #Get node for a JuMP model if the model is set to a node
-StructureGraphs.getnode(m::JuMP.Model) = m.ext[:node]
+getnode(m::JuMP.Model) = m.ext[:node]
 
 #Get the corresponding node for a JuMP variable reference
-function StructureGraphs.getnode(var::JuMP.VariableRef)
+function getnode(var::JuMP.VariableRef)
     if haskey(var.model.ext,:node)
         return getnode(var.model)
     else
@@ -44,7 +52,7 @@ function StructureGraphs.getnode(var::JuMP.VariableRef)
     end
 end
 
-function StructureGraphs.getnode(con::JuMP.ConstraintRef)
+function getnode(con::JuMP.ConstraintRef)
     if haskey(con.model.ext,:node)
         return getnode(con.model)
     else
@@ -68,6 +76,12 @@ end
 
 function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
     setattribute(node,symbol,value)
+end
+
+
+function JuMP.add_variable(m::ModelNode  v::JuMP.AbstractVariable, name::String="")
+    vref = JuMP.add_variable(getmodel(m),v,name)
+    return vref
 end
 
 """

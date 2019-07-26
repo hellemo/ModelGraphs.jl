@@ -64,17 +64,21 @@ nodevalue,nodedual,
 #Abstract Types
 
 #ModelGraph
-abstract type AbstractModelGraph <: AbstractStructureGraph end
-abstract type AbstractModelNode <: AbstractStructureNode end
-abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
+# abstract type AbstractModelGraph <: AbstractStructureGraph end
+# abstract type AbstractModelNode <: AbstractStructureNode end
+# abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
+
+abstract type AbstractModelGraph <: JuMP.AbstractModel end
+#abstract type AbsstractModelNode <: JuMP.AbstractModel end
+abstract type AbstractLinkEdge end
 abstract type AbstractGraphSolver end
 
 #Link Model
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 abstract type AbstractGraphConstraintRef end
-abstract type AbstractLinkModel <: JuMP.AbstractModel end
+#abstract type AbstractLinkModel <: JuMP.AbstractModel end
 
-include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
+#include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
 
 include("modelnode.jl")          #ModelGraph nodes
 

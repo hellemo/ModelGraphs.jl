@@ -3,7 +3,7 @@
 # A link model stores model data about graph links
 #####################################################
 mutable struct LinkModel <:  AbstractLinkModel
-    graph::AbstractModelGraph                                              #Adding constraints to a linkmodel affects the underlying graph topology
+    #graph::AbstractModelGraph                                              #Adding constraints to a linkmodel affects the underlying graph topology
 
     graphvariables::Dict{Int,JuMP.AbstractVariable}                        #global level variables.  Defined over an entire graph.  Can be used by sub-problems.
     graphvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of graph variables to children variables

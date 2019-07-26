@@ -13,9 +13,12 @@ macro linkconstraint(graph,args...)
 end
 
 #TODO: Finish macros
-macro graphvariable
+macro linkvariable
 end
 
+#Wrap NLconstraint because NLconstraint extensions don't work yet.  Easy to deprecate later.
+macro NLnodeconstraint(node,args...)
+end
 # A constraint between graph variables or graph variables and node variables
 # NOTE: Hierarchy should be enforced.
 macro graphconstraint
