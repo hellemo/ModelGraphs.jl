@@ -9,32 +9,34 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    hypergraph::StructureGraphs.StructuredHyperGraph           #Model graph structure.  Edges and Nodes in the graph have references to LinkConstraints.  The graph expresses the structure of the link model
-    #linkmodel::AbstractLinkModel                         #A ModelGraph and its underlying LinkModel maintain references to eachother.
-    #jump_model::Union{JuMP.AbstractModel,Nothing}        #Cache the internal serial model for the graph if using an MOI solver.  Returned if requested by the solve.
+    hypergraph::NestedHyperGraph                                              #This is a Multilevel Hypergraph
 
-    mastermodel::JuMP.Model                                               #think of this as a LinkNode
-    linkvariables::Dict{Int,JuMP.AbstractVariable}                        #global level variables.  Defined over an entire graph.  Can be used by sub-problems.
-    linkvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of graph variables to children variables
-    linkvarnames::Dict{Int,String}
-    #graphconstraints::Dict{Int,JuMP.AbstractConstraint}                    #global constraint.  Defined over graph variables.  Think "first stage" constraints or Shared variable constraints.
+    mastermodel::JuMP.Model                                               #JuMP Model we use to store link variables and master constraints
+    linkvariables::Dict{Int,JuMP.AbstractVariable}                       #Link Variable reference.  These variables are also in the mastermodel
+    linkvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of link variables in master model to corresponding variables in ModelNodes
+    linkvariablenames::Dict{Int,String}
 
-    linkconstraints::Dict{Int,AbstractLinkConstraint}                      #linking constraint.  Defined over variables in nodes.
+
+    linkconstraints::Dict{Int,AbstractLinkConstraint}                      #linking constraint.  Defined over variables in ModelNodes.
     linkconstraintnames::Dict{Int,String}
-    #graphvarnames::Dict{Int,String}
-    #graphconstraintnames::Dict{Int,String}
+    linkconstraint_hyperedge_map::Dict{AbstractLinkConstraint,HyperEdge}
 
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
-    #solver::Union{MOI.AbstractOptimizer,AbstractGraphSolver,Nothing}  #NOTE: Might use a JuMP SolverFactory here
+    optimizer::Union{JuMP.OptimizerFactory,AbstractGraphSolver,Nothing}
 
-    link_var_index::Int                                                    #Track indices so we can manage deleting variables and constraints
-    link_constraint_index::Int
-    master_constraint_index::Int
+    link_variable_index::Int                                                    #Track indices so we can manage deleting variables and constraints
+    graph_constraint_index::Int  #keep track of master and link constraints
+
+    # link_constraint_index::Int
+    # master_constraint_index::Int
+
 
     objdict::Dict{Symbol,Any}
 
-    #TODO nlp_data?  GraphConstraints could be nonlinear.  Throw nonlinear stuff into the master model
+    nlp_data::JuMP._NLPData                                                 #This is strictly for nonlinear-link constraints
+
+    #TODO nlp_data? : Using the mastermodel for NLP data
 
     #Constructor
     function ModelGraph()
@@ -57,12 +59,21 @@ mutable struct ModelGraph <: AbstractModelGraph
     end
 end
 
-#ModelGraph() = ModelGraph(StructureGraphs.StructuredHyperGraph(),LinkModel(),nothing)
+#HyperGraph Interface
 gethypergraph(graph::ModelGraph) = graph.hypergraph
-#StructureGraphs.getstructuregraph(graph::ModelGraph) = graph.hypergraph
 
-#getlinkmodel(graph::AbstractModelGraph) = graph.linkmodel
+function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
+    hypergraph = gethypergraph(graph)
+    sub_hypergraph = gethypergraph(subgraph)
+    add_subgraph!(hypergraph,subgraph)
+    return true
+end
+
+
+
 getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
+getnumnllinkconstraint(graph::AbstractModelGraph) = "not supported yet"
+
 hasobjective(graph::AbstractModelGraph) = getlinkmodel(graph).objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 
 "Set the objective of a ModelGraph"
@@ -75,8 +86,8 @@ JuMP.getobjectivevalue(graph::AbstractModelGraph) = getobjectivevalue(graph.link
 "Get the current created JuMP model for the ModelGraph.  Only created when solving using a JuMP compliant solver."
 getinternaljumpmodel(graph::AbstractModelGraph) = graph.serial_model
 
-getgraphvariables(graph::AbstractModelGraph) = getgraphvariables(getlinkmodel(graph))
-getgraphconstraints(graph::AbstractModelGraph) = getgraphconstraints(getlinkmodel(graph))
+getlinkvariables(graph::AbstractModelGraph) = graph.link
+getmasterconstraints(graph::AbstractModelGraph) = getgraphconstraints(getlinkmodel(graph))
 
 """
 get_all_linkconstraints(graph::AbstractModelGraph)
@@ -92,20 +103,20 @@ function get_all_linkconstraints(graph::AbstractModelGraph)
     return links
 end
 
-JuMP.object_dictionary(m::LinkModel) = m.objdict
-JuMP.objective_sense(m::LinkModel) = m.objective_sense
-getgraphvariables(m::LinkModel) = collect(values(m.graphvariables))
-getgraphconstraints(m::LinkModel) = collect(values(m.graphconstraints))
-getlinkconstraints(model::LinkModel) = collect(values(model.linkconstraints))
+JuMP.object_dictionary(m::ModelGraph) = m.objdict
+JuMP.objective_sense(m::ModelGraph) = m.objective_sense
+getlinkvariables(m::ModelGraph) = collect(values(m.graphvariables))
+getmasterconstraints(m::ModelGraph) = collect(values(m.graphconstraints))
+getlinkconstraints(model::ModelGraph) = collect(values(model.linkconstraints))
 #####################################################
 #  Link Variables
 #  A graph variable belongs to the graph as opposed to an individual model.  A graph variable is available for
 #  different models to use in their constraints.  This implies it is a shared variable between nodes in the graph.
 #####################################################
-#Reference to a Graph Variable.  These variables can be referenced in constraints from JuMP models
+#Reference to a Link Variable.  These variables can be referenced in constraints from JuMP models
 struct LinkVariableRef <: JuMP.AbstractVariableRef  #NOTE AbstractVariableRef is an AbstractJuMPScalar
     model::ModelGraph
-    idx::Int
+    idx::Int                    #index in the master model
 end
 
 Base.broadcastable(v::LinkVariableRef) = Ref(v)
@@ -119,43 +130,43 @@ JuMP.set_name(v::LinkVariableRef, s::String) = JuMP.owner_model(v).graphvarnames
 JuMP.name(v::LinkVariableRef) =  JuMP.owner_model(v).graphvarnames[v.idx]
 
 function JuMP.add_variable(m::ModelGraph, v::JuMP.AbstractVariable, name::String="")
-    m.graph_var_index += 1
-    vref = LinkVariableRef(m, m.graph_var_index)
-    m.graphvariables[vref.idx] = v
+    m.link_var_index += 1
+    vref = LinkVariableRef(m, m.link_var_index)
+    JuMP.add_variable(m.mastermodel,v,name)  #add to master model
+    m.linkvariables[vref.idx] = v
     JuMP.set_name(vref, name)
     return vref
 end
 
-function MOI.delete!(m::LinkModel, vref::LinkVariableRef)
+function MOI.delete!(m::ModelGraph, vref::LinkVariableRef)
     delete!(m.graphvariables, vref.idx)
     delete!(m.graphvarnames, vref.idx)
 end
-MOI.is_valid(m::LinkModel, vref::LinkVariableRef) = vref.idx in keys(m.graphvariables)
-JuMP.num_variables(m::LinkModel) = length(m.graphvariables)
+MOI.is_valid(m::LinkModel, vref::LinkVariableRef) = vref.idx in keys(m.linkvariables)
+JuMP.num_variables(m::ModelGraph) = length(m.linkvariables)
 
 #####################################################
 # Graph Constraint (Master Constraint)
 # A constraint between graph variables. Think first-stage constraints.
-# TODO Extend @constraint macro to work with graph variables
 #####################################################
 const GraphAffExpr = JuMP.GenericAffExpr{Float64,LinkVariableRef}
 
-# Graph Constraint Reference
+# Constraint Reference to a Master or LinkConstraint
 struct GraphConstraintRef <: AbstractGraphConstraintRef
-    model::LinkModel # `model` owning the constraint
-    idx::Int         #  index in `model.graphconstraints`
+    modelgraph::ModelGraph #       `model` owning the constraint
+    idx::Int                       #index in `model.graphconstraints`
 end
-JuMP.constraint_type(::LinkModel) = GraphConstraintRef
-JuMP.owner_model(con::GraphConstraintRef) = con.model
+JuMP.constraint_type(::ModelGraph) = GraphConstraintRef
+JuMP.owner_model(con::GraphConstraintRef) = con.modelgraph
 
-function constraint_object(cref::GraphConstraintRef, F::Type, S::Type)
-   con = cref.model.allconstraints[cref.idx]
+function JuMP.constraint_object(cref::GraphConstraintRef, F::Type, S::Type)
+   con = cref.modelgraph.allconstraints[cref.idx]
    con.func::F
    con.set::S
    return con
 end
 
-function MOI.delete!(m::LinkModel, cref::GraphConstraintRef)
+function MOI.delete!(m::ModelGraph, cref::GraphConstraintRef)
     if typeof(constraint_object(cref)) == LinkConstraint
         delete!(m.linkconstraints, cref.idx)
         delete!(m.linkconnames, cref.idx)
@@ -167,7 +178,7 @@ function MOI.delete!(m::LinkModel, cref::GraphConstraintRef)
     end
 end
 
-MOI.is_valid(m::LinkModel, cref::GraphConstraintRef) = cref.idx in keys(m.graphconstraints) || cref.idx in keys(m.linkconstraints)
+MOI.is_valid(m::ModelGraph, cref::GraphConstraintRef) = cref.idx in keys(m.)#keys(m.graphconstraints) || cref.idx in keys(m.linkconstraints)
 
 JuMP.set_name(con::GraphConstraintRef, s::String) = JuMP.owner_model(con).graphconstraintnames[con.idx] = s
 JuMP.name(con::GraphConstraintRef) =  JuMP.owner_model(con).graphconstraintnames[con.idx]
@@ -185,10 +196,11 @@ function JuMP.build_constraint(_error::Function,func::GraphAffExpr,set::MOI.Abst
     return constraint
 end
 
-#Fallback.  Add any Constraint to a LinkModel
-function JuMP.add_constraint(m::LinkModel, con::ScalarGraphConstraint, name::String="")
+#Add a Master Constraint
+function JuMP.add_constraint(m::ModelGraph, con::ScalarGraphConstraint, name::String="")
     m.graph_constraint_index += 1
     cref = GraphConstraintRef(m, m.graph_constraint_index)
+    JuMP.add_constraint(m.mastermodel,con,name)   #also add to master model
     m.graphconstraints[cref.idx] = con
     JuMP.set_name(cref, name)
     return cref
@@ -196,8 +208,8 @@ end
 
 
 # Model Extras
-JuMP.show_constraints_summary(::IOContext,m::LinkModel) = ""
-JuMP.show_backend_summary(::IOContext,m::LinkModel) = ""
+JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
 
 #####################################################
 #  Link Constraint
@@ -209,7 +221,7 @@ struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <
     # #Caching data on the LinkConstraint
     # graph::AbstractModelGraph
     #node_indices::Vector{Int64}   #Should be easier to just reference a hyperedge
-    hyperedge::HyperEdge  #reference to a hyperedge
+    #hyperedge::HyperEdge  #reference to a hyperedge
 end
 LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 
@@ -230,9 +242,6 @@ function getnodes(con::LinkConstraint)
 end
 getnumnodes(con::LinkConstraint) = length(getnodes(con))
 
-# is_simplelinkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
-# is_hyperlinkconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false
-
 #Add a LinkConstraint to a LinkModel
 function JuMP.add_constraint(m::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
     m.graph_constraint_index += 1
@@ -249,21 +258,18 @@ function JuMP.add_constraint(m::ModelGraph, con::JuMP.ScalarConstraint, name::St
 
     #Add LinkingEdges to the Graph
     #addlinkedges!(graph,cref)
-    addhyperedge!(hypergraph,hyperedge)
+    add_linkconstraint_edges!(hypergraph,hyperedge)
 
     return cref
 end
 
 function JuMP.add_constraint(m::LinkModel, con::JuMP.AbstractConstraint, name::String="")
-    error("Link Models only support GraphConstraints and LinkConstraints")
+    error("A ModelGraph only supports LinkConstraints")
 end
 
 jump_function(constraint::LinkConstraint) = constraint.func
 moi_set(constraint::LinkConstraint) = constraint.set
 shape(::LinkConstraint) = JuMP.ScalarShape()
-
-
-
 
 
 #################################

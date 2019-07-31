@@ -2,39 +2,41 @@
 # ModelEdges
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
-    structureedge::StructureGraphs.StructureEdge
+    hyperedge::StructuredGraphs.HyperEdge
     linkconstraints::Vector{AbstractGraphConstraintRef}  #Link constraints this edge represents
 end
 #Edge constructors
-LinkingEdge() = LinkingEdge(StructureGraphs.StructureEdge(),JuMP.ConstraintRef[])
-StructureGraphs.create_edge(graph::AbstractModelGraph) = LinkingEdge()
-StructureGraphs.getstructureedge(edge::LinkingEdge) = edge.structureedge
+# LinkingEdge() = LinkingEdge(StructureGraphs.StructureEdge(),JuMP.ConstraintRef[])
+# StructureGraphs.create_edge(graph::AbstractModelGraph) = LinkingEdge()
+# StructureGraphs.getstructureedge(edge::LinkingEdge) = edge.structureedge
 
 #Add a hyperedge to graph using a linkconstraint reference
-function addlinkedges!(graph::AbstractModelGraph,con_ref::AbstractGraphConstraintRef)
+function addlinkconstraintedge!(graph::AbstractModelGraph,con_ref::AbstractGraphConstraintRef)
     add_edge!(graph,con_ref)
 end
 
-function addlinkedges!(graph::AbstractModelGraph,con_refs::Array{AbstractGraphConstraintRef}) #TODO make sure this always works
+function addlinkconstraintedges!(graph::AbstractModelGraph,con_refs::Array{AbstractGraphConstraintRef}) #TODO make sure this always works
     for con_ref in con_refs
         add_edge!(graph,con_ref)
     end
 end
 
-function addlinkedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{AbstractGraphConstraintRef}) #TODO make sure this always works
+function addlinkconstraintedges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{AbstractGraphConstraintRef}) #TODO make sure this always works
     for con_ref in con_refs.data
         add_edge!(graph,con_ref)
     end
 end
 
-function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphConstraintRef)
+function add_hyper_edge!(graph::AbstractModelGraph,ref::AbstractGraphConstraintRef)
 
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     nodes = getnodes(con)
 
     #node_indices = con.node_indices
 
-    edge = StructureGraphs.add_edge!(graph,nodes...)
+    add_hyper_edge!(graph.hypergraph,node_indices)
+    #edge = StructureGraphs.add_edge!(graph,nodes...)   #Add a new hyperedge given the nodes
+
     push!(edge.linkconstraints,ref)
 
     #NOTE: Consider storing linkconstraint references on nodes
@@ -54,30 +56,6 @@ function StructureGraphs.add_edge!(graph::AbstractModelGraph,ref::AbstractGraphC
     return edge
 end
 
-
-
-
-"""
-getlinkconstraints(graph::AbstractModelGraph)
-
-Return Array of all LinkConstraints in the ModelGraph graph
-"""
-getlinkconstraints(graph::AbstractModelGraph) = getlinkconstraints(getlinkmodel(graph))
-
-
-# """
-# getsimplelinkconstraints(model::AbstractModelGraph)
-#
-# Retrieve link-constraints that only connect two nodes"
-# """
-# getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
-#
-# """
-# gethyperlinkconstraints(model::AbstractModelGraph)
-#
-# Retrieve link-constraints that connect three or more nodes"
-# """
-# gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
 function string(edge::LinkingEdge)
     "Linking edge w/ $(length(edge.linkconstraints)) Constraint(s)"

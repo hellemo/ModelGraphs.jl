@@ -59,7 +59,7 @@ solve_jump,bendersolve,solve,dual_decomposition_solve,
 nodevalue,nodedual,
 
 #macros
-@linkconstraint,@graphobjective,@graphvariable
+@linkconstraint,@graphobjective,@linkvariable
 
 #Abstract Types
 

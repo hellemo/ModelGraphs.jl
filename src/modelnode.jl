@@ -10,7 +10,7 @@ Creates an empty ModelNode.  Does not add it to a graph.
 """
 mutable struct ModelNode <: JuMP.AbstractModel
     #Meta data and index information for the hypergraph
-    hypernode::GraphNode
+    hypernode::HyperNode
 
     #The model
     model::JuMP.AbstractModel
@@ -31,7 +31,7 @@ add_node!(graph::AbstractModelGraph)
 
 Add a ModelNode to a ModelGraph.
 """
-function StructuredGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
+function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
     hypergraph = gethypergraph(graph)
     hypernode = add_node!(hypergraph)
     node = ModelNode(hypernode)

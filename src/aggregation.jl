@@ -133,8 +133,6 @@ function create_aggregate_model(model_graph::ModelGraph,edges::Vector{LinkingEdg
 end
 
 
-
-
 # #NOTE: This function can still be useful
 # function _get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNode})
 #     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given
