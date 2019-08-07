@@ -1,3 +1,17 @@
+function aggregate(graph::ModelGraph;levels = 0)
+    node = Modelnode()
+
+    return node
+end
+
+function aggregate(graph::ModelGraph,partition::ModelPartition)
+end
+
+function aggregate(graph::ModelGraph,nodes::Vector{ModelNode})
+end
+
+
+
 #Create an aggregated ModelGraph that can be used by decomposition algorithms
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
     println("Building Aggregated Model Graph")

@@ -1,5 +1,8 @@
-mutable struct SolutionGraph <: AbstractPlasmoGraph
-    basegraph::BasePlasmoGraph
+mutable struct SolutionGraph <: AbstractModelGraph
+    hypergraph::NestedHyperGraph
+
+    nodes::Dict{HyperNode,SolutionNode}
+    linkedges::Dict{HyperEdge,SolutionEdge}
     linkcon_duals::Vector{Number}
     objval::Number
 end
@@ -14,12 +17,12 @@ mutable struct SolutionNode <: AbstractModelNode
 end
 create_node(graph::SolutionGraph) = SolutionNode(BasePlasmoNode(),0,Dict{Symbol,Number}(),Number[],Number[])
 
-mutable struct SolutionEdge <: AbstractLinkingEdge
-    baseedge::BasePlasmoEdge
-    linkconduals::Vector{Number}
+mutable struct SolutionEdge <: AbstractLinkEdge
+    hyperedge::HyperEdge
+    linkconstraintduals::Vector{Float64}
 end
-SolutionEdge() = SolutionEdge(BasePlasmoEdge(),Number[])
-create_edge(graph::SolutionGraph) = SolutionEdge()
+# SolutionEdge() = SolutionEdge(BasePlasmoEdge(),Number[])
+# create_edge(graph::SolutionGraph) = SolutionEdge()
 
 #copy solution data out of plasmo node or edge
 function setsolutiondata(node::ModelNode,solution_node::SolutionNode)

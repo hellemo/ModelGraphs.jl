@@ -1,7 +1,7 @@
 module AlgebraicGraphs
 
-using StructureGraphs
-import LightGraphs
+using NestedHyperGraphs
+# import LightGraphs
 
 using Requires
 using Distributed
@@ -11,7 +11,6 @@ using SparseArrays
 
 using MathOptInterface
 const MOI = MathOptInterface
-const MOIU = MathOptInterface.Utilities
 
 import JuMP
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
@@ -19,9 +18,6 @@ import Base: ==,show,print,string,getindex,copy
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, SolutionGraph, JuMPGraph,
-
-#Graph Projections
-ModelBipartiteGraph, NodeUnipartiteGraph, LinkUnipartiteGraph,
 
 #Nodes and Edges,
 ModelNode,LinkingEdge,
@@ -59,7 +55,7 @@ solve_jump,bendersolve,solve,dual_decomposition_solve,
 nodevalue,nodedual,
 
 #macros
-@linkconstraint,@graphobjective,@linkvariable
+@linkconstraint,@linkvariable,@NLlinkconstraint,@graphobjective
 
 #Abstract Types
 
@@ -75,14 +71,14 @@ abstract type AbstractGraphSolver end
 
 #Link Model
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
-abstract type AbstractGraphConstraintRef end
+#abstract type AbstractGraphConstraintRef end
 #abstract type AbstractLinkModel <: JuMP.AbstractModel end
 
 #include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
 
 include("modelnode.jl")          #ModelGraph nodes
 
-include("modeledge.jl")          #ModelGraph edges
+include("linkedge.jl")          #ModelGraph edges
 
 include("modelgraph.jl")         #The ModelGraph
 

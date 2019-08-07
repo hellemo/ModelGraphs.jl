@@ -1,36 +1,36 @@
 """
-    JuMPGraph
-    Extension Data attached to a constructed JuMPGraphModel.  The JuMPGraph retains a reference to the original hypergraph topology with references to
+    AggregateGraph
+    Extension Data attached to an Aggregated ModelGraph.  The AggregateGraph retains a reference to the original ModelGraph topology with references to
     graphvariables, graphconstraints, and linkconstraints.
 """
-mutable struct JuMPGraph <: AbstractModelGraph
-    hypergraph::StructureGraphs.StructureGraph
-    graphvariables::Vector{GraphVariableRef}
-    graphconstraints::Vector{GraphConstraintRef}
-    linkconstraints::Vector{GraphConstraintRef}
+mutable struct AggregateGraph <: AbstractModelGraph
+    hypergraph::NestedHyperGraph
+    master::JuMP.Model
+    linkvariables::Vector{LinkVariableRef}
+    linkconstraints::Vector{LinkConstraintRef}
 end
-JuMPGraph() = JuMPGraph(StructureGraphs.StructuredHyperGraph(),GraphVariableRef[],GraphConstraintRef[],GraphConstraintRef[])
+AggregateModel() = AggregateModel(StructureGraphs.StructuredHyperGraph(),GraphVariableRef[],GraphConstraintRef[],GraphConstraintRef[])
 JuMPGraph(hypergraph::StructureGraphs.StructureGraph) = JuMPGraph(hypergraph,GraphVariableRef[],GraphConstraintRef[],GraphConstraintRef[])
-StructureGraphs.getstructuregraph(graph::JuMPGraph) = graph.hypergraph
+gethypergraph(graph::AggregateGraph) = graph.hypergraph
 
-mutable struct JuMPNode <: AbstractModelNode
-    structurenode::StructureNode
+mutable struct AggregateNode <: AbstractModelNode
+    hypernode::HyperNode
     obj_dict::Dict{Symbol,Any}
     variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}
     constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     nl_constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     objective::Union{JuMP.AbstractJuMPScalar,Expr}
 end
-StructureGraphs.create_node(graph::JuMPGraph) = JuMPNode(StructureNode(),Dict{Symbol,Any}(),Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
+
 zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}))
 
-StructureGraphs.getstructurenode(node::JuMPNode) = node.structurenode
+# StructureGraphs.getstructurenode(node::JuMPNode) = node.structurenode
 
-#Has constraint references for link constraints
-mutable struct JuMPEdge <: AbstractLinkingEdge
-    structureedge::StructureEdge
-    linkconstraints::Vector{GraphConstraintRef}  #indices in JuMP model of linkconstraints for this edge
-end
+# #Has constraint references for link constraints
+# mutable struct AggragateGraphEdge <: AbstractLinkingEdge
+#     structureedge::StructureEdge
+#     linkconstraints::Vector{GraphConstraintRef}  #indices in JuMP model of linkconstraints for this edge
+# end
 StructureGraphs.create_edge(graph::JuMPGraph) = JuMPEdge(StructureEdge(),GraphConstraintRef[])
 StructureGraphs.getstructureedge(edge::JuMPEdge) = edge.structureedge
 
@@ -44,7 +44,7 @@ is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph) ? true : false  #check if th
 
 # Should be defined by base type
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
-function StructureGraphs.add_node!(m::JuMP.Model; index = nv(getgraph(m).hypergraph)+1)
+function NestedHyperGraphs.add_node!(m::JuMP.Model; index = nv(getgraph(m).hypergraph)+1)
     is_graphmodel(m) || error("Can only add nodes to graph models")
     node = create_node(getgraph(m))
     add_node!(getgraph(m),node,index = index)

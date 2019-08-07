@@ -7,7 +7,7 @@ end
 
 #Constructors
 
-function ModelPartittion(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
+function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
 
 end
 

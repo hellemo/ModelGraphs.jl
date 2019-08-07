@@ -38,12 +38,21 @@ create_jump_graph_model
     Return a JuMPGraphModel which is a Model with graph extension data containing a JuMPGraph.
 """
 #THE IDEA : Create a JuMP model by aggregating all of the nodes in a ModelGraph together
+
+JuMP.Model(modelgraph::ModelGraph;add_node_objectives = !(hasobjective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
+
+create_jump_graph_model(modelgraph::ModelGraph) = aggregate(modelgraph)
+
+
 function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
     jump_graph_model = JuMPGraphModel()
     jump_graph = StructureGraphs.copy_graph_to(model_graph,to_graph_type = JuMPGraph)  #Create empty JuMP graph with nodes and edges
     jump_graph_model.ext[:Graph] = jump_graph
 
     reference_map = GraphReferenceMap(jump_graph_model)
+
+
+    #IDEA: Aggregate graph into a single node
 
     # COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
@@ -95,11 +104,11 @@ function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_object
         JuMP.add_constraint(jump_graph_model,new_constraint)
     end
 
-    #TODO GRAPH VARIABLES
+    #TODO Link VARIABLES  #Should do this before copying model nodes
     for graph_variable in getgraphvariables(model_graph)
     end
 
-    #TODO GRAPH CONSTRAINTS
+    #TODO Master Model
     for graph_constraint in getgraphconstraints(model_graph)
     end
 

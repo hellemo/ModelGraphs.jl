@@ -1,17 +1,19 @@
 
 
-#TODO: Finish macros
 macro linkvariable(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-        link_model = AlgebraicGraphs.getlinkmodel($graph)
-        JuMP.@constraint(link_model,($(args...)))  #link model extends @constraint macro
-        #TODO  Check the hypergraph implementation. I fixed the issues with slowness, but haven't tested it enough.
+        @variable(graph,args...)
     end
     return esc(code)
 end
 
 macro masterconstraint(graph,args...)
+    code = quote
+        @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+        JuMP.@constraint(graph.master,($(args...)))    #this will call add_constraint(graph::ModelGraph)
+    end
+    return esc(code)
 end
 
 macro NLmasterconstraint(graph,args...)
