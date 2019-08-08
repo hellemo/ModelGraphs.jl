@@ -158,7 +158,7 @@ StructureGraphs.getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
-StructureGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
+NestedHyperGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
 
 """
 setmodel(node::ModelNode,m::AbstractModel)

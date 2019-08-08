@@ -1,7 +1,6 @@
 module AlgebraicGraphs
 
 using NestedHyperGraphs
-# import LightGraphs
 
 using Requires
 using Distributed
@@ -16,40 +15,33 @@ import JuMP
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base: ==,show,print,string,getindex,copy
 
-#Model Graph Constructs
-export AbstractModelGraph, ModelGraph, SolutionGraph, JuMPGraph,
+#Model Graph
+export AbstractModelGraph, ModelGraph,
 
 #Nodes and Edges,
-ModelNode,LinkingEdge,
+ModelNode,LinkEdge,
 
-#LinkModel Types
-LinkConstraint, GraphConstraint, GraphVariableRef, GraphConstraintRef,
+#LinkVariable and LinkConstraint
+LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
+
+#ModelPartition
+ModelPartition,
 
 #Solvers
-AbstractGraphSolver,BendersSolver,LagrangeSolver,
+AbstractGraphOptimizer,BendersOptimizer,DualDecompositionOptimizer,
 
 #re-export base functions
-addnode!,add_node!,getnode,getnodes,getedges,collectnodes,
+add_node!,get_node,get_nodes,get_link_edges,
+get_num_nodes,
 
 #Model functions
-setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
-getnumnodes, getobjectivevalue, getinternalgraphmodel,
-
-#Link Constraints
-addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints, get_all_linkconstraints,
-
-#Partitioning
-partition,
+set_model,set_optimizer,reset_model,is_nodevariable,get_model,has_model,
 
 #Aggregation
-create_aggregate_model,create_aggregate_graph,
-
-#JuMP Interface functions
-create_jump_graph_model,
-getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
+aggregate,aggregate!,
 
 #solve handles
-solve_jump,bendersolve,solve,dual_decomposition_solve,
+optimize!,bendersolve,dual_decomposition_solve,
 
 #Solution management
 nodevalue,nodedual,
@@ -58,23 +50,12 @@ nodevalue,nodedual,
 @linkconstraint,@linkvariable,@NLlinkconstraint,@graphobjective
 
 #Abstract Types
-
-#ModelGraph
-# abstract type AbstractModelGraph <: AbstractStructureGraph end
-# abstract type AbstractModelNode <: AbstractStructureNode end
-# abstract type AbstractLinkingEdge  <: AbstractStructureEdge end
-
 abstract type AbstractModelGraph <: JuMP.AbstractModel end
-#abstract type AbsstractModelNode <: JuMP.AbstractModel end
 abstract type AbstractLinkEdge end
-abstract type AbstractGraphSolver end
+abstract type AbstractGraphOptimizer end
 
 #Link Model
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
-#abstract type AbstractGraphConstraintRef end
-#abstract type AbstractLinkModel <: JuMP.AbstractModel end
-
-#include("linkmodel.jl")          #A JuMP extension model to manage GraphConstraints and LinkConstraints
 
 include("modelnode.jl")          #ModelGraph nodes
 
@@ -82,23 +63,23 @@ include("linkedge.jl")          #ModelGraph edges
 
 include("modelgraph.jl")         #The ModelGraph
 
-include("macros.jl")             #@linkconstraint, @graphobjective
-
-include("jumpgraph.jl")          #An aggregated JuMP model
-
-include("solve.jl")              #Aggregate and solve with an MOI Solver
+# include("macros.jl")             #@linkconstraint, @graphobjective
+#
+# include("aggregate.jl")          #An aggregated JuMP model
+#
+# include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
 # include("solutiongraph.jl")         #SolutionGraph
 #
 # include("community_detection.jl")
 #
-include("partitioning/graph_projections.jl")  #Projections that facilitate graph analysis (partitioning and community detection)
-
-include("package_extensions/metis.jl")
-
-include("partitioning/partition.jl")
-
-include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
+# include("partitioning/graph_projections.jl")  #Projections that facilitate graph analysis (partitioning and community detection)
+#
+# include("package_extensions/metis.jl")
+#
+# include("partitioning/partition.jl")
+#
+# include("partitioning/aggregation.jl")  #Aggregate pieces of a ModelGraph
 
 
 # #Decomposition-based solvers

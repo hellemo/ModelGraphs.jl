@@ -7,23 +7,8 @@ struct LinkEdge <: AbstractLinkEdge
 end
 LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{LinkConstraintRef}())
 
-# function add_linkconstraint_edges!(graph::AbstractModelGraph,con_refs::Array{LinkConstraintRef}) #TODO make sure this always works
-#     for con_ref in con_refs
-#         add_link_edge!(graph,con_ref)
-#     end
-# end
-#
-# function add_linkconstraint_edges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{AbstractGraphConstraintRef}) #TODO make sure this always works
-#     for con_ref in con_refs.data
-#         add_link_edge!(graph,con_ref)
-#     end
-# end
 
 function add_link_edge!(graph::AbstractModelGraph,nodes::Vector{ModelNode})#ref::LinkConstraintRef)
-
-    #linkconstraint = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
-    #modelnodes = getnodes(linkconstraint)
-
     #Add hyper edge
     hypernodes = gethypernode.(graph,modelnodes)
     hyperedge = add_hyper_edge!(gethypergraph(graph),hypernodes...)
@@ -51,6 +36,20 @@ end
 print(io::IO,edge::LinkingEdge) = print(io, string(edge))
 show(io::IO,edge::LinkingEdge) = print(io,edge)
 
+
+
+
+# function add_linkconstraint_edges!(graph::AbstractModelGraph,con_refs::Array{LinkConstraintRef}) #TODO make sure this always works
+#     for con_ref in con_refs
+#         add_link_edge!(graph,con_ref)
+#     end
+# end
+#
+# function add_linkconstraint_edges!(graph::AbstractModelGraph,con_refs::JuMP.Containers.DenseAxisArray{AbstractGraphConstraintRef}) #TODO make sure this always works
+#     for con_ref in con_refs.data
+#         add_link_edge!(graph,con_ref)
+#     end
+# end
 
 
 # Edge constructors

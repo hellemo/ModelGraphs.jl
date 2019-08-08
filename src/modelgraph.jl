@@ -9,33 +9,39 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 
 """
 mutable struct ModelGraph <: AbstractModelGraph
-    hypergraph::NestedHyperGraph                                          #Nested HyperGraph represents the problem structure
+    #Nested HyperGraph represents the problem structure
+    hypergraph::NestedHyperGraph
 
-    mastermodel::JuMP.Model                                                #JuMP Model we use to store link variables and master constraints
+    #Store master variables and constraints in a stand-alone JuMP Model
+    mastermodel::JuMP.Model
 
-    #retrieve modelnodes through hypernode
-    modelnodes::Dict{HyperNode,ModelNode}                                   #Access ModelNodes with underlying HyperNodes
-    linkedges::Dict{HyperEdge,LinkEdge}                                     #Access LinkEdges with underlying HyperEdges
+    #Map from hypernodes and hyperedges to model nodes and link edges
+    modelnodes::Dict{HyperNode,ModelNode}
+    linkedges::Dict{HyperEdge,LinkEdge}
 
+    #Link variables
     linkvariables::Dict{Int,JuMP.AbstractVariable}                        #Link Variable reference.  These variables are also in the mastermodel.
     linkvariablemap::Dict{JuMP.AbstractVariable,JuMP.AbstractVariable}    #map of link variables in master model to corresponding variables in ModelNodes.
     linkvariablenames::Dict{Int,String}
 
+    #Link constraints
     linkconstraints::Dict{Int,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
     linkconstraintnames::Dict{Int,String}
 
-    #linkconstraint_linkedge_map::Dict{AbstractLinkConstraintRef,LinkEdge}   #LinkConstraints map to LinkEdges
-
+    #Objective
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
+
+    #Optimizer
     optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}
 
     link_variable_index::Int
     link_constraint_index::Int                              #keep track of master and link constraints
 
-    objdict::Dict{Symbol,Any}
+    obj_dict::Dict{Symbol,Any}
 
-    nlp_data::JuMP._NLPData                                                 #This is strictly for nonlinear-link constraints
+    #Nonlinear Link Constraints
+    nlp_data::JuMP._NLPData
 
     #Constructor
     function ModelGraph()
@@ -192,15 +198,10 @@ function link_variables!(lvref::LinkVariableRef,vref::JuMP.VariableRef)
     return nothing
 end
 
-#####################################################
-# An Affine expression containing a link variable
-#####################################################
-const MasterAffExpr = JuMP.GenericAffExpr{Float64,LinkVariableRef}
-
-
 ######################################################
 # Master Constraints
 ######################################################
+const MasterAffExpr = JuMP.GenericAffExpr{Float64,LinkVariableRef}
 struct ScalarMasterConstraint{F <: MasterAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
     func::F
     set::S
@@ -228,7 +229,7 @@ JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
 
 
 #####################################################
-#  Link Constraint
+#  Link Constraints
 #  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
 #####################################################
 struct LinkConstraintRef
@@ -291,7 +292,7 @@ shape(::LinkConstraint) = JuMP.ScalarShape()
 
 
 #################################
-# Solver setters and getters
+# Optimizer
 #################################
 set_optimizer(graph::AbstractModelGraph,optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}) = graph.optimizer = optimizer
 
