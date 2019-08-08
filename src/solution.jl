@@ -1,70 +1,27 @@
-mutable struct SolutionGraph <: AbstractModelGraph
-    hypergraph::NestedHyperGraph
-
-    nodes::Dict{HyperNode,SolutionNode}
-    linkedges::Dict{HyperEdge,SolutionEdge}
-    linkcon_duals::Vector{Number}
+mutable struct ModelGraphSolution
+    nodes::Vector{SolutionNode}
+    linkedges::Vector{SolutionEdge}
+    master::SolutionNode
     objval::Number
 end
 SolutionGraph() = SolutionGraph(BasePlasmoGraph(HyperGraph),Number[],0)
 
 mutable struct SolutionNode <: AbstractModelNode
-    basenode::BasePlasmoNode
+    hypernode::HyperNode
     objval::Number
-    variable_value_map::Dict{Symbol,Any}
+    variable_values::Dict{Symbol,Any}
     variable_values::Vector{Number}
     constraint_duals::Vector{Number}
 end
 create_node(graph::SolutionGraph) = SolutionNode(BasePlasmoNode(),0,Dict{Symbol,Number}(),Number[],Number[])
 
-mutable struct SolutionEdge <: AbstractLinkEdge
+mutable struct SolutionEdge
     hyperedge::HyperEdge
     linkconstraintduals::Vector{Float64}
 end
-# SolutionEdge() = SolutionEdge(BasePlasmoEdge(),Number[])
-# create_edge(graph::SolutionGraph) = SolutionEdge()
 
-#copy solution data out of plasmo node or edge
-function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
-
-    for (key,var) in getnodevariablemap(node)   #This is grabbing constraint references too....
-        if isa(var,Array) || isa(var,Dict)# || isa(var,JuMP.Variable)
-            vals = JuMP.getvalue(var)  #get value of the
-            solution_node.variable_value_map[key] = vals
-        elseif isa(var,JuMP.JuMPArray)
-            vals = JuMP.getvalue(var).innerArray  #get value of the
-            solution_node.variable_value_map[key] = vals
-        elseif isa(var,JuMP.JuMPDict)
-            vals = JuMP.getvalue(var).innerArray  #get value of the
-            solution_node.variable_value_map[key] = vals
-        elseif isa(var,JuMP.Variable)
-            val = JuMP.getvalue(var)
-            solution_node.variable_value_map[key] = val
-        else
-            error("encountered a variable type not recognized")
-        end
-    end
-
-    for i = 1:num_var(node)
-        node1_var = getnodevariable(node,i)
-        val = getvalue(node1_var)
-        push!(solution_node.variable_values,val)
-    end
-
-    # for var in getnodevariables(node)
-    #     val = getvalue(var)
-    #     push!(solution_node.variable_values,val)
-    # end
-
-    # TODO Constraint Duals
-    # for con in node.constraintlist
-    #     push!(solution_node.constraint_duals,getdual(con))
-    # end
-    solution_node.objval = getobjectivevalue(node)
-end
-
-function JuMP.getvalue(solution_node::SolutionNode,s::Symbol)
-    return solution_node.variable_value_map[s]
+function JuMP.value(solution_node::SolutionNode,s::Symbol)
+    return solution_node.variable_values[s]
 end
 
 #Get a solution graph from a model graph
@@ -107,4 +64,43 @@ show(io::IO,node::SolutionNode) = print(io,node)
 #             end
 #         end
 #     end
+# end
+
+# #copy solution data out of plasmo node or edge
+# function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
+#
+#     for (key,var) in getnodevariablemap(node)   #This is grabbing constraint references too....
+#         if isa(var,Array) || isa(var,Dict)# || isa(var,JuMP.Variable)
+#             vals = JuMP.getvalue(var)  #get value of the
+#             solution_node.variable_value_map[key] = vals
+#         elseif isa(var,JuMP.JuMPArray)
+#             vals = JuMP.getvalue(var).innerArray  #get value of the
+#             solution_node.variable_value_map[key] = vals
+#         elseif isa(var,JuMP.JuMPDict)
+#             vals = JuMP.getvalue(var).innerArray  #get value of the
+#             solution_node.variable_value_map[key] = vals
+#         elseif isa(var,JuMP.Variable)
+#             val = JuMP.getvalue(var)
+#             solution_node.variable_value_map[key] = val
+#         else
+#             error("encountered a variable type not recognized")
+#         end
+#     end
+#
+#     for i = 1:num_var(node)
+#         node1_var = getnodevariable(node,i)
+#         val = getvalue(node1_var)
+#         push!(solution_node.variable_values,val)
+#     end
+#
+#     # for var in getnodevariables(node)
+#     #     val = getvalue(var)
+#     #     push!(solution_node.variable_values,val)
+#     # end
+#
+#     # TODO Constraint Duals
+#     # for con in node.constraintlist
+#     #     push!(solution_node.constraint_duals,getdual(con))
+#     # end
+#     solution_node.objval = getobjectivevalue(node)
 # end

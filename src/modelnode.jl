@@ -14,6 +14,7 @@ mutable struct ModelNode <: JuMP.AbstractModel
 
     #The model
     model::JuMP.AbstractModel
+    linkvariablemap::Dict{JuMP.AbstractVariable,LinkVariableRef}  #link variables this node uses
 
     #Solution Data
     variable_values::Dict{MOI.VariableIndex,Float64}               #VariableIndex to Value
@@ -23,11 +24,15 @@ end
 #Constructor
 ModelNode(hypernode::HyperNode) = ModelNode(hypernode,JuMP.Model(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
 
-
-function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
+function NestedHyperGraphs.add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)
     hypernode = add_node!(hypergraph)
     node = ModelNode(hypernode)
+    return node
+end
+
+function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
+    node = NestedHyperGraphs.add_node!(graph)
     setmodel(node,m)
     return node
 end

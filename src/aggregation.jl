@@ -10,8 +10,6 @@ end
 function aggregate(graph::ModelGraph,nodes::Vector{ModelNode})
 end
 
-
-
 #Create an aggregated ModelGraph that can be used by decomposition algorithms
 function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
     println("Building Aggregated Model Graph")
@@ -146,6 +144,107 @@ end
 function create_aggregate_model(model_graph::ModelGraph,edges::Vector{LinkingEdge},shared_variables::Vector{GraphVariableRef})
 end
 
+#Function to build a node model for a flat graph model
+function _add_to_aggregate_model!(m::JuMP.Model,model_node::ModelNode)  #jump_node
+
+    #m = aggregate_model
+    node_reference = add_ref_node!(m)
+
+    node_model = getmodel(model_node)
+
+    if JuMP.mode(node_model) == JuMP.DIRECT
+        error("Cannot copy a node model in `DIRECT` mode. Use the `Model` ",
+              "constructor instead of the `direct_model` constructor to be ",
+              "able to aggregate into a new JuMP Model.")
+    end
+
+    #reference_map = GraphReferenceMap(m,MOIU.IndexMap())
+    reference_map = AggregationMap(m)
+
+    #COPY VARIABLES
+    for var in JuMP.all_variables(node_model)
+        new_x = JuMP.@variable(m)    #create an anonymous variable
+
+        reference_map[var] = new_x                                   #map variable reference to new reference
+        var_name = JuMP.name(var)
+        new_name = "$(getlabel(jump_node))$(getindex(getgraph(m),jump_node))."*var_name
+        JuMP.set_name(new_x,new_name)
+        if JuMP.start_value(var) != nothing
+            JuMP.set_start_value(new_x,JuMP.start_value(var))
+        end
+
+        node_reference.variablemap[new_x] = var
+        #jump_node.variablemap[new_x] = var
+        #push!(jump_node.variablelist,new_x)
+    end
+
+    #COPY CONSTRAINTS
+    #NOTE Option 1: Currently implemented
+    #Use JuMP and check if I have ScalarConstraint or VectorConstraint and use my index map to create new constraints
+
+    #Option 2: Not implemented
+    #Use MOI to copy which would hit all of these constraints.  See MOI.copy_to for ideas about how to do this.
+
+    #Using Option 1
+    constraint_types = JuMP.list_of_constraint_types(node_model)
+    for (func,set) in constraint_types
+        constraint_refs = JuMP.all_constraints(node_model, func, set)
+        for constraint_ref in constraint_refs
+            constraint = JuMP.constraint_object(constraint_ref)
+            new_constraint = _copy_constraint(constraint,reference_map)
+
+
+            new_ref= JuMP.add_constraint(m,new_constraint)
+            #push!(jump_node.constraintlist,ref)
+            #jump_node.constraintmap[new_ref] = constraint_ref
+            node_reference.constraintmap[new_ref] = constraint_ref
+            reference_map[constraint_ref] = new_ref
+        end
+    end
+
+    #TODO Get nonlinear object data to work
+    #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
+    # for (name, value) in JuMP.object_dictionary(node_model)
+    #     jump_node.obj_dict[name] = reference_map[value]
+    #     #jump_node.obj_dict[name] = getindex.(reference_map, value)
+    # end
+
+    #COPY NONLINEAR CONSTRAINTS
+    nlp_initialized = false
+    if node_model.nlp_data !== nothing
+        d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
+        MOI.initialize(d,[:ExprGraph])
+        nlp_initialized = true
+        for i = 1:length(node_model.nlp_data.nlconstr)
+            expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
+            _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
+            new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
+            constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
+            #push!(jump_node.nl_constraints,constraint_ref)
+            #jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
+            node_reference.nl_constraintmap[new_nl_constraint] = constraint_ref
+            reference_map[constraint_ref] = new_nl_constraint
+        end
+    end
+
+    #OBJECTIVE FUNCTION
+    if !(_has_nonlinear_obj(node_model))
+        #AFFINE OR QUADTRATIC OBJECTIVE
+        new_objective = _copy_objective(node_model,reference_map)
+        #jump_node.objective = new_objective
+        node_reference.objective = new_objective
+    else
+        #NONLINEAR OBJECTIVE
+        if !nlp_initialized
+            d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
+            MOI.initialize(d,[:ExprGraph])
+        end
+        new_obj = _copy_nl_objective(d,variablemap)
+        #jump_node.objective = new_obj
+        node_reference.objective = new_obj
+    end
+    return reference_map
+end
 
 # #NOTE: This function can still be useful
 # function _get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNode})

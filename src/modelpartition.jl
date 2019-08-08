@@ -1,16 +1,3 @@
-mutable struct ModelPartition
-    partitions::Vector{HyperGraph}
-    sharednodes::Union{Nothing,Vector{Int64}}
-    sharededges::Union{Nothing,Vector{HyperEdges}}
-    subpartitions::Union{Nothing,Vector{ModelPartition}}  #1 -> part1, 2-> part2
-end
-
-#Constructors
-
-function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
-
-end
-
 # #Case 0
 # hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
 # membership_vector = KaHyPar.partition(hypergraph)
@@ -39,7 +26,17 @@ end
 # dual_clique_graph, conversion_map = dual_clique_expansion(hypergraph)
 # membership_vector = Metis.partition(dual_clique_graph,4)
 # model_partition = ModelPartition(dual_clique_graph,conversion_map,membership_vector)
+mutable struct ModelPartition
+    partitions::Vector{HyperGraph}
+    sharednodes::Union{Nothing,Vector{HyperNode}}
+    sharededges::Union{Nothing,Vector{HyperEdge}}
+    subpartitions::Union{Nothing,Vector{ModelPartition}}  #1 -> part1, 2-> part2
+end
 
+#Constructors
+function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
+
+end
 
 
 #Given a vector of node indices, create a model partition that contains shared edges
