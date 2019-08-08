@@ -11,7 +11,12 @@ using SparseArrays
 using MathOptInterface
 const MOI = MathOptInterface
 
-import JuMP
+using JuMP
+macro exportall(pkg)
+    Expr(:export, names(JuMP)...)
+end
+@exportall JuMP
+
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base: ==,show,print,string,getindex,copy
 
@@ -52,6 +57,8 @@ nodevalue,nodedual,
 #Abstract Types
 abstract type AbstractModelGraph <: JuMP.AbstractModel end
 abstract type AbstractLinkEdge end
+abstract type AbstractLinkConstraintRef end
+abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 
 #Link Model
@@ -63,7 +70,11 @@ include("linkedge.jl")          #ModelGraph edges
 
 include("modelgraph.jl")         #The ModelGraph
 
+#include("nlp_extension.jl")
+
 # include("macros.jl")             #@linkconstraint, @graphobjective
+
+# include("modelpartition")
 #
 # include("aggregate.jl")          #An aggregated JuMP model
 #

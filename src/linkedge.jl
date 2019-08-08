@@ -3,9 +3,9 @@
 ##############################################################################
 struct LinkEdge <: AbstractLinkEdge
     hyperedge::HyperEdge                        #Reference to a HyperEdge
-    linkconstraints::Vector{LinkConstraintRef}  #Link constraints this edge represents
+    linkconstraints::Vector{AbstractLinkConstraintRef}  #Link constraints this edge represents
 end
-LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{LinkConstraintRef}())
+LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{AbstractLinkConstraintRef}())
 
 
 function add_link_edge!(graph::AbstractModelGraph,nodes::Vector{ModelNode})#ref::LinkConstraintRef)
@@ -31,10 +31,10 @@ end
 
 
 function string(edge::LinkEdge)
-    "Linking edge w/ $(length(edge.linkconstraints)) Constraint(s)"
+    "Link edge w/ $(length(edge.linkconstraints)) Constraint(s)"
 end
-print(io::IO,edge::LinkingEdge) = print(io, string(edge))
-show(io::IO,edge::LinkingEdge) = print(io,edge)
+print(io::IO,edge::LinkEdge) = print(io, string(edge))
+show(io::IO,edge::LinkEdge) = print(io,edge)
 
 
 

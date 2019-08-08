@@ -14,15 +14,18 @@ mutable struct ModelNode <: JuMP.AbstractModel
 
     #The model
     model::JuMP.AbstractModel
-    linkvariablemap::Dict{JuMP.AbstractVariable,LinkVariableRef}  #link variables this node uses
+    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #link variables this node uses
 
     #Solution Data
-    variable_values::Dict{MOI.VariableIndex,Float64}               #VariableIndex to Value
-    constraint_dual_values::Dict{MOI.ConstraintIndex,Float64}
+    variable_values::Dict{JuMP.AbstractVariableRef,Float64}               
+    constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 end
 #Constructor
-ModelNode(hypernode::HyperNode) = ModelNode(hypernode,JuMP.Model(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+ModelNode(hypernode::HyperNode) = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+
+JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
+JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 
 function NestedHyperGraphs.add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)
@@ -33,7 +36,7 @@ end
 
 function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = NestedHyperGraphs.add_node!(graph)
-    setmodel(node,m)
+    set_model(node,m)
     return node
 end
 
@@ -77,9 +80,14 @@ function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
 end
 
 
-function JuMP.add_variable(m::ModelNode  v::JuMP.AbstractVariable, name::String="")
-    vref = JuMP.add_variable(getmodel(m),v,name)
+function JuMP.add_variable(node::ModelNode,  v::JuMP.AbstractVariable, name::String="")
+    vref = JuMP.add_variable(getmodel(node),v,name)
     return vref
+end
+
+function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
+    cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
+    return cref
 end
 
 """
@@ -161,11 +169,11 @@ Get the ModelNode corresponding to a JuMP Variable
 NestedHyperGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
 
 """
-setmodel(node::ModelNode,m::AbstractModel)
+set_model(node::ModelNode,m::AbstractModel)
 
 Set the model on a node.  This will delete any link-constraints the node is currently part of
 """
-function setmodel(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
+function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     # TODO
     # BREAK LINKS FOR NOW
@@ -180,7 +188,7 @@ function setmodel(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
     #     end
     # end
     node.model = m
-    m.ext[:node] = node
+    m.ext[:modelode] = node
 end
 
 #TODO
