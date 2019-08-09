@@ -35,9 +35,21 @@ end
 
 #Constructors
 function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
+    modelpartition = ModelPartition()
+    #get hypernodes
+
+    #get partition of nodes
+
+    #we need to create the vertex induced subgraph given each node partition
+
+    #shared edges cannot be in any partitions
+
+    #shared nodes cannot be in any partitions
+
+    #do the same thing for subpartitions
+
 
 end
-
 
 #Given a vector of node indices, create a model partition that contains shared edges
 function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
@@ -63,7 +75,7 @@ end
 
 #Given a vector of node indices, create a model partition that contains shared edges
 #Hyperedges are numbered in a graph
-function ModelPartition(graph::Graph,conversion_map::ConversionMap)
+function ModelPartition(graph::HyperGraph,conversion_map::ConversionMap)
 
     #Input checking
 

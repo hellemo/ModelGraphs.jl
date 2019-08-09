@@ -29,7 +29,6 @@ function ModelNode(hypernode::HyperNode)
  end
  gethypernode(node::ModelNode) = node.hypernode
 
-
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
 JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 
@@ -41,7 +40,7 @@ function NestedHyperGraphs.add_node!(graph::AbstractModelGraph)
     return modelnode
 end
 
-function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
+function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::JuMP.AbstractModel)
     node = NestedHyperGraphs.add_node!(graph)
     set_model(node,m)
     return node
@@ -107,10 +106,11 @@ JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node
 "Get node objective value"
 JuMP.objective_value(node::ModelNode) = JuMP.objective_value(node.model)
 
+
 """
 linkconstraints(node::ModelNode)
 
-Return a Dictionary of LinkConstraints for each graph the node is a member of
+Return a Dictionary of LinkConstraints for each graph the modelnode is a member of
 """
 # #TODO get incident edges to node and return those, or cache references on the node?
 # function linkconstraints(node::ModelNode)
