@@ -283,20 +283,13 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     #Setup graph information
     hypergraph = gethypergraph(graph)
     hypernodes = sort(unique([getindex(hypergraph,NestedHyperGraphs.getnode(var).hypernode) for var in keys(con.func.terms)]))
-
     modelnodes = [NestedHyperGraphs.getnode(graph,index) for index in hypernodes]
+    linkedge = add_link_edge!(graph,modelnodes)
 
-    #link_edge = add_link_edge!(graph,modelnodes)
-
-    cref = LinkConstraintRef(graph, graph.link_constraint_index,link_edge)
-    push!(link_edge.linkconstraints,cref)
-
-    graph.linkconstraints[cref.idx] = con
+    cref = LinkConstraintRef(graph, graph.linkconstraint_index,linkedge)
+    push!(linkedge.linkconstraints,cref)
+    graph.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
-
-    #Add LinkEdges to the Graph
-    #add_link_edge!(graph,cref)
-
     return cref
 end
 
@@ -304,9 +297,27 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.AbstractConstraint, na
     error("A ModelGraph only supports LinkConstraints")
 end
 
+JuMP.owner_model(cref::LinkConstraintRef) = cref.graph
+JuMP.constraint_type(::ModelGraph) = LinkConstraintRef
+
 JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
 JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
+function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
+   con = cref.graph.linkconstraints[cref.idx]
+   con.func::F
+   con.set::S
+   return con
+end
+JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
+JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
+
+function MOI.delete!(graph::ModelGraph, cref::LinkVarConstraintRef)
+    delete!(graph.linkconstraints, cref.idx)
+    delete!(graph.linkconstraint_names, cref.idx)
+end
+MOI.is_valid(graph::ModelGraph, cref::LinkVarConstraintRef) = cref.idx in keys(graph.linkconstraints)
+
 
 ####################################
 # Objective
@@ -335,58 +346,9 @@ function string(graph::ModelGraph)
     """
     Model Graph:
     model nodes: $(getnumnodes(graph))
-    link variables" $(getnumlinkvariables(graph))
+    link variables: $(getnumlinkvariables(graph))
     link constraints: $(getnumlinkconstraints(graph))
     """
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-
-
-
-
-
-###############################################################################################
-# #Caching data on the LinkConstraint
-# graph::AbstractModelGraph
-# node_indices::Vector{Int64}   #Should be easier to just reference a hyperedge
-# hyperedge::HyperEdge  #reference to a hyperedge
-
-
-
-# function LinkConstraint(con::JuMP.ScalarConstraint,graph::AbstractModelGraph)
-#     node_indices = sort(unique([getindex(graph,getnode(var)) for var in keys(con.func.terms)]))
-#     return LinkConstraint(con.func,con.set,graph,node_indices)
-# end
-
-#Constraint Reference to a Constraint containing LinkVariables (i.e. a mastermodel constraint)
-# struct LinkVarConstraintRef <: AbstractGraphConstraintRef
-#     graph::ModelGraph               #`model` owning the constraint
-#     idx::Int                        #index in `model.graphconstraints`
-# end
-# JuMP.constraint_type(::ModelGraph) = AbstractGraphConstraintRef #GraphConstraintRef
-# JuMP.owner_model(con::LinkVarConstraintRef) = con.graph
-
-# function JuMP.constraint_object(cref::LinkVarConstraintRef, F::Type, S::Type)
-#    con = cref.graph.allconstraints[cref.idx]
-#    con.func::F
-#    con.set::S
-#    return con
-# end
-
-# function MOI.delete!(graph::ModelGraph, cref::LinkVarConstraintRef)
-#     # if typeof(constraint_object(cref)) == LinkConstraint
-#     #     delete!(m.linkconstraints, cref.idx)
-#     #     delete!(m.linkconnames, cref.idx)
-#     #elseif typeof(constraint_object(cref)) == JuMP.AbstractConstraint
-#     delete!(graph.mastermodel, cref)
-#     #else
-#         #error("Constraint reference refers to constraint type that was not recognized")
-#     #end
-# end
-#
-# MOI.is_valid(m::ModelGraph, cref::LinkVarConstraintRef) = cref.idx in keys(m.)#keys(m.graphconstraints) || cref.idx in keys(m.linkconstraints)
-#
-# JuMP.set_name(con::LinkVarConstraintRef, s::String) = JuMP.owner_model(con).graphconstraintnames[con.idx] = s
-# JuMP.name(con::GraphConstraintRef) =  JuMP.owner_model(con).graphconstraintnames[con.idx]

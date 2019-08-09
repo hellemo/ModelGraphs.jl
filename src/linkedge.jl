@@ -16,7 +16,7 @@ function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode})
     #Map to LinkEdge
     #Either create new LinkEdge or look up existing one
     if haskey(graph.linkedges,hyperedge)
-        link_edge = graph.link_edges[hyperedge]
+        link_edge = graph.linkedges[hyperedge]
     else
         link_edge = LinkEdge(hyperedge)
         graph.linkedges[hyperedge] = link_edge

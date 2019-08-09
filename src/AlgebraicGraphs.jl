@@ -59,8 +59,6 @@ abstract type AbstractLinkEdge end
 abstract type AbstractLinkConstraintRef end
 abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
-
-#Link Model
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
 include("modelnode.jl")          #ModelGraph nodes
