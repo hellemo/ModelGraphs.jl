@@ -256,9 +256,6 @@ struct LinkConstraintRef <: AbstractLinkConstraintRef
     linkedge::LinkEdge
 end
 
-JuMP.constraint_type(::ModelGraph) = LinkConstraintRef #GraphConstraintRef
-JuMP.owner_model(con::LinkConstraintRef) = con.graph
-
 struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
     func::F
     set::S
@@ -299,7 +296,6 @@ end
 
 JuMP.owner_model(cref::LinkConstraintRef) = cref.graph
 JuMP.constraint_type(::ModelGraph) = LinkConstraintRef
-
 JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
 JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
@@ -312,11 +308,11 @@ end
 JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
 JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
 
-function MOI.delete!(graph::ModelGraph, cref::LinkVarConstraintRef)
+function MOI.delete!(graph::ModelGraph, cref::LinkConstraintRef)
     delete!(graph.linkconstraints, cref.idx)
     delete!(graph.linkconstraint_names, cref.idx)
 end
-MOI.is_valid(graph::ModelGraph, cref::LinkVarConstraintRef) = cref.idx in keys(graph.linkconstraints)
+MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(graph.linkconstraints)
 
 
 ####################################
@@ -326,7 +322,6 @@ function JuMP.set_objective(graph::ModelGraph, sense::MOI.OptimizationSense,f::J
     graph.objective_sense = sense
     graph.objective_function = f
 end
-JuMP.objective_sense(graph::ModelGraph) = graph.objective_sense
 function JuMP.objective_function(m::ModelGraph, T::Type)
     graph.objective_function isa T || error("The objective function is not of type $T")
     return graph.objective_function

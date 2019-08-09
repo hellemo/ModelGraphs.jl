@@ -48,7 +48,7 @@ end
 
 JuMP.name(cref::ConstraintRef{ModelGraph,NonlinearConstraintIndex,ScalarShape}) = "test"
 #JuMP.constraint_object(ref::ConstraintRef{ModelGraph,NonlinearConstraintIndex,ScalarShape}) =
-JuMP.object_dictionary(m::ModelGraph) = m.objdict
+# JuMP.object_dictionary(m::ModelGraph) = m.objdict
 
 
 #PRINTING
@@ -80,14 +80,12 @@ end
 const NonlinearLinkConstraintRef = ConstraintRef{ModelGraph, NonlinearConstraintIndex}
 
 function Base.show(io::IO, c::NonlinearLinkConstraintRef)
-    print(io, JuMP.nl_constraint_string(c.model, REPLMode,
-                                   c.model.nlp_data.nlconstr[c.index.value]))
+    print(io, JuMP.nl_constraint_string(c.model, REPLMode, c.model.nlp_data.nlconstr[c.index.value]))
 end
 
 function Base.show(io::IO, ::MIME"text/latex", c::NonlinearLinkConstraintRef)
     constraint = c.model.nlp_data.nlconstr[c.index.value]
-    print(io, JuMP._wrap_in_math_mode(JuMP.nl_constraint_string(c.model, IJuliaMode,
-                                                      constraint)))
+    print(io, JuMP._wrap_in_math_mode(JuMP.nl_constraint_string(c.model, IJuliaMode, constraint)))
 end
 
 function JuMP.nl_constraint_string(model::ModelGraph, mode, c::JuMP._NonlinearConstraint)
@@ -111,13 +109,14 @@ end
 
 function JuMP.NLPEvaluator(graph::ModelGraph)
     model = Model()
-    model.ext[:graph] = lm
-    model.nlp_data = lm.nlp_data
+    model.ext[:graph] = graph
+    model.nlp_data = graph.nlp_data
     vars = JuMP.all_node_variables(graph)  #oredered by order of node
     #We shouldn't need other variable information since we only want to be able to get constraint information.  We would never pass this model to a solver.
     for var in vars
         @variable(model,var)
     end
+    #Need to add the constraints in too
     d = JuMP.NLPEvaluator(model)
     return d
 end

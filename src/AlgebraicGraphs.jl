@@ -32,14 +32,14 @@ LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
 #ModelPartition
 ModelPartition,
 
-#Solvers
+#Solvers/Optimizers
 AbstractGraphOptimizer,BendersOptimizer,DualDecompositionOptimizer,
 
 #Graph Functions
 add_node!,getnode,getnodes,getlinkedges,getnumnodes,gethypergraph,
 
 #Model functions
-set_model,set_optimizer,reset_model,is_nodevariable,get_model,has_model,
+set_model,set_optimizer,reset_model,is_nodevariable,getmodel,has_model,
 
 #Aggregation
 aggregate,aggregate!,
@@ -67,9 +67,9 @@ include("linkedge.jl")          #ModelGraph edges
 
 include("modelgraph.jl")         #The ModelGraph
 
-#include("nlp_extension.jl")
+include("nlp_extension.jl")
 
-# include("macros.jl")             #@linkconstraint, @graphobjective
+include("macros.jl")             #@linkconstraint, @graphobjective
 
 # include("modelpartition")
 #

@@ -47,7 +47,6 @@ function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
     return node
 end
 
-
 #Get node for a JuMP model if the model is set to a node
 NestedHyperGraphs.getnode(m::JuMP.Model) = m.ext[:modelnode]
 
