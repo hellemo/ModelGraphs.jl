@@ -17,12 +17,18 @@ mutable struct ModelNode <: JuMP.AbstractModel
     linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #link variables this node uses
 
     #Solution Data
-    variable_values::Dict{JuMP.AbstractVariableRef,Float64}               
+    variable_values::Dict{JuMP.AbstractVariableRef,Float64}
     constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 end
 #Constructor
-ModelNode(hypernode::HyperNode) = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+function ModelNode(hypernode::HyperNode)
+     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+     node.model.ext[:modelnode] = node
+     return node
+ end
+ gethypernode(node::ModelNode) = node.hypernode
+
 
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
 JuMP.variable_type(::ModelNode) = JuMP.VariableRef
@@ -30,8 +36,9 @@ JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 function NestedHyperGraphs.add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)
     hypernode = add_node!(hypergraph)
-    node = ModelNode(hypernode)
-    return node
+    modelnode = ModelNode(hypernode)
+    graph.modelnodes[hypernode] = modelnode
+    return modelnode
 end
 
 function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
@@ -40,11 +47,12 @@ function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::AbstractModel)
     return node
 end
 
+
 #Get node for a JuMP model if the model is set to a node
-getnode(m::JuMP.Model) = m.ext[:modelnode]
+NestedHyperGraphs.getnode(m::JuMP.Model) = m.ext[:modelnode]
 
 #Get the corresponding node for a JuMP variable reference
-function getnode(var::JuMP.VariableRef)
+function NestedHyperGraphs.getnode(var::JuMP.VariableRef)
     if haskey(var.model.ext,:modelnode)
         return getnode(var.model)
     else
@@ -53,7 +61,7 @@ function getnode(var::JuMP.VariableRef)
     end
 end
 
-function getnode(con::JuMP.ConstraintRef)
+function NestedHyperGraphs.getnode(con::JuMP.ConstraintRef)
     if haskey(con.model.ext,:modelnode)
         return getnode(con.model)
     else
@@ -213,6 +221,6 @@ show(io::IO,node::ModelNode) = print(io,node)
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),index)
 
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
-nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con.index]
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con.index]
+nodevalue(var::JuMP.VariableRef) = NestedHyperGraphs.getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NestedHyperGraphs.getnode(con).constraint_dual_values[con.index]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NestedHyperGraphs.getnode(con).nl_constraint_dual_values[con.index]

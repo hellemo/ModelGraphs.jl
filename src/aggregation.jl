@@ -56,6 +56,41 @@ function get_link_constraints(m::JuMP.Model)
     return agg_info.linkconstraints
 end
 
+"""
+    AggregationMap
+    Mapping between variable and constraint reference of a node model to the Aggregated Model.
+    The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding reference of the original node model.
+"""
+struct AggregationMap
+    aggregate_model::JuMP.Model   #An aggregate model
+    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}
+    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
+end
+function Base.getindex(reference_map::AggregationMap, vref::JuMP.VariableRef)  #reference_map[node_var] --> aggregated_copy_var
+    #return JuMP.VariableRef(reference_map.model,reference_map.index_map[JuMP.index(vref)])
+    return reference_map.varmap[vref]
+end
+function Base.getindex(reference_map::AggregationMap, cref::JuMP.ConstraintRef)
+    #return JuMP.ConstraintRef(reference_map.model,reference_map.index_map[JuMP.index(cref)],cref.shape)
+    return reference_map.conmap[cref]
+end
+Base.broadcastable(reference_map::AggregationMap) = Ref(reference_map)
+
+function Base.setindex!(reference_map::AggregationMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
+    reference_map.conmap[node_cref] = graph_cref
+end
+function Base.setindex!(reference_map::AggregationMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
+    reference_map.varmap[node_vref] = graph_vref
+end
+
+AggregationMap(m::JuMP.Model) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
+
+function Base.merge!(ref_map1::AggregationMap,ref_map2::AggregationMap)
+    merge!(ref_map1.varmap,ref_map2.varmap)
+    merge!(ref_map1.conmap,ref_map2.conmap)
+end
+
+
 function aggregate(graph::ModelGraph;levels = 0)
     node = Modelnode()
 

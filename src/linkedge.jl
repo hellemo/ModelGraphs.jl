@@ -8,23 +8,23 @@ end
 LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{AbstractLinkConstraintRef}())
 
 
-function add_link_edge!(graph::AbstractModelGraph,nodes::Vector{ModelNode})#ref::LinkConstraintRef)
+function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode})#ref::LinkConstraintRef)
     #Add hyper edge
-    hypernodes = gethypernode.(graph,modelnodes)
-    hyperedge = add_hyper_edge!(gethypergraph(graph),hypernodes...)
+    hypernodes = gethypernode.(modelnodes)
+    hyperedge = NestedHyperGraphs.add_hyperedge!(gethypergraph(graph),hypernodes...)
 
     #Map to LinkEdge
     #Either create new LinkEdge or look up existing one
-    if haskey(graph.link_edges,hyperedge)
+    if haskey(graph.linkedges,hyperedge)
         link_edge = graph.link_edges[hyperedge]
     else
-        link_edge = LinkEdge(hyper_edge)
-        graph.linkedges[hyper_edge] = link_edge
+        link_edge = LinkEdge(hyperedge)
+        graph.linkedges[hyperedge] = link_edge
     end
 
-    push!(link_edge.linkconstraints,ref)
 
-    graph.linkconstraint_linkedge_map[ref] = link_edge
+    #push!(linkedge.linkconstraints,ref)
+    #graph.linkconstraint_linkedge_map[ref] = link_edge
 
     return link_edge
 end

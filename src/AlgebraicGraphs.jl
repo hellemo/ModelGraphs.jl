@@ -35,9 +35,8 @@ ModelPartition,
 #Solvers
 AbstractGraphOptimizer,BendersOptimizer,DualDecompositionOptimizer,
 
-#re-export base functions
-add_node!,get_node,get_nodes,get_link_edges,
-get_num_nodes,
+#Graph Functions
+add_node!,getnode,getnodes,getlinkedges,getnumnodes,gethypergraph,
 
 #Model functions
 set_model,set_optimizer,reset_model,is_nodevariable,get_model,has_model,
