@@ -26,8 +26,8 @@ function ModelNode(hypernode::HyperNode)
      node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
      node.model.ext[:modelnode] = node
      return node
- end
- gethypernode(node::ModelNode) = node.hypernode
+end
+gethypernode(node::ModelNode) = node.hypernode
 
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
 JuMP.variable_type(::ModelNode) = JuMP.VariableRef

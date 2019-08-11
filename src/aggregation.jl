@@ -1,14 +1,13 @@
 #############################################################################################
 # Aggregate Model
 #############################################################################################
-
 mutable struct AggregatedNode
     index::Int64
     obj_dict::Dict{Symbol,Any}
-    variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}            #map from aggregate model variable to original modelgraph variable
+    variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}                    #map from aggregate model variable to original modelgraph variable
     constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     nl_constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
-    objective::Union{JuMP.AbstractJuMPScalar,Expr}                  #copy of original node objective
+    objective::Union{JuMP.AbstractJuMPScalar,Expr}                          #copy of original node objective
 end
 AggregatedNode(index::Int64) = AggregatedNode(index,Dict{Symbol,Any}(),Dict{JuMP.VariableRef,JuMP.VariableRef}(),
 Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}))
@@ -33,31 +32,26 @@ end
 is_aggregate_model(m::JuMP.Model) = haskey(m.ext,:AggregationInfo) ? true : false  #check if the model is a graph model
 assert_is_aggregate_model(m::JuMP.Model) = @assert is_aggregate_model(m)
 
-function add_agg_node!(m::JuMP.Model)
-    assert_is_aggregate_model(m)
+getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:AggregationInfo] : error("Model is not an aggregate model")
+getlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkconstraints
+getlinkvariables(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkvariables
+getNLlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
+NestedHyperGraphs.getnodes(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).nodes
 
+function add_aggregated_node!(m::JuMP.Model)
+    assert_is_aggregate_model(m)
+    i = getnumnodes(m)
+    agg_node = AggregatedNode(i+1)
+    push!(m.ext[:AggregationInfo].nodes,agg_node)
+    return agg_node
 end
 
-
-#Define all of the JuMP model extension functions
-get_aggregation_info(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:AggregationInfo] : error("Model is not an aggregate model")
 
 JuMP.objective_function(node::AggregatedNode) = node.objective
-
-getnodevariables(node::AggregatedNode) = node.variablelist
-getnodevariable(node::AggregatedNode,index::Integer) = node.variablelist[index]
-getnodeconstraints(node::AggregatedNode) = node.constraintlist
-JuMP.num_variables(node::AggregatedNode) = length(node.variablelist)
-#get node variables using a symbol lookup
-getindex(node::AggregatedNode,s::Symbol) = node.obj_dict[s]
-
-#get all of the link constraints from a JuMP model
-#Retrieves constraint indices that are link constraints
-function get_link_constraints(m::JuMP.Model)
-    assert_aggregate_model(m)
-    agg_info = get_aggregation_info(m)
-    return agg_info.linkconstraints
-end
+JuMP.num_variables(node::AggregatedNode) = length(node.variablemap)
+Base.getindex(node::AggregatedNode,s::Symbol) = node.obj_dict[s]
+getaggnodevariables(node::AggregatedNode) = collect(keys(node.variablemap))
+getaggnodeconstraints(node::AggregatedNode) = collect(keys(node.constraintmap))
 
 #############################################################################################
 # Aggregation Map
@@ -100,39 +94,79 @@ end
 #############################################################################################
 # Aggregation Functions
 #############################################################################################
-
+#function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
 #Aggregate a graph into a node
 function aggregate(graph::ModelGraph)#;levels = 0)  #levels = number of remaining subgraph levels
     aggmodel = AggregateModel()
     return aggmodel
 end
 
-#Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain
+#Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
 function aggregate(graph::ModelGraph,n_levels::Int64)
     new_model_graph = ModelGraph()
     return new_model_graph
 end
 
-#Aggregate a graph based on a model partition.  Return a new ModelGraph
-function aggregate(graph::ModelGraph,partition::ModelPartition)
+#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
+function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+    println("Building Aggregated Model Graph")
+
     new_model_graph = ModelGraph()
+
+    #Get model subgraphs.  These will contain model nodes and LinkEdges.
+    subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)                     #map(x -> getnode(graph,x),hyperpartition.partition_nodes)  #partitions of modelnodes
+
+    parent = getparent(hyperpartitions.hypergraph_partitions)
+
+    shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
+    shared_edges = parent.sharededges
+
+    #What kind of reference map do we need?  multiple?
+    variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
+
+    #Aggregate "Leaf" Partitions
+    for subgraph in subgraphs
+        aggregate_model,agg_ref_map = aggregate(subgraph)
+        merge!(variable_map,agg_ref_map.varmap)   #Update VariableMap
+        aggregate_node = add_node!(new_model_graph)
+        setmodel(aggregate_node,aggregate_model)
+    end
+
+    #NEW LINK CONSTRAINTS
+    for shared_edge in shared_edges
+        for linkconstraint in shared_edge.linkconstraints
+            copy_constraint!(new_model_graph,linkconstraint,variable_map)
+        end
+    end
+
+    #NEW LINK VARIABLES AND MASTER
+
+    return new_model_graph
+
+end
+
+
+
     return new_model_graph
 end
 
-#function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
-#IDEA: Aggregate graph into a single node
+
+#Aggregate modelgraph into AggregateModel
 function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
+    #TODO MASTER MODEL (LINK VARIABLES AND MASTER CONSTRAINTS)
+    for linkvariable in getlinkvariables(modelgraph)
+        #create new variables in agg_model
+        master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph))
+    end
+
     #COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
-    for modelnode in getnodes(modelgraph)             #for each node in the model graph
-        nodeindex = getindex(modelgraph,modelnode)
+    for modelnode in getnodes(modelgraph)               #for each node in the model graph
 
-        #jump_node = getnode(jump_graph,nodeindex)
         node_reference_map = _add_to_aggregate_model!(aggregate_model,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
-
         #Update the reference_map
         merge!(reference_map,node_reference_map)
 
@@ -146,57 +180,39 @@ function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
     #OBJECTIVE FUNCTION
     if add_node_objectives
         if !(has_nonlinear_objective)
-            graph_obj = sum(JuMP.objective_function(jump_node) for jump_node in getnodes(jump_graph)) #NOTE: All of the node objectives were converted to Minimize (MOI.OptimizationSense(0))
-            JuMP.set_objective(aggregate_model,MOI.OptimizationSense(0),graph_obj)
+            graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(aggregate_model))    #NOTE: All of the node objectives were converted to Minimize (MOI.OptimizationSense(0))
+            JuMP.set_objective(aggregate_model,MOI.MIN_SENSE,graph_obj)
         else
             graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
             for node in getnodes(modelgraph)
-            # for jump_node in getnodes(jump_graph)
-            #
-            #     #NOTE: Might be able to just convert AffExpr and QuadExpr into Julia Expressions to make this easier
-            #     id = getindex(jump_graph,jump_node)
-                # node_model = getmodel(getnode(model_graph,id))
                 node_model = getmodel(node)
-                JuMP.objective_sense(node_model) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
+                JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
                 d = JuMP.NLPEvaluator(node_model)
                 MOI.initialize(d,[:ExprGraph])
                 node_obj = MOI.objective_expr(d)
                 _splice_nonlinear_variables!(node_obj,node_model,ref_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
-
                 node_obj = Expr(:call,:*,:($sense),node_obj)
-                graph_obj = Expr(:call,:+,graph_obj,node_obj)
+                graph_obj = Expr(:call,:+,graph_obj,node_obj)  #update graph objective
             end
-            JuMP.set_NL_objective(jump_graph_model, MOI.OptimizationSense(0), graph_obj)
+            JuMP.set_NL_objective(aggregate_model, MOI.MIN_SENSE, graph_obj)
         end
-    else
-        #TODO. Use GraphObjective
+    else #use the graph objecting
+        graph_obj = objective_function(model_graph)
     end
 
-    #LINK CONSTRAINTS
-    for linkconstraint in get_all_linkconstraints(model_graph)
+    #ADD LINK CONSTRAINTS
+    for linkconstraint in getalllinkconstraints(modelgraph)
         new_constraint = _copy_constraint(linkconstraint,reference_map)
-        JuMP.add_constraint(jump_graph_model,new_constraint)
-    end
-
-    # #TODO Link VARIABLES  #Should do this before copying model nodes
-    # for graph_variable in getgraphvariables(model_graph)
-    # end
-
-    #TODO Master Model
-    for linkvariable in getlinkvariables(modelgraph)
-        #create new variables
+        JuMP.add_constraint(aggregate_model,new_constraint)
     end
 
     return aggregate_model, reference_map
 end
 
 #previously _buildnodemodel!
-function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #jump_node
+function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model)          #jump_node
 
-    #m = aggregate_model
     agg_node = add_agg_node!(m)
-
-    node_model = getmodel(modelnode)
 
     if JuMP.mode(node_model) == JuMP.DIRECT
         error("Cannot copy a node model in `DIRECT` mode. Use the `Model` ",
@@ -205,12 +221,16 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
     end
 
     #reference_map = GraphReferenceMap(m,MOIU.IndexMap())
-    reference_map = AggregationMap(m)
+    reference_map = AggregationMap(aggregate_model)
 
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
-        new_x = JuMP.@variable(m)    #create an anonymous variable
 
+        # if isa(var,LinkVariableRef)
+        #     #TODO: Check for LinkVariables
+        # end
+
+        new_x = JuMP.@variable(aggregate_model)    #create an anonymous variable
         reference_map[var] = new_x                                   #map variable reference to new reference
         var_name = JuMP.name(var)
         new_name = "$(getname(modelnode))"*var_name
@@ -222,12 +242,7 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
     end
 
     #COPY CONSTRAINTS
-    #NOTE Option 1: Currently implemented
-    #Use JuMP and check if I have ScalarConstraint or VectorConstraint and use my index map to create new constraints
-
-    #Option 2: Not implemented
-    #Use MOI to copy which would hit all of these constraints.  See MOI.copy_to for ideas about how to do this.
-
+    #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
     #Using Option 1
     constraint_types = JuMP.list_of_constraint_types(node_model)
     for (func,set) in constraint_types
@@ -235,11 +250,8 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(constraint_ref)
             new_constraint = _copy_constraint(constraint,reference_map)
-
-
-            new_ref= JuMP.add_constraint(m,new_constraint)
-            #push!(jump_node.constraintlist,ref)
-            #jump_node.constraintmap[new_ref] = constraint_ref
+            new_ref= JuMP.add_constraint(aggregate_model,new_constraint)
+            agg_node.constraintmap[new_ref] = constraint_ref
             node_reference.constraintmap[new_ref] = constraint_ref
             reference_map[constraint_ref] = new_ref
         end
@@ -261,10 +273,10 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
         for i = 1:length(node_model.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_NL_constraint(m,expr)      #raw expression input for non-linear constraint
+            new_nl_constraint = JuMP.add_NL_constraint(aggregate_model,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
             #push!(jump_node.nl_constraints,constraint_ref)
-            #jump_node.nl_constraintmap[new_nl_constraint] = constraint_ref
+            agg_node.nl_constraintmap[new_nl_constraint] = constraint_ref
             node_reference.nl_constraintmap[new_nl_constraint] = constraint_ref
             reference_map[constraint_ref] = new_nl_constraint
         end
@@ -274,7 +286,7 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
     if !(_has_nonlinear_obj(node_model))
         #AFFINE OR QUADTRATIC OBJECTIVE
         new_objective = _copy_objective(node_model,reference_map)
-        #jump_node.objective = new_objective
+        agg_node.objective = new_objective
         node_reference.objective = new_objective
     else
         #NONLINEAR OBJECTIVE
@@ -283,7 +295,7 @@ function _add_to_aggregate_model!(m::JuMP.Model,modelnode::ModelNode)          #
             MOI.initialize(d,[:ExprGraph])
         end
         new_obj = _copy_nl_objective(d,variablemap)
-        #jump_node.objective = new_obj
+        agg_node.objective = new_obj
         node_reference.objective = new_obj
     end
     return reference_map
@@ -319,7 +331,6 @@ end
 # end
 
 
-# #Create an aggregated ModelGraph that can be used by decomposition algorithms
 # function create_aggregate_graph(model_graph::ModelGraph,partition_data::PartitionData)
 #     println("Building Aggregated Model Graph")
 #
