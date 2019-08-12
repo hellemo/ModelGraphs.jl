@@ -38,6 +38,7 @@ getlinkvariables(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinf
 getNLlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
 NestedHyperGraphs.getnodes(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).nodes
 
+#Create a new new node on an AggregateModel
 function add_aggregated_node!(m::JuMP.Model)
     assert_is_aggregate_model(m)
     i = getnumnodes(m)
@@ -45,7 +46,6 @@ function add_aggregated_node!(m::JuMP.Model)
     push!(m.ext[:AggregationInfo].nodes,agg_node)
     return agg_node
 end
-
 
 JuMP.objective_function(node::AggregatedNode) = node.objective
 JuMP.num_variables(node::AggregatedNode) = length(node.variablemap)
@@ -94,81 +94,23 @@ end
 #############################################################################################
 # Aggregation Functions
 #############################################################################################
-#function create_jump_graph_model(model_graph::AbstractModelGraph;add_node_objectives = !(hasobjective(model_graph)))  #Add objectives together if graph objective not provided
-#Aggregate a graph into a node
-function aggregate(graph::ModelGraph)#;levels = 0)  #levels = number of remaining subgraph levels
-    aggmodel = AggregateModel()
-    return aggmodel
-end
-
-#Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
-function aggregate(graph::ModelGraph,n_levels::Int64)
-    new_model_graph = ModelGraph()
-    return new_model_graph
-end
-
-#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
-function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
-    println("Building Aggregated Model Graph")
-
-    new_model_graph = ModelGraph()
-
-    #Get model subgraphs.  These will contain model nodes and LinkEdges.
-    subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)                     #map(x -> getnode(graph,x),hyperpartition.partition_nodes)  #partitions of modelnodes
-
-    parent = getparent(hyperpartitions.hypergraph_partitions)
-
-    shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
-    shared_edges = parent.sharededges
-
-    #What kind of reference map do we need?  multiple?
-    variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
-
-    #Aggregate "Leaf" Partitions
-    for subgraph in subgraphs
-        aggregate_model,agg_ref_map = aggregate(subgraph)
-        merge!(variable_map,agg_ref_map.varmap)   #Update VariableMap
-        aggregate_node = add_node!(new_model_graph)
-        setmodel(aggregate_node,aggregate_model)
-    end
-
-    #NEW LINK CONSTRAINTS
-    for shared_edge in shared_edges
-        for linkconstraint in shared_edge.linkconstraints
-            copy_constraint!(new_model_graph,linkconstraint,variable_map)
-        end
-    end
-
-    #NEW LINK VARIABLES AND MASTER
-
-    return new_model_graph
-
-end
-
-
-
-    return new_model_graph
-end
-
-
 #Aggregate modelgraph into AggregateModel
 function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
     #TODO MASTER MODEL (LINK VARIABLES AND MASTER CONSTRAINTS)
-    for linkvariable in getlinkvariables(modelgraph)
-        #create new variables in agg_model
-        master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph))
-    end
+    master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph))
+    merge!(reference_map,master_reference_map)
 
     #COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for modelnode in getnodes(modelgraph)               #for each node in the model graph
 
+        #Need to pass master reference so we use those variables instead of creating new ones
         node_reference_map = _add_to_aggregate_model!(aggregate_model,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
-        #Update the reference_map
-        merge!(reference_map,node_reference_map)
+
+        merge!(reference_map,node_reference_map)   #Update the reference_map
 
         #Check for nonlinear objective functions unless we know we already have one
         node_model = getmodel(model_node)
@@ -180,7 +122,7 @@ function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
     #OBJECTIVE FUNCTION
     if add_node_objectives
         if !(has_nonlinear_objective)
-            graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(aggregate_model))    #NOTE: All of the node objectives were converted to Minimize (MOI.OptimizationSense(0))
+            graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(aggregate_model))    #NOTE: All of the node objectives are converted to Minimize (MOI.OptimizationSense(0))
             JuMP.set_objective(aggregate_model,MOI.MIN_SENSE,graph_obj)
         else
             graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
@@ -206,7 +148,61 @@ function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
         JuMP.add_constraint(aggregate_model,new_constraint)
     end
 
+    #TODO ADD NLLINKCONSSTRAINTS
+    # for nllinkconstraint in getallnllinkconstraints(modelgraph)
+    # end
+
     return aggregate_model, reference_map
+end
+
+#Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
+function aggregate(graph::ModelGraph,n_levels::Int64)
+    new_model_graph = ModelGraph()
+    return new_model_graph
+end
+
+#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
+function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+    println("Building Aggregated Model Graph")
+
+    new_model_graph = ModelGraph()
+
+    #Get model subgraphs.  These will contain model nodes and LinkEdges.
+    subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)
+    modelgraphs = subgraphs_to_modelgraphs(subgraphs_to_aggregate)  #bottom level modelgraphs
+    #variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
+
+    reference_map = AggregationMap(aggregate_model)
+    #Aggregate subgraphs and create bottom level nodes
+    for subgraph in subgraphs
+        aggregate_model,agg_ref_map = aggregate(subgraph)
+        merge!(reference_map,agg_ref_map)   #Update VariableMap
+        aggregate_node = add_node!(new_model_graph)
+        setmodel(aggregate_node,aggregate_model)
+    end
+
+    #Go up through hierarchy creating nested subgraphs
+    #TODO: Figure out how to create the nested structure
+    for layer in hyperpartition.partition_tree
+        shared_nodes = layer.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
+        shared_edges = layer.sharededges
+
+        #CREATE NEW MASTER
+        create_master(shared_nodes)
+
+        for edge in shared_edges
+            for linkconstraint in shared_edge.linkconstraints
+                copy_constraint!(new_model_graph,linkconstraint,variable_map)
+            end
+        end
+
+    end
+
+
+    #NEW LINK VARIABLES AND MASTER
+
+    return new_model_graph
+
 end
 
 #previously _buildnodemodel!
@@ -226,24 +222,23 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
 
-        # if isa(var,LinkVariableRef)
-        #     #TODO: Check for LinkVariables
-        # end
-
-        new_x = JuMP.@variable(aggregate_model)    #create an anonymous variable
-        reference_map[var] = new_x                                   #map variable reference to new reference
-        var_name = JuMP.name(var)
-        new_name = "$(getname(modelnode))"*var_name
-        JuMP.set_name(new_x,new_name)
-        if JuMP.start_value(var) != nothing
-            JuMP.set_start_value(new_x,JuMP.start_value(var))
+        if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
+            reference_map[var] = getlinkvariable(var)
+        else
+            new_x = JuMP.@variable(aggregate_model)                      #create an anonymous variable
+            reference_map[var] = new_x                                   #map variable reference to new reference
+            var_name = JuMP.name(var)
+            new_name = "$(getname(getnode(node_model)))"*var_name
+            JuMP.set_name(new_x,new_name)
+            if JuMP.start_value(var) != nothing
+                JuMP.set_start_value(new_x,JuMP.start_value(var))
+            end
+            agg_node.variablemap[new_x] = var
         end
-        agg_node.variablemap[new_x] = var
     end
 
     #COPY CONSTRAINTS
     #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
-    #Using Option 1
     constraint_types = JuMP.list_of_constraint_types(node_model)
     for (func,set) in constraint_types
         constraint_refs = JuMP.all_constraints(node_model, func, set)
@@ -300,6 +295,118 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     end
     return reference_map
 end
+
+
+#INTERNAL HELPER FUNCTIONS
+function _has_nonlinear_obj(m::JuMP.Model)
+    if m.nlp_data != nothing
+        if m.nlp_data.nlobj != nothing
+            return true
+        end
+    end
+    return false
+end
+
+#COPY OBJECTIVE FUNCTIONS
+#splice variables into a constraint expression
+function _splice_nonlinear_variables!(expr::Expr,model::JuMP.Model,reference_map::AggregationMap)  #var_map needs to map the node_model index to the new model variable
+    for i = 1:length(expr.args)
+        if typeof(expr.args[i]) == Expr
+            if expr.args[i].head != :ref   #keep calling _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
+                _splice_nonlinear_variables!(expr.args[i],model,reference_map)
+            else  #it's a variable
+                var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
+                #new_var = :($(reference_map.index_map.varmap[var_index].value))  #Get MOIIndex.value
+                #Need index --> new variable
+                new_var = :($(reference_map.varmap[JuMP.VariableRef(model,var_index)]))
+                #new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
+                expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
+            end
+        end
+    end
+end
+
+# COPY CONSTRAINT FUNCTIONS
+function _copy_constraint_func(func::JuMP.GenericAffExpr,ref_map::AggregationMap)
+    terms = func.terms
+    new_terms = OrderedDict([(ref_map[var_ref],coeff) for (var_ref,coeff) in terms])
+    new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+    new_func.terms = new_terms
+    new_func.constant = func.constant
+    return new_func
+end
+
+function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+    terms = func.terms
+    new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
+    new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+    new_func.terms = new_terms
+    new_func.constant = func.constant
+    return new_func
+end
+
+function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::AggregationMap)
+    new_aff = _copy_constraint_func(func.aff,ref_map)
+    new_terms = OrderedDict([(JuMP.UnorderedPair(ref_map[pair.a],ref_map[pair.b]),coeff) for (pair,coeff) in func.terms])
+    new_func = JuMP.GenericQuadExpr{Float64,JuMP.VariableRef}()
+    new_func.terms = new_terms
+    new_func.aff = new_aff
+    #new_func.constant = func.constant
+    return new_func
+end
+
+function _copy_constraint_func(func::JuMP.VariableRef,ref_map::AggregationMap)
+    new_func = ref_map[func]
+    return new_func
+end
+
+function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::AggregationMap)
+    new_func = _copy_constraint_func(constraint.func,ref_map)
+    new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+    return new_con
+end
+
+function _copy_constraint(constraints::JuMP.VectorConstraint,ref_map::AggregationMap)
+    new_funcs = [_copy_constraint_func(con.func) for con in constraints]
+    new_con = JuMP.VectorConstraint(new_func,constraint.set,constraint.shape)
+    return new_con
+end
+
+function _copy_constraint(constraint::LinkConstraint,ref_map::AggregationMap)
+    new_func = _copy_constraint_func(constraint.func,ref_map)
+    new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+    return new_con
+end
+
+function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+    new_func = _copy_constraint_func(constraint.func,var_map)
+    new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+    return new_con
+end
+
+#COPY OBJECTIVE FUNCTIONS
+function _copy_objective(m::JuMP.Model,ref_map::AggregationMap)
+    return _copy_objective(JuMP.objective_function(m),ref_map)
+end
+
+function _copy_objective(func::Union{JuMP.GenericAffExpr,JuMP.GenericQuadExpr},ref_map::AggregationMap)
+    new_func = _copy_constraint_func(func,ref_map)
+    return new_func
+end
+
+function _copy_objective(func::JuMP.VariableRef,ref_map::AggregationMap)
+    new_func = ref_map[func]
+    return new_func
+end
+
+function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregationMap)#variablemap::Dict{Int,VariableRef})
+    new_obj = MOI.objective_expr(d)
+    _splice_nonlinear_variables!(new_obj,d.m,reference_map)
+    JuMP.objective_sense(d.m) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
+    new_obj = Expr(:call,:*,:($sense),obj)
+    return new_obj
+end
+
 
 # #NOTE: This function can still be useful
 # function _get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNode})

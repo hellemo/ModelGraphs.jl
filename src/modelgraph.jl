@@ -10,7 +10,7 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 """
 mutable struct ModelGraph <: AbstractModelGraph
     #Nested HyperGraph represents the problem structure
-    hypergraph::NestedHyperGraph
+    hypergraph::HyperGraph
 
     #Store master variables and constraints in a stand-alone JuMP Model
     mastermodel::JuMP.Model
@@ -20,8 +20,9 @@ mutable struct ModelGraph <: AbstractModelGraph
     linkedges::Dict{HyperEdge,LinkEdge}
 
     #Link variables
-    linkvariables::Dict{Int,AbstractLinkVariableRef}                        #Link Variable reference.  These variables are also in the mastermodel.
-    linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.VariableRef}}    #map of link variables in master model to corresponding variables in ModelNodes.
+    masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
+    linkvariables::Dict{Int,AbstractLinkVariableRef}                                #Link Variables in master model
+    linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.VariableRef}}        #Map of link variables in master model to corresponding variables in ModelNodes.
     linkvariable_names::Dict{Int,String}
 
     #Link constraints
@@ -49,6 +50,7 @@ mutable struct ModelGraph <: AbstractModelGraph
                     JuMP.Model(),
                     Dict{HyperNode,ModelNode}(),
                     Dict{HyperEdge,LinkEdge}(),
+                    Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
                     Dict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
                     Dict{Int,String}(),

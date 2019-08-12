@@ -14,23 +14,24 @@ mutable struct ModelNode <: JuMP.AbstractModel
 
     #The model
     model::JuMP.AbstractModel
-    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #link variables this node uses
+    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to linkvariables
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
     constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 end
-#Constructor
+
+
+#############################################
+# Add Model Nodes
+############################################
 function ModelNode(hypernode::HyperNode)
      node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
      node.model.ext[:modelnode] = node
      return node
 end
-gethypernode(node::ModelNode) = node.hypernode
 
-JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
-JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 
 function NestedHyperGraphs.add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)
@@ -46,7 +47,93 @@ function NestedHyperGraphs.add_node!(graph::AbstractModelGraph,m::JuMP.AbstractM
     return node
 end
 
-#Get node for a JuMP model if the model is set to a node
+
+#############################################
+# Model Management
+############################################
+"Get the underlying JuMP model for a node"
+getmodel(node::ModelNode) = node.model
+getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
+JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
+nodevalue(var::JuMP.VariableRef) = NestedHyperGraphs.getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NestedHyperGraphs.getnode(con).constraint_dual_values[con.index]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NestedHyperGraphs.getnode(con).nl_constraint_dual_values[con.index]
+
+"""
+set_model(node::ModelNode,m::AbstractModel)
+
+Set the model on a node.  This will delete any link-constraints the node is currently part of
+"""
+function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
+    !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
+    node.model = m
+    m.ext[:modelode] = node
+end
+
+"""
+is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
+
+Check whether a JuMP variable belongs to a ModelNode
+"""
+is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
+
+function is_linked_variable(var::JuMP.AbstractVariableRef)
+    node = getnode(var)
+    return var in keys(node.linkvariablemap)
+end
+
+is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
+
+gethypernode(node::ModelNode) = node.hypernode
+
+#############################################
+# JuMP Extension
+############################################
+function Base.getindex(node::ModelNode,symbol::Symbol)
+    if haskey(node.model.obj_dict,symbol)
+        return getmodel(node)[symbol]
+    else
+        return getattribute(node,symbol)
+    end
+end
+
+function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
+    setattribute(node,symbol,value)
+end
+
+JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
+JuMP.variable_type(::ModelNode) = JuMP.VariableRef
+
+function JuMP.add_variable(node::ModelNode,  v::JuMP.AbstractVariable, name::String="")
+    vref = JuMP.add_variable(getmodel(node),v,name)
+    return vref
+end
+
+function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
+    cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
+    return cref
+end
+
+"""
+JuMP.objective_function(node::ModelNode)
+
+Get a node objective function.
+"""
+JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
+
+"""
+JuMP.objective_function(node::ModelNode)
+
+Get node's objective value
+"""
+JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
+
+JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
+
+
+##############################################
+# Get Model Node
+##############################################
 NestedHyperGraphs.getnode(m::JuMP.Model) = m.ext[:modelnode]
 
 #Get the corresponding node for a JuMP variable reference
@@ -67,54 +154,62 @@ function NestedHyperGraphs.getnode(con::JuMP.ConstraintRef)
     end
 end
 
-#Model Management
-"Get the underlying JuMP model for a node"
-getmodel(node::ModelNode) = node.model
+"""
+NestedHyperGraphs.getnode(model::AbstractModel)
 
-"Get an underlying model variable"
-#look for variables, if no variable, look for an attribute
-function Base.getindex(node::ModelNode,symbol::Symbol)
-    if haskey(node.model.obj_dict,symbol)
-        return getmodel(node)[symbol]
-    else
-        return getattribute(node,symbol)
-    end
-end
-
-function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
-    setattribute(node,symbol,value)
-end
-
-
-function JuMP.add_variable(node::ModelNode,  v::JuMP.AbstractVariable, name::String="")
-    vref = JuMP.add_variable(getmodel(node),v,name)
-    return vref
-end
-
-function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
-    cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
-    return cref
-end
+Get the ModelNode corresponding to a JuMP Model
+"""
+NestedHyperGraphs.getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
 
 """
-JuMP.objective_function(node::ModelNode)
+NestedHyperGraphs.getnode(model::AbstractModel)
 
-Get a node objective function.
+Get the ModelNode corresponding to a JuMP Variable
 """
-JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
+NestedHyperGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
 
-"Get node objective value"
-JuMP.objective_value(node::ModelNode) = JuMP.objective_value(node.model)
+###############################################
+# Printing
+###############################################
+function string(node::ModelNode)
+    "Model Node w/ $(JuMP.num_variables(node)) Variable(s)"
+end
+print(io::IO,node::ModelNode) = print(io, string(node))
+show(io::IO,node::ModelNode) = print(io,node)
 
 
-"""
-linkconstraints(node::ModelNode)
 
-Return a Dictionary of LinkConstraints for each graph the modelnode is a member of
-"""
+
+
+
+
+# TODO
+# RECREATE LINK CONSTRAINTS IF POSSIBLE
+# THROW WARNING IF THEY NEED TO BE DELETED
+# Check for the same variable containers to attach link constraints to
+# If it already had a model, delete all the link constraints corresponding to that model
+# if hasmodel(node)
+#     for (graph,constraints) in getlinkconstraints(node)
+#         local_link_cons = constraints
+#         graph_links = getlinkconstraints(graph)
+#         filter!(c -> !(c in local_link_cons), graph_links)  #filter out local link constraints
+#         node.link_data = NodeLinkData()   #reset the local node or edge link data
+#     end
+# end
+
+#TODO
+#set a model with the same variable names and dimensions as the old model on the node.
+#This will not break link constraints by default but will make sure they match the old model
+#switch out variables in any connected linkconstraints
+#throw warnings if link constraints break
+# function reset_model(node::ModelNode,m::JuMP.AbstractModel)
+#     #reassign the model
+#     node.model = m
+# end
+
 # #TODO get incident edges to node and return those, or cache references on the node?
-# function linkconstraints(node::ModelNode)
-#     #links = Dict()
+# function getlinkconstraints(node::ModelNode)
+#     links = Dict()
 #     hypernode = gethypernode(node)
 #
 #     hyperedges = get_incident_edges(hypernode)  #This will return the hyper edges for each graph the hypernode is a part of
@@ -130,96 +225,11 @@ Return a Dictionary of LinkConstraints for each graph the modelnode is a member 
 #     return linkconstraints
 # end
 
-"""
-linkconstraints(graph::AbstractModelGraph,node::ModelNode)
-
-Return Array of LinkConstraints that cover the node
-"""
 # TODO
-# function linkconstraints(graph::AbstractModelGraph,node::ModelNode)
+# function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
 #     links = []
 #     for ref in node.linkconrefs[graph]
 #         push!(links,LinkConstraint(ref))
 #     end
 #     return links
 # end
-
-########################################
-# Get model node from other objects
-########################################
-"""
-is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
-
-Check whether a JuMP variable belongs to a ModelNode
-"""
-is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
-
-is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
-
-JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
-
-########################################
-#Get model nodes corresponding to models or variables
-########################################
-"""
-NestedHyperGraphs.getnode(model::AbstractModel)
-
-Get the ModelNode corresponding to a JuMP Model
-"""
-NestedHyperGraphs.getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
-
-"""
-StructureGraphs.getnode(model::AbstractModel)
-
-Get the ModelNode corresponding to a JuMP Variable
-"""
-NestedHyperGraphs.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
-
-"""
-set_model(node::ModelNode,m::AbstractModel)
-
-Set the model on a node.  This will delete any link-constraints the node is currently part of
-"""
-function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
-    !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
-    # TODO
-    # BREAK LINKS FOR NOW
-    # Check for the same variable containers to attach link constraints to
-    # If it already had a model, delete all the link constraints corresponding to that model
-    # if hasmodel(node)
-    #     for (graph,constraints) in getlinkconstraints(node)
-    #         local_link_cons = constraints
-    #         graph_links = getlinkconstraints(graph)
-    #         filter!(c -> !(c in local_link_cons), graph_links)  #filter out local link constraints
-    #         node.link_data = NodeLinkData()   #reset the local node or edge link data
-    #     end
-    # end
-    node.model = m
-    m.ext[:modelode] = node
-end
-
-#TODO
-#set a model with the same variable names and dimensions as the old model on the node.
-#This will not break link constraints by default but will make sure they match the old model
-#switch out variables in any connected linkconstraints
-#throw warnings if link constraints break
-function resetmodel(node::ModelNode,m::JuMP.AbstractModel)
-    #reassign the model
-    node.model = m
-end
-
-function string(node::ModelNode)
-    "Model Node w/ $(JuMP.num_variables(node)) Variable(s)"
-end
-print(io::IO,node::ModelNode) = print(io, string(node))
-show(io::IO,node::ModelNode) = print(io,node)
-
-# TODO
-# clearmodel(node::ModelNode) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
-
-getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),index)
-
-JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
-nodevalue(var::JuMP.VariableRef) = NestedHyperGraphs.getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NestedHyperGraphs.getnode(con).constraint_dual_values[con.index]
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NestedHyperGraphs.getnode(con).nl_constraint_dual_values[con.index]

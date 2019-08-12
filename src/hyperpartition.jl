@@ -28,116 +28,123 @@
 # membership_vector = Metis.partition(dual_clique_graph,4)
 # model_partition = ModelPartition(dual_clique_graph,conversion_map,membership_vector)
 
-# mutable struct ModelPartition
-#     partitions::Vector{Vector}          #use induced subgraphs to get the internal edges
-#     sharednodes::Vector                 #shared between partitions (e.g. vertex separators)
-#     sharededges::Vector                 #span partitions (not connected to a shared node)
-# end
-
-#subpartitions::Union{Nothing,Vector{ModelPartition}}  #1 -> part1, 2-> part2
-
-
-# partitions = [[1,2],[3,4],[5,6],[7,8]]  #subpartitions
-# sharednodes = [9, [10],[11],[12],[13]]  #shared nodes at each level
-# sharededges = [1, [2],[3],[4],[5]]
-#
-# partitions = [[[1,2,3],[4,5,6]],[7,8,9],[10,11,12],[13,14,15]]]
-# sharedhyperodes = [9, [10],[11],[12],[13]]
-# sharedhyperedges = [1, [2],[3],[4],[5]]
-
 struct NodePartition
-    nodes::Vector{AbstractHyperGraph}
-    parent::PartitionLayer
+    nodes::Vector{HyperNode}
+    edges::Vector{HyperEdge}
+    parent::Union{Nothing,PartitionLayer}
 end
 
-#TODO
-function getpartitions(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
-end
-
-struct SharedEntities
+struct PartitionParent
     sharednodes::Vector{HyperNode}
     sharededges::Vector{HyperEdge}
-    parent::Union{Nothing,PartitionLayer}
+    parent::Union{Nothing,PartitionParent}
 end
 
 mutable struct HyperPartition
     node_partitions::Vector{NodePartition}  #bottom level partitions
-    partition_tree::Vector{PartitionLayer}  #tree structure describing recursive structure and shared nodes and edges
+    partition_tree::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
 end
+HyperPartition() = HyperPartition(Vector{NodePartition}(),Vector{PartitionLayer}())
+
+#Convert membership vector to lists of indices
+function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
+    unique_parts = unique(membership_vector)  #get unique membership entries
+    nparts = length(unique_parts)             #number of partitions
+    partitions = [Vector{Int64}() for _ = 1:nparts]
+    for (vertex,part) in enumerate(membership_vector)
+        push!(partitions[part],getnode(hypergraph,vertex))
+    end
+    return partitions
+end
+
+#Naive implementation.  Need to use incidence matrix to do this correctly, but first I need to find better way to deal with subgraph hyperedges
+#Make work with subgraphs
+function getinducedhyperedges(hypergraph::HyperGraph,nodes::Vector{HyperNode})
+    hyperedges = []
+    for node in nodes
+        for hyperedge in hypergraph.node_map[node]
+            if all(hyperedge.vertices in nodes)
+                push!(hyperedges,hyperedge)
+end
+
+function getcuthyperedges(hypergraph::HyperGraph,partition::Vector)
+end
+
 
 #Simple 2 level partition from a vector of integers
 function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
-    hyperpartition = HyperPartition()
+    partition = HyperPartition()
 
     #convert membership vector to vector of vectors
-    hypernode_partitions = getpartitions(hypergraph,node_membership_vector)  #Vector of NodePartition
+    hypernode_partitions = getpartitionlist(hypergraph,node_membership_vector)
 
-    
-    hyperpartition.hypergraph_paritions = getinducedsubgraph.(hypernode_partitions)
+    #get induced hypergraph from nodes
+    partition_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
+    cut_edges = getcuthyperedges(hypergraph,hypernode_partitions)
 
-    #We have to do this if edge cuts are not given
-    hyperpartition.shared_edges = find_edge_cuts(hypergraph,hypernode_partitions)
+    node_partitions = Vector{NodePartitions}()
+    for i = 1:length(hypernode_partitions)
+        push!(node_partitions,NodePartition(hypernode_partitions[i],partition_edges[i]))
+    end
+
+
+
+    partition.node_partitions = hypernode_partitions
+    partitions.
+
 
     return hyperpartition
 
 end
 
-function HyperPartition(clique_graph::CliqueExpandedGraph,conversion_map::ProjectionMap,membership_vector::Vector{Int64}))
+#NOTE: Could also be a Dual Clique Graph
+function HyperPartition(clique_graph::CliqueExpandedGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}))
+
+    hyperpartition = HyperPartition()
+    #figure out the hypergraph partition based on the graph partition
+
+    return hyperpartition
+end
+
+function HyperPartition(bipartite_graph::BipartiteGraph,conversion_map::ProjectionMap,membership_vector::Vector{Int64});selection = :shared_nodes)
 
     hyperpartition = HyperPartition()
 
-    #figure out the hypergraph partition based on the graph partition
+    return hyperpartition
+end
 
+function HyperPartition(dual_hyper_graph::AbstractHyperGraph,conversion_map::ProjectionMap,membership_vector::Vector{Int64}))
 
-
+    hyperpartition = HyperPartition()
 
     return hyperpartition
 end
 
-#get hypergraphs using induced subgraph
-
-#shared edges cannot be in any partitions
-
-#shared nodes cannot be in any partitions
-
-#shared nodes cannot be incident to a shared edge
-
-#Given a vector of node indices, create a model partition that contains shared edges
-function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
-
-    #We need to build a ModelPartition which contains hypergraph partitions, shared edges between partitions, and shared nodes (with their supporting edges)
-    node_partitions,shared_nodes = _identify_partitions(graph)
-
-    return_shared_entities = unique(_map_entities(shared_entities,projection_map))
-    #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
-    return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
-
-    #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
-    for return_part in return_partition_entities
-        filter!(e ->  !(e in return_shared_entities),return_part)
-    end
-
-    #return PartitionData(return_partitions,return_partition_entities,return_shared_entities)
-
-
-    return ModelPartition
-end
-
-
-#Given a vector of node indices, create a model partition that contains shared edges
-#Hyperedges are numbered in a graph
-function ModelPartition(graph::HyperGraph,conversion_map::ConversionMap)
-
-    #Input checking
-
-    shared_nodes = nothing
-
-    #create hypergraph object for each partition
-
-
-    #find shared edges
-
-
-    #create subpartitions
-
-end
+# #get hypergraphs using induced subgraph
+#
+# #shared edges cannot be in any partitions
+#
+# #shared nodes cannot be in any partitions
+#
+# #shared nodes cannot be incident to a shared edge
+#
+# #Given a vector of node indices, create a model partition that contains shared edges
+# function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
+#
+#     #We need to build a ModelPartition which contains hypergraph partitions, shared edges between partitions, and shared nodes (with their supporting edges)
+#     node_partitions,shared_nodes = _identify_partitions(graph)
+#
+#     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
+#     #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
+#     return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
+#
+#     #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
+#     for return_part in return_partition_entities
+#         filter!(e ->  !(e in return_shared_entities),return_part)
+#     end
+#
+#     #return PartitionData(return_partitions,return_partition_entities,return_shared_entities)
+#
+#
+#     return ModelPartition
+# end

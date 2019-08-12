@@ -71,11 +71,10 @@ include("nlp_extension.jl")
 
 include("macros.jl")
 
-# include("modelpartition")
+# include("hyperpartition")
 
 # include("aggregation.jl")          #An aggregated JuMP model
 
-#
 # include("solve.jl")              #Aggregate and solve with an MOI Solver
 #
 # include("solution.jl")         #SolutionGraph
