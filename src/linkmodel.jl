@@ -164,14 +164,14 @@ struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <
     node_indices::Vector{Int64}
 end
 LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
-
 function LinkConstraint(con::JuMP.ScalarConstraint,graph::AbstractModelGraph)
+
     node_indices = sort(unique([getindex(graph,getnode(var)) for var in keys(con.func.terms)]))
 
-    #println(node_indices)
     if isempty(node_indices)
         node_indices = Vector{Int64}()
     end
+
 
     return LinkConstraint(con.func,con.set,graph,node_indices)
 end
@@ -196,8 +196,10 @@ function JuMP.add_constraint(m::LinkModel, con::JuMP.ScalarConstraint, name::Str
     m.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
 
+    if !(isempty(link_con.node_indices))
     #Add LinkingEdges to the Graph
-    addlinkedges!(graph,cref)
+        addlinkedges!(graph,cref)
+    end
 
     return cref
 end
