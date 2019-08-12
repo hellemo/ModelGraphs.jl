@@ -167,6 +167,9 @@ LinkConstraint(ref::GraphConstraintRef) = JuMP.owner_model(ref).linkconstraints[
 
 function LinkConstraint(con::JuMP.ScalarConstraint,graph::AbstractModelGraph)
     node_indices = sort(unique([getindex(graph,getnode(var)) for var in keys(con.func.terms)]))
+
+    println(node_indices)
+
     return LinkConstraint(con.func,con.set,graph,node_indices)
 end
 
