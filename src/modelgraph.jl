@@ -18,6 +18,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     #Map from hypernodes and hyperedges to model nodes and link edges
     modelnodes::Dict{HyperNode,ModelNode}
     linkedges::Dict{HyperEdge,LinkEdge}
+    subgraphs::Vector{AbstractModelGraph}
 
     #Link variables
     masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
@@ -46,10 +47,11 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Constructor
     function ModelGraph()
-        model = new(HyperGraph(),
+        modelgraph = new(HyperGraph(),
                     JuMP.Model(),
                     Dict{HyperNode,ModelNode}(),
                     Dict{HyperEdge,LinkEdge}(),
+                    Vector{AbstractModelGraph}(),
                     Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
                     Dict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
@@ -64,7 +66,10 @@ mutable struct ModelGraph <: AbstractModelGraph
                     Dict{Symbol,Any}(),
                     nothing
                     )
-        return model
+
+        modelgraph.mastermodel.ext[:modelgraph] = modelgraph
+
+        return modelgraph
     end
 end
 
@@ -72,12 +77,15 @@ end
 # HyperGraph Interface
 ########################################################
 gethypergraph(modelgraph::ModelGraph) = modelgraph.hypergraph
-function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
+function NHG.add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
     hypergraph = gethypergraph(graph)
     sub_hypergraph = gethypergraph(subgraph)
-    add_subgraph!(hypergraph,subgraph)
+    add_subgraph!(hypergraph,sub_hypergraph)
+    push!(graph.subgraphs,subgraph)
     return nothing
 end
+
+NHG.subgraphs(modelgraph) = modelgraph.subgraphs
 
 getmodelnode(graph::ModelGraph,hypernode::HyperNode) = graph.modelnodes[hypernode]
 NHG.getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
@@ -119,8 +127,9 @@ end
 ########################################################
 # Model Management
 ########################################################
-
+is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
 has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
+has_NLobjective(graph::AbstractModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
 getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
 getnumlinkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
 getnumNLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
@@ -128,12 +137,13 @@ getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph
 
 getmastermodel(graph) = graph.mastermodel
 
-getlinkvariables(m::ModelGraph) = collect(values(graph.link_variables))
-getlinkconstraints(graph::ModelGraph) = collect(values(model.linkconstraints))
+getlinkvariables(graph::ModelGraph) = collect(values(graph.link_variables))
+getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 
-function getalllinkconstraints(graph::AbstractModelGraph)
+#Go through subgraphs and get all linkconstraints
+function all_linkconstraints(graph::AbstractModelGraph)
     links = []
-    for subgraph in subgraphs(graph)
+    for subgraph in NHG.subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
     end
     append!(links,getlinkconstraints(graph))
@@ -141,14 +151,19 @@ function getalllinkconstraints(graph::AbstractModelGraph)
 end
 
 #JuMP Model Extenstion
-JuMP.set_objective_function(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, sense, convert(AffExpr,x))
-JuMP.set_objective_function(graph::AbstractModelGraph, sense::MOI.OptimizationSense,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(graph, sense, func)
+####################################
+# Objective
+###################################
+
+JuMP.objective_function(graph::AbstractModelGraph) = graph.objective_function
+JuMP.set_objective_function(graph::AbstractModelGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
+JuMP.set_objective_function(graph::AbstractModelGraph, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(graph, func)
 
 function JuMP.set_objective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     graph.objective_sense = sense
     graph.objective_function = func
 end
-JuMP.objective_value(graph::AbstractModelGraph) = getobjectivevalue(graph.linkmodel)
+#JuMP.objective_value(graph::AbstractModelGraph) = getobjectivevalue(graph.linkmodel)
 
 JuMP.object_dictionary(m::ModelGraph) = m.obj_dict
 JuMP.objective_sense(m::ModelGraph) = m.objective_sense
@@ -202,14 +217,15 @@ MOI.is_valid(graph::ModelGraph, vref::LinkVariableRef) = vref.idx in keys(graph.
 
 #Link master variable to model node
 function link_variables!(lvref::LinkVariableRef,vref::JuMP.VariableRef)
-    graph = lvref.modelgraph
-    if !(vref in graph.linkvariablemap[lvref])
-        push!(graph.linkvariablemap[lvref],vref)
+    graph = lvref.graph
+    if !(vref in graph.linkvariable_map[lvref])
+        push!(graph.linkvariable_map[lvref],vref)
     end
     node = NHG.getnode(vref)
     node.linkvariablemap[vref] = lvref
     return nothing
 end
+link_variables!(vref::JuMP.VariableRef,lvref::LinkVariableRef) = link_variables!(lvref,vref)
 
 ######################################################
 # Master Constraints
@@ -322,17 +338,6 @@ end
 MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(graph.linkconstraints)
 
 
-####################################
-# Objective
-###################################
-function JuMP.set_objective(graph::ModelGraph, sense::MOI.OptimizationSense,f::JuMP.AbstractJuMPScalar)
-    graph.objective_sense = sense
-    graph.objective_function = f
-end
-function JuMP.objective_function(m::ModelGraph, T::Type)
-    graph.objective_function isa T || error("The objective function is not of type $T")
-    return graph.objective_function
-end
 
 
 #################################

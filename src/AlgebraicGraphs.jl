@@ -30,18 +30,18 @@ ModelNode,LinkEdge,
 #LinkVariable and LinkConstraint
 LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
 
-#ModelPartition
-ModelPartition,
+#HyperPartition
+HyperPartition,
 
 #Solvers/Optimizers
-AbstractGraphOptimizer,BendersOptimizer,DualDecompositionOptimizer,
+AbstractGraphOptimizer,BendersOptimizer,DDOptimizer, ADMMOptimizer,
 
 #Graph Functions
 add_node!,getnode,getnodes,getlinkedges,getnumnodes,gethypergraph,
 
 #Model functions
-set_model,set_optimizer,reset_model,is_nodevariable,getmodel,has_model,
-
+set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,
+link_variables!,
 #Aggregation
 aggregate,aggregate!,
 
@@ -52,7 +52,8 @@ optimize!,bendersolve,dual_decomposition_solve,
 nodevalue,nodedual,
 
 #macros
-@linkconstraint,@linkvariable,@NLlinkconstraint,@graphobjective
+@linkconstraint,@linkvariable,@NLlinkconstraint,@graphobjective,@NLgraphobjective,
+@masterconstraint,@NLmasterconstraint,@NLnodeconstraint
 
 #Abstract Types
 abstract type AbstractModelGraph <: JuMP.AbstractModel end
@@ -74,7 +75,7 @@ include("macros.jl")
 
 # include("hyperpartition")
 
-# include("aggregation.jl")          #An aggregated JuMP model
+include("aggregation.jl")          #An aggregated JuMP model
 
 # include("solve.jl")              #Aggregate and solve with an MOI Solver
 #

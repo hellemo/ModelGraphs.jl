@@ -5,10 +5,6 @@ function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory,kwarg
     aggregate_model,reference_map = aggregate(graph)
     println("Aggregation Complete")
 
-    #Reset the scaled objective
-    #TODO Get rid of this with an actual graph objective
-    #JuMP.set_objective_function(m_jump,scale*JuMP.objective_function(m_jump))
-
     JuMP.optimize!(aggregate_model,optimizer;kwargs...)
     status = JuMP.termination_status(aggregate_model)
 
@@ -20,23 +16,18 @@ function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory,kwarg
     return status
 end
 
-function JuMP.optimize!(graph::ModelGraph,optimizer::AbstractGraphOptimizer,kwargs...)
-    optimizer_model = optimizer.create(graph)
+function JuMP.optimize!(graph::ModelGraph,optimizer::AbstractModelGraphOptimizer,kwargs...)
+    optimizer_model = optimizer.initialize_model(graph)
     status = optimize!(optimizer_model)
-    _copysolution!(optimizer,graph)
+    _copysolution!(optimizer_model,graph)
     return status
 end
-
-# #TODO Remove scale argument.  Allow direct interface with the graph objective function
-# function JuMP.optimize!(graph::AbstractModelGraph,optimizer::JuMP.OptimizerFactory;scale = 1.0,kwargs...)
-#     status = jump_solve(graph,optimizer,scale = scale,kwargs...)
-#     return status
-# end
 
 # #TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
 function _copysolution!(agg_model::JuMP.Model,model_graph::ModelGraph)
     for node in getnodes(agg_model)
         idx = getindex(jump_graph,node)
+
         model_node = getnode(model_graph,idx)
         #NOTE: This SHOULD work as long as Variable and Constraint Index always align
         for (jnodevar,modelvar) in node.variablemap

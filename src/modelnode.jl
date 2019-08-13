@@ -55,6 +55,7 @@ end
 getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
+getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
 nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NHG.getnode(con).constraint_dual_values[con.index]
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NHG.getnode(con).nl_constraint_dual_values[con.index]
@@ -76,11 +77,18 @@ is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
 Check whether a JuMP variable belongs to a ModelNode
 """
 is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
+is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:modelnode])
 
 function is_linked_variable(var::JuMP.AbstractVariableRef)
-    node = getnode(var)
-    return var in keys(node.linkvariablemap)
+    m = owner_model(var)
+    if haskey(m.ext,:modelgraph)
+        return false
+    else
+        return var in keys(getnode(var).linkvariablemap)
+    end
 end
+#is_linked_variable(var::JuMP.AbstractVariableRef) = var in keys(getnode(var).linkvariablemap)
+
 
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
 

@@ -1,33 +1,3 @@
-# #Case 0
-# hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
-# membership_vector = KaHyPar.partition(hypergraph)
-# model_partition = ModelPartition(hypergraph,membership_vector)  #create hypergraph partitions, find shared hyperedges
-#
-# #Case 1
-# hypergraph = gethypergraph(model_graph)  #option to add node for master
-# clique_graph, projection_map = clique_expansion(hyper_graph)  #conversion map maps nodes and edges back to hypergraph
-# membership_vector = Metis.partition(clique_graph)  #e.g. [1,2,1,1,3,2,2,2,3,4,4,4]
-# hyper_partition = HyperPartition(clique_graph,projection_map,membership_vector)
-# new_graph, agg_map = aggregate(modelgraph,hyper_partition)
-#
-# #Case 2
-# hypergraph = gethypergraph(model_graph)
-# dual_graph, projection_map = dual_hyper_graph(hypergraph)
-# membership_vector = KaHyPar.partition(dual_graph,4)
-# model_partition = ModelPartition(dual_hyper_graph,projection_map,membership_vector)
-#
-# #Case 3
-# hypergraph = gethypergraph(model_graph)
-# bipartite_graph, projection_map = star_expansion(hypergraph)
-# membership_vector = Metis.partition(bipartite_graph,4)
-# model_partition = ModelPartition(bipartite_graph,projection_map,membership_vector;selection = :shared_nodes)
-#
-# #Case 4
-# hypergraph = gethypergraph(model_graph)
-# dual_clique_graph, projection_map = dual_clique_expansion(hypergraph)
-# membership_vector = Metis.partition(dual_clique_graph,4)
-# model_partition = ModelPartition(dual_clique_graph,projection_map,membership_vector)
-
 struct NodePartition
     nodes::Vector{HyperNode}
     edges::Vector{HyperEdge}
@@ -108,9 +78,6 @@ function HyperPartition(clique_graph::CliqueExpandedGraph,projection_map::Projec
 
     #figure out the hypergraph partition based on the graph partition
 
-
-
-
     return hyperpartition
 end
 
@@ -128,6 +95,82 @@ function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::Pro
     return hyperpartition
 end
 
+
+#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
+function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+    println("Building Aggregated Model Graph")
+
+    new_model_graph = ModelGraph()
+
+    #Get model subgraphs.  These will contain model nodes and LinkEdges.
+    subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)
+    modelgraphs = subgraphs_to_modelgraphs(subgraphs_to_aggregate)  #bottom level modelgraphs
+    #variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
+
+    reference_map = AggregationMap(aggregate_model)
+    #Aggregate subgraphs and create bottom level nodes
+    for subgraph in subgraphs
+        aggregate_model,agg_ref_map = aggregate(subgraph)
+        merge!(reference_map,agg_ref_map)   #Update VariableMap
+        aggregate_node = add_node!(new_model_graph)
+        setmodel(aggregate_node,aggregate_model)
+    end
+
+    #Go up through hierarchy creating nested subgraphs
+    #TODO: Figure out how to create the nested structure
+    for layer in hyperpartition.partition_tree
+        shared_nodes = layer.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
+        shared_edges = layer.sharededges
+
+        #CREATE NEW MASTER
+        create_master(shared_nodes)
+
+        for edge in shared_edges
+            for linkconstraint in shared_edge.linkconstraints
+                copy_constraint!(new_model_graph,linkconstraint,variable_map)
+            end
+        end
+
+    end
+
+
+    #NEW LINK VARIABLES AND MASTER
+
+    return new_model_graph
+
+end
+
+
+
+# #Case 0
+# hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
+# membership_vector = KaHyPar.partition(hypergraph)
+# model_partition = ModelPartition(hypergraph,membership_vector)  #create hypergraph partitions, find shared hyperedges
+#
+# #Case 1
+# hypergraph = gethypergraph(model_graph)  #option to add node for master
+# clique_graph, projection_map = clique_expansion(hyper_graph)  #conversion map maps nodes and edges back to hypergraph
+# membership_vector = Metis.partition(clique_graph)  #e.g. [1,2,1,1,3,2,2,2,3,4,4,4]
+# hyper_partition = HyperPartition(clique_graph,projection_map,membership_vector)
+# new_graph, agg_map = aggregate(modelgraph,hyper_partition)
+#
+# #Case 2
+# hypergraph = gethypergraph(model_graph)
+# dual_graph, projection_map = dual_hyper_graph(hypergraph)
+# membership_vector = KaHyPar.partition(dual_graph,4)
+# model_partition = ModelPartition(dual_hyper_graph,projection_map,membership_vector)
+#
+# #Case 3
+# hypergraph = gethypergraph(model_graph)
+# bipartite_graph, projection_map = star_expansion(hypergraph)
+# membership_vector = Metis.partition(bipartite_graph,4)
+# model_partition = ModelPartition(bipartite_graph,projection_map,membership_vector;selection = :shared_nodes)
+#
+# #Case 4
+# hypergraph = gethypergraph(model_graph)
+# dual_clique_graph, projection_map = dual_clique_expansion(hypergraph)
+# membership_vector = Metis.partition(dual_clique_graph,4)
+# model_partition = ModelPartition(dual_clique_graph,projection_map,membership_vector)
 # #get hypergraphs using induced subgraph
 #
 # #shared edges cannot be in any partitions

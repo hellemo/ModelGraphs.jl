@@ -10,7 +10,7 @@ end
 macro masterconstraint(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@constraint($graph.mastermodel,($(args...)))    #this will call add_constraint(graph::ModelGraph)
+        JuMP.@constraint($graph,($(args...)))    #this will call add_constraint(graph::ModelGraph)
     end
     return esc(code)
 end
@@ -18,7 +18,7 @@ end
 macro NLmasterconstraint(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@NLconstraint($graph.mastermodel,($(args...)))  #link model extends @constraint macro
+        JuMP.@NLconstraint($(graph.mastermodel),($(args...)))  #link model extends @constraint macro
     end
     return esc(code)
 end
