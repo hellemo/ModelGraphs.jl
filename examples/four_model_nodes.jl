@@ -53,14 +53,8 @@ setmodel(n4,m4)
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
 
-# #Get all of the link constraints in a graph
-# links = Plasmo.getlinkconstraints(graph)
-# for link in links
-#     println(link)
-# end
+optimize!(graph)
 
-# solve(graph)
-# #
 # println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 # println("n1[:y]= ",JuMP.getvalue(n1[:y]))
 # println("n4[:x]= ",JuMP.getvalue(n4[:x]))

@@ -139,7 +139,7 @@ function aggregate(modelgraph::ModelGraph)
         # _splice_nonlinear_variables!(graph_obj,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
         # JuMP.set_NL_objective(aggregate_model,JuMP.objective_sense(modelgraph,graph_obj))
     else
-        set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)          #set to the sum of the node objectives
+        _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)          #set to the sum of the node objectives
     end
 
     #ADD LINK CONSTRAINTS
@@ -207,13 +207,6 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
         end
     end
 
-    #TODO Get nonlinear object data to work
-    #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
-    for (name, value) in JuMP.object_dictionary(node_model)
-        #agg_node.obj_dict[name] = reference_map[value]
-        agg_node.obj_dict[name] = getindex.(reference_map, value)
-    end
-
     #COPY NONLINEAR CONSTRAINTS
     nlp_initialized = false
     if node_model.nlp_data !== nothing
@@ -225,11 +218,16 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
             _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
             new_nl_constraint = JuMP.add_NL_constraint(aggregate_model,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            #push!(jump_node.nl_constraints,constraint_ref)
             agg_node.nl_constraintmap[new_nl_constraint] = constraint_ref
-            node_reference.nl_constraintmap[new_nl_constraint] = constraint_ref
             reference_map[constraint_ref] = new_nl_constraint
         end
+    end
+
+    #TODO Get nonlinear object data to work
+    #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
+    for (name, value) in JuMP.object_dictionary(node_model)
+        #agg_node.obj_dict[name] = reference_map[value]
+        agg_node.obj_dict[name] = getindex.(reference_map, value)
     end
 
     #OBJECTIVE FUNCTION (store expression on aggregated_nodes)

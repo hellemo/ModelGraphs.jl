@@ -33,22 +33,24 @@ LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
 HyperPartition,
 
 #Solvers/Optimizers
-AbstractGraphOptimizer,BendersOptimizer,DDOptimizer, ADMMOptimizer,
+AbstractGraphOptimizer,#BendersOptimizer,DDOptimizer, ADMMOptimizer,
 
 #Graph Functions
 add_node!,getnode,getnodes,getlinkedges,getnumnodes,gethypergraph,
+getlinkconstraints,getlinkvariables,
 
 #Model functions
 set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,
 link_variables!,
+
 #Aggregation
 aggregate,aggregate!,
 
 #solve handles
-optimize!,bendersolve,dual_decomposition_solve,
+optimize!,#bendersolve,dual_decomposition_solve,
 
 #Solution management
-nodevalue,nodedual,
+nodevalue,nodedual,linkdual,
 
 #macros
 @linkconstraint, @NLlinkconstraint, @linkvariable,

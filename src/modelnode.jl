@@ -68,7 +68,7 @@ Set the model on a node.  This will delete any link-constraints the node is curr
 function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
-    m.ext[:modelode] = node
+    m.ext[:modelnode] = node
 end
 
 """
@@ -174,7 +174,7 @@ NHG.getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
-NHG.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:node]
+NHG.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
 
 ###############################################
 # Printing
