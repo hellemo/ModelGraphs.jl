@@ -33,10 +33,10 @@ is_aggregate_model(m::JuMP.Model) = haskey(m.ext,:AggregationInfo) ? true : fals
 assert_is_aggregate_model(m::JuMP.Model) = @assert is_aggregate_model(m)
 
 getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:AggregationInfo] : error("Model is not an aggregate model")
-getlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkconstraints
-getlinkvariables(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkvariables
-getNLlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
-NHG.getnodes(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).nodes
+getlinkconstraints(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkconstraints
+getlinkvariables(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkvariables
+getNLlinkconstraints(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
+NHG.getnodes(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).nodes
 
 #Create a new new node on an AggregateModel
 function add_aggregated_node!(m::JuMP.Model)
@@ -72,6 +72,10 @@ function Base.getindex(reference_map::AggregationMap, vref::JuMP.VariableRef)  #
     return reference_map.varmap[vref]
 end
 
+function Base.getindex(reference_map::AggregationMap, lvref::LinkVariableRef)  #reference_map[node_var] --> aggregated_copy_var
+    return reference_map.varmap[lvref.vref]
+end
+
 function Base.getindex(reference_map::AggregationMap, cref::JuMP.ConstraintRef)
     return reference_map.conmap[cref]
 end
@@ -84,6 +88,10 @@ end
 function Base.setindex!(reference_map::AggregationMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
     reference_map.varmap[node_vref] = graph_vref
 end
+
+# function Base.setindex!(reference_map::AggregationMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
+#     reference_map.varmap[node_vref] = graph_vref
+# end
 
 AggregationMap(m::JuMP.Model) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
 
@@ -100,16 +108,16 @@ function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
-    master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph))
-    merge!(reference_map,master_reference_map)
+    master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph),reference_map)
+    #merge!(reference_map,master_reference_map)
 
     #COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for modelnode in getnodes(modelgraph)               #for each node in the model graph
         node_model = getmodel(modelnode)
         #Need to pass master reference so we use those variables instead of creating new ones
-        node_reference_map = _add_to_aggregate_model!(aggregate_model,node_model)  #updates jump_graph_model,the jump_node, and the ref_map
-        merge!(reference_map,node_reference_map)   #Update the reference_map
+        _add_to_aggregate_model!(aggregate_model,node_model,reference_map)  #updates jump_graph_model,the jump_node, and the ref_map
+        #merge!(reference_map,node_reference_map)   #Update the reference_map
 
         #Check for nonlinear objective functions unless we know we already have one
 
@@ -155,7 +163,7 @@ end
 
 
 #previously _buildnodemodel!
-function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model)          #jump_node
+function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)          #jump_node
 
     agg_node = add_aggregated_node!(aggregate_model)
 
@@ -171,7 +179,7 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
         if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
-            reference_map[var] = getlinkvariable(var)                    #get the master variable
+            reference_map[var] = aggregation_map[getlinkvariable(var)]                    #get the master variable
         else
             new_x = JuMP.@variable(aggregate_model)                      #create an anonymous variable
             reference_map[var] = new_x                                   #map variable reference to new reference
@@ -202,8 +210,8 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #TODO Get nonlinear object data to work
     #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
     for (name, value) in JuMP.object_dictionary(node_model)
-        agg_node.obj_dict[name] = reference_map[value]
-        #jump_node.obj_dict[name] = getindex.(reference_map, value)
+        #agg_node.obj_dict[name] = reference_map[value]
+        agg_node.obj_dict[name] = getindex.(reference_map, value)
     end
 
     #COPY NONLINEAR CONSTRAINTS
@@ -238,6 +246,9 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
         new_obj = _copy_nl_objective(d,variablemap)
         agg_node.objective = new_obj
     end
+
+    merge!(aggregation_map,reference_map)
+
     return reference_map
 end
 

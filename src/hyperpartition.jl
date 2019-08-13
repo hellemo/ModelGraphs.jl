@@ -105,7 +105,6 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
     #Get model subgraphs.  These will contain model nodes and LinkEdges.
     subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)
     modelgraphs = subgraphs_to_modelgraphs(subgraphs_to_aggregate)  #bottom level modelgraphs
-    #variable_map = Dict{JuMP.VariableRef,JuMP.VariableRef}()
 
     reference_map = AggregationMap(aggregate_model)
     #Aggregate subgraphs and create bottom level nodes

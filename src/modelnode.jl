@@ -56,9 +56,9 @@ getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
-nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var.index]  #TODO #Get values of JuMP expressions
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NHG.getnode(con).constraint_dual_values[con.index]
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NHG.getnode(con).nl_constraint_dual_values[con.index]
+nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NHG.getnode(con).constraint_dual_values[con]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NHG.getnode(con).nl_constraint_dual_values[con]
 
 """
 set_model(node::ModelNode,m::AbstractModel)

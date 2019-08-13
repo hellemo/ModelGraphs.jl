@@ -359,3 +359,13 @@ function string(graph::ModelGraph)
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
+
+
+####################################
+# Analysis Functions
+####################################
+function getblockmatrix(graph::ModelGraph)
+end
+
+function SparseArrays.sparse(graph::ModelGraph)
+end

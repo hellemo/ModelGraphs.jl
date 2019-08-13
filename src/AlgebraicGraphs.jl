@@ -3,7 +3,6 @@ module AlgebraicGraphs
 using NestedHyperGraphs
 
 using Requires
-using Distributed
 using LinearAlgebra
 using DataStructures
 using SparseArrays
@@ -52,8 +51,14 @@ optimize!,bendersolve,dual_decomposition_solve,
 nodevalue,nodedual,
 
 #macros
-@linkconstraint,@linkvariable,@NLlinkconstraint,@graphobjective,@NLgraphobjective,
-@masterconstraint,@NLmasterconstraint,@NLnodeconstraint
+@linkconstraint, @NLlinkconstraint, @linkvariable,
+
+@NLnodeconstraint,
+
+@masterconstraint,@NLmasterconstraint,
+
+@graphobjective, @NLgraphobjective
+
 
 #Abstract Types
 abstract type AbstractModelGraph <: JuMP.AbstractModel end
@@ -73,26 +78,14 @@ include("nlp_extension.jl")
 
 include("macros.jl")
 
-# include("hyperpartition")
-
 include("aggregation.jl")          #An aggregated JuMP model
 
-# include("solve.jl")              #Aggregate and solve with an MOI Solver
-#
-# include("solution.jl")         #SolutionGraph
+include("solve.jl")              #Aggregate and solve with an MOI Solver
 
+# include("hyperpartition")
 
-# #Decomposition-based solvers
-# include("decomposition_solvers/utils.jl")
-#
-# include("decomposition_solvers/solution.jl")
-#
-# include("decomposition_solvers/lagrange/dual_decomposition.jl")
-# include("decomposition_solvers/benders/dual_decomposition.jl")
-
-
-# function __init__()
-#     #@require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
-# end
+function __init__()
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plots.jl")
+end
 
 end
