@@ -1,6 +1,8 @@
 using JuMP
 using AlgebraicGraphs
 using Ipopt
+using KaHyPar
+using SparseArrays
 
 graph = ModelGraph()
 
@@ -23,38 +25,37 @@ m1 = Model()
 
 #Set a model on node 2
 m2 = Model()
-vals = collect(1:5)
-grid = 1:3
 @variable(m2,x >= 1)
 @variable(m2,0 <= y <= 5)
-@variable(m2,z[1:5] >= 0)
-@variable(m2,a[vals,grid] >=0 )
 @NLconstraint(m2,exp(x)+y <= 7)
 @objective(m2,Min,x)
 
 m3 = Model()
-@variable(m3,x[1:5])
+@variable(m3,x >= 0)
 
 m4 = Model()
-@variable(m4,x <= 1)
+@variable(m4,0 <= x <= 1)
 
 
 #Set models on nodes and edges
-setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
-setmodel(n2,m2)
-setmodel(n3,m3)
-setmodel(n4,m4)
+set_model(n1,m1)     #set m1 to node 1.  Updates reference on m1
+set_model(n2,m2)
+set_model(n3,m3)
+set_model(n4,m4)
+
+ipopt = with_optimizer(Ipopt.Optimizer)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n4[:x] == n1[:x])
-@linkconstraint(graph,[t = 1:5],n4[:x] == n2[:z][t])
-@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
-@linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
-@linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
+@linkconstraint(graph,n1[:y] + n2[:y] + n3[:x] <= 2 )
 
+hypergraph = gethypergraph(graph)
+A = sparse(hypergraph)
+partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
+partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
-optimize!(graph)
+optimize!(graph,ipopt)
 
-# println("n1[:x]= ",JuMP.getvalue(n1[:x]))
-# println("n1[:y]= ",JuMP.getvalue(n1[:y]))
-# println("n4[:x]= ",JuMP.getvalue(n4[:x]))
+println("n1[:x]= ",nodevalue(n1[:x]))
+println("n1[:y]= ",nodevalue(n1[:y]))
+println("n4[:x]= ",nodevalue(n4[:x]))

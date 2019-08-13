@@ -22,28 +22,38 @@ HyperPartition() = HyperPartition(Vector{NodePartition}(),Vector{PartitionParent
 function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
     unique_parts = unique(membership_vector)  #get unique membership entries
     nparts = length(unique_parts)             #number of partitions
-    partitions = [Vector{Int64}() for _ = 1:nparts]
+    partitions = [Vector{HyperNode}() for _ = 1:nparts]
     for (vertex,part) in enumerate(membership_vector)
         push!(partitions[part],getnode(hypergraph,vertex))
     end
     return partitions
 end
 
-#Naive implementation.  Need to use incidence matrix to do this correctly, but first I need to find better way to deal with subgraph hyperedges
-function getinducedhyperedges(hypergraph::HyperGraph,nodes::Vector{HyperNode})
-    hyperedges = []
-    for node in nodes
-        for hyperedge in hypergraph.node_map[node]  #this is only edges in the given hypergraph
-            if all(hyperedge.vertices in nodes)
-                push!(hyperedges,hyperedge)
+#Naive implementation to get induced and shared hyperedges given a set of node partitions
+function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
+    nparts = length(partitions)
+    induced_edges = [Vector{HyperEdge}() for _ = 1:nparts]
+    shared_edges = Vector{HyperEdge}()  #between partitions
+
+    checked_edges = Vector{HyperEdge}
+
+    for partition in partitions
+        for hypernode in partition
+            for hyperedge in getedges(hypernode)
+                    if !(edge in checked_edges)  #If it's a new link constraint
+                        edge_hypernodes = gethypernodes(edge)
+                        if all(node -> node in edge_hypernodes,partition)
+                            push!(induced_edges,hyperedge)
+                        else
+                            push!(shared_edges,hyperedge)
+                        end
+                        push!(checked_edges,hyperedge)
+                    end
+                end
             end
         end
     end
-    return hyperedges
-end
-
-function getcuthyperedges(hypergraph::HyperGraph,partition::Vector{Vector{HyperNode}})
-
+    return induced_edges,shared_edges
 end
 
 #Simple 2 level partition from a vector of integers
@@ -52,21 +62,14 @@ function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::V
 
     #convert membership vector to vector of vectors
     hypernode_partitions = getpartitionlist(hypergraph,node_membership_vector)
-
-    #get induced hypergraph from nodes
-    induced_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
-    cut_edges = getcuthyperedges(hypergraph,hypernode_partitions)
-
-    partition_parent = PartitionParent(cut_edges)
-
+    induced_edges,shared_edges = identifyhyperedges(hypergraph,hypernode_partitions)
+    partition_parent = PartitionParent(shared_edges)
     node_partitions = Vector{NodePartitions}()
     for i = 1:length(hypernode_partitions)
         push!(node_partitions,NodePartition(hypernode_partitions[i],induced_edges[i],partition_parent))
     end
-
     hyperpartition.node_partitions = node_partitions
     hyperpartition.partition_tree = [partition_parent]
-
 
     return hyperpartition
 end
@@ -103,18 +106,21 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
     new_model_graph = ModelGraph()
 
     #Get model subgraphs.  These will contain model nodes and LinkEdges.
-    subgraphs_to_aggregate =  getsubgraphs(hyperpartitions.hypergraph_partitions)
-    modelgraphs = subgraphs_to_modelgraphs(subgraphs_to_aggregate)  #bottom level modelgraphs
+    partitions_to_aggregate =  hyperpartition.node_partitions
+    modelgraphs_to_aggregate = ModelGraph.(partitions_to_aggregate)
 
-    reference_map = AggregationMap(aggregate_model)
+    reference_map = AggregationMap()
+
     #Aggregate subgraphs and create bottom level nodes
-    for subgraph in subgraphs
+    for subgraph in modelgraphs_to_aggregate
         aggregate_model,agg_ref_map = aggregate(subgraph)
-        merge!(reference_map,agg_ref_map)   #Update VariableMap
+        merge!(reference_map,agg_ref_map)
+
         aggregate_node = add_node!(new_model_graph)
         setmodel(aggregate_node,aggregate_model)
     end
 
+#parent =
     #Go up through hierarchy creating nested subgraphs
     #TODO: Figure out how to create the nested structure
     for layer in hyperpartition.partition_tree
@@ -140,7 +146,25 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
 end
 
 
-
+# #Naive implementation.  Need to use incidence matrix to do this correctly, but first I need to find better way to deal with subgraph hyperedges
+#get induced hypergraph from nodes
+# induced_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
+# cut_edges = getcuthyperedges(hypergraph,hypernode_partitions)
+# function getinducedhyperedges(hypergraph::HyperGraph,nodes::Vector{HyperNode})
+#     hyperedges = []
+#     for node in nodes
+#         for hyperedge in hypergraph.node_map[node]  #this is only edges in the given hypergraph
+#             if all(hyperedge.vertices in nodes)
+#                 push!(hyperedges,hyperedge)
+#             end
+#         end
+#     end
+#     return hyperedges
+# end
+#
+# function getcuthyperedges(hypergraph::HyperGraph,partition::Vector{Vector{HyperNode}})
+#
+# end
 # #Case 0
 # hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
 # membership_vector = KaHyPar.partition(hypergraph)
