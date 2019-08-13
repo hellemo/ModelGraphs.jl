@@ -10,6 +10,7 @@ using SparseArrays
 
 using MathOptInterface
 const MOI = MathOptInterface
+const NHG = NestedHyperGraphs
 
 using JuMP
 macro exportall(pkg)

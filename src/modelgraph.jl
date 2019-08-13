@@ -46,7 +46,7 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Constructor
     function ModelGraph()
-        model = new(NestedHyperGraph(),
+        model = new(HyperGraph(),
                     JuMP.Model(),
                     Dict{HyperNode,ModelNode}(),
                     Dict{HyperEdge,LinkEdge}(),
@@ -80,14 +80,14 @@ function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
 end
 
 getmodelnode(graph::ModelGraph,hypernode::HyperNode) = graph.modelnodes[hypernode]
-NestedHyperGraphs.getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
+NHG.getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
 
-function NestedHyperGraphs.getnode(graph::ModelGraph,index::Int64)
-    hypernode = NestedHyperGraphs.getnode(gethypergraph(graph),index)
+function NHG.getnode(graph::ModelGraph,index::Int64)
+    hypernode = NHG.getnode(gethypergraph(graph),index)
     return getmodelnode(graph,hypernode)
 end
-function NestedHyperGraphs.getnodes(graph::ModelGraph)
-    return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(NestedHyperGraphs.getnodes(graph.hypergraph))
+function NHG.getnodes(graph::ModelGraph)
+    return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(NHG.getnodes(graph.hypergraph))
 end
 
 function Base.getindex(graph::ModelGraph,node::ModelNode)
@@ -124,14 +124,14 @@ has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP
 getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
 getnumlinkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
 getnumNLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
-getnumnodes(graph::AbstractModelGraph) = length(NestedHyperGraphs.getnodes(gethypergraph(graph)))
+getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph)))
 
 getmastermodel(graph) = graph.mastermodel
 
 getlinkvariables(m::ModelGraph) = collect(values(graph.link_variables))
 getlinkconstraints(graph::ModelGraph) = collect(values(model.linkconstraints))
 
-function get_all_linkconstraints(graph::AbstractModelGraph)
+function getalllinkconstraints(graph::AbstractModelGraph)
     links = []
     for subgraph in subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
@@ -141,8 +141,13 @@ function get_all_linkconstraints(graph::AbstractModelGraph)
 end
 
 #JuMP Model Extenstion
-#TODO. Write more objective methods
 JuMP.set_objective_function(graph::AbstractModelGraph, sense::MOI.OptimizationSense, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, sense, convert(AffExpr,x))
+JuMP.set_objective_function(graph::AbstractModelGraph, sense::MOI.OptimizationSense,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(graph, sense, func)
+
+function JuMP.set_objective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+    graph.objective_sense = sense
+    graph.objective_function = func
+end
 JuMP.objective_value(graph::AbstractModelGraph) = getobjectivevalue(graph.linkmodel)
 
 JuMP.object_dictionary(m::ModelGraph) = m.obj_dict
@@ -201,7 +206,7 @@ function link_variables!(lvref::LinkVariableRef,vref::JuMP.VariableRef)
     if !(vref in graph.linkvariablemap[lvref])
         push!(graph.linkvariablemap[lvref],vref)
     end
-    node = NestedHyperGraphs.getnode(vref)
+    node = NHG.getnode(vref)
     node.linkvariablemap[vref] = lvref
     return nothing
 end
@@ -265,14 +270,14 @@ end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
 
-function NestedHyperGraphs.getnodes(con::LinkConstraint)
-    return [NestedHyperGraphs.getnode(var) for var in keys(con.func.terms)]   #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
+function NHG.getnodes(con::LinkConstraint)
+    return [NHG.getnode(var) for var in keys(con.func.terms)]   #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
 end
 #return getnodes(con.link_edge)
 #return getnodes(con.hyperedge)
 #return map(n -> getnode(con.graph,n),con.node_indices)
-NestedHyperGraphs.getnodes(cref::LinkConstraintRef) = NestedHyperGraphs.getnodes(cref.linkedge)
-getnumnodes(con::LinkConstraint) = length(NestedHyperGraphs.getnodes(con))
+NHG.getnodes(cref::LinkConstraintRef) = NHG.getnodes(cref.linkedge)
+getnumnodes(con::LinkConstraint) = length(NHG.getnodes(con))
 
 #Add a LinkConstraint to a ModelGraph and Update its LinkEdges
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
@@ -281,8 +286,8 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
 
     #Setup graph information
     hypergraph = gethypergraph(graph)
-    hypernodes = sort(unique([getindex(hypergraph,NestedHyperGraphs.getnode(var).hypernode) for var in keys(con.func.terms)]))
-    modelnodes = [NestedHyperGraphs.getnode(graph,index) for index in hypernodes]
+    hypernodes = sort(unique([getindex(hypergraph,NHG.getnode(var).hypernode) for var in keys(con.func.terms)]))
+    modelnodes = [NHG.getnode(graph,index) for index in hypernodes]
     linkedge = add_link_edge!(graph,modelnodes)
 
     cref = LinkConstraintRef(graph, graph.linkconstraint_index,linkedge)

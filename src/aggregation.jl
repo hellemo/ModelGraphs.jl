@@ -36,7 +36,7 @@ getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:Agg
 getlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkconstraints
 getlinkvariables(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).linkvariables
 getNLlinkconstraints(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
-NestedHyperGraphs.getnodes(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).nodes
+NHG.getnodes(m::JuMP.Model) = assert_aggregate_model(m) && getaggregationinfo(m).nodes
 
 #Create a new new node on an AggregateModel
 function add_aggregated_node!(m::JuMP.Model)
@@ -62,7 +62,7 @@ getaggnodeconstraints(node::AggregatedNode) = collect(keys(node.constraintmap))
     The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding original modelnode.
 """
 struct AggregationMap
-    aggregate_model::JuMP.Model   #An aggregate model
+    aggregate_model::JuMP.Model                             #An aggregate model
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}         #map variables in original modelgraph to aggregatemodel
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}     #map constraints in original modelgraph to aggregatemodel
 end
@@ -95,7 +95,7 @@ end
 # Aggregation Functions
 #############################################################################################
 #Aggregate modelgraph into AggregateModel
-function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
+function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
@@ -103,13 +103,13 @@ function aggregate(modelgraph::ModelGraph;add_node_objectives = true)
     master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph))
     merge!(reference_map,master_reference_map)
 
+
     #COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for modelnode in getnodes(modelgraph)               #for each node in the model graph
 
         #Need to pass master reference so we use those variables instead of creating new ones
         node_reference_map = _add_to_aggregate_model!(aggregate_model,model_node)  #updates jump_graph_model,the jump_node, and the ref_map
-
         merge!(reference_map,node_reference_map)   #Update the reference_map
 
         #Check for nonlinear objective functions unless we know we already have one
@@ -278,6 +278,7 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     end
 
     #OBJECTIVE FUNCTION
+    #NOTE: Use add_to_expression!
     if !(_has_nonlinear_obj(node_model))
         #AFFINE OR QUADTRATIC OBJECTIVE
         new_objective = _copy_objective(node_model,reference_map)

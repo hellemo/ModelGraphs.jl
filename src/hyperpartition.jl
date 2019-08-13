@@ -5,46 +5,48 @@
 #
 # #Case 1
 # hypergraph = gethypergraph(model_graph)  #option to add node for master
-# clique_graph, conversion_map = clique_expansion(hyper_graph)  #conversion map maps nodes and edges back to hypergraph
+# clique_graph, projection_map = clique_expansion(hyper_graph)  #conversion map maps nodes and edges back to hypergraph
 # membership_vector = Metis.partition(clique_graph)  #e.g. [1,2,1,1,3,2,2,2,3,4,4,4]
-# hyper_partition = HyperPartition(clique_graph,conversion_map,membership_vector)
+# hyper_partition = HyperPartition(clique_graph,projection_map,membership_vector)
 # new_graph, agg_map = aggregate(modelgraph,hyper_partition)
 #
 # #Case 2
 # hypergraph = gethypergraph(model_graph)
-# dual_graph, conversion_map = dual_hyper_graph(hypergraph)
+# dual_graph, projection_map = dual_hyper_graph(hypergraph)
 # membership_vector = KaHyPar.partition(dual_graph,4)
-# model_partition = ModelPartition(dual_hyper_graph,conversion_map,membership_vector)
+# model_partition = ModelPartition(dual_hyper_graph,projection_map,membership_vector)
 #
 # #Case 3
 # hypergraph = gethypergraph(model_graph)
-# bipartite_graph, conversion_map = star_expansion(hypergraph)
+# bipartite_graph, projection_map = star_expansion(hypergraph)
 # membership_vector = Metis.partition(bipartite_graph,4)
-# model_partition = ModelPartition(bipartite_graph,conversion_map,membership_vector;selection = :shared_nodes)
+# model_partition = ModelPartition(bipartite_graph,projection_map,membership_vector;selection = :shared_nodes)
 #
 # #Case 4
 # hypergraph = gethypergraph(model_graph)
-# dual_clique_graph, conversion_map = dual_clique_expansion(hypergraph)
+# dual_clique_graph, projection_map = dual_clique_expansion(hypergraph)
 # membership_vector = Metis.partition(dual_clique_graph,4)
-# model_partition = ModelPartition(dual_clique_graph,conversion_map,membership_vector)
+# model_partition = ModelPartition(dual_clique_graph,projection_map,membership_vector)
 
 struct NodePartition
     nodes::Vector{HyperNode}
     edges::Vector{HyperEdge}
-    parent::Union{Nothing,PartitionLayer}
+    parent::Union{Nothing,PartitionParent}
 end
 
 struct PartitionParent
-    sharednodes::Vector{HyperNode}
-    sharededges::Vector{HyperEdge}
+    sharednodes::Vector{HyperNode}          #think master node with link variables
+    sharededges::Vector{HyperEdge}          #link constraints
     parent::Union{Nothing,PartitionParent}
 end
+PartitionParent(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionParent(sharednodes,sharededges,nothing)
+PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNode}(),sharededges,nothing)
 
 mutable struct HyperPartition
     node_partitions::Vector{NodePartition}  #bottom level partitions
     partition_tree::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
 end
-HyperPartition() = HyperPartition(Vector{NodePartition}(),Vector{PartitionLayer}())
+HyperPartition() = HyperPartition(Vector{NodePartition}(),Vector{PartitionParent}())
 
 #Convert membership vector to lists of indices
 function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
@@ -58,62 +60,68 @@ function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
 end
 
 #Naive implementation.  Need to use incidence matrix to do this correctly, but first I need to find better way to deal with subgraph hyperedges
-#Make work with subgraphs
 function getinducedhyperedges(hypergraph::HyperGraph,nodes::Vector{HyperNode})
     hyperedges = []
     for node in nodes
-        for hyperedge in hypergraph.node_map[node]
+        for hyperedge in hypergraph.node_map[node]  #this is only edges in the given hypergraph
             if all(hyperedge.vertices in nodes)
                 push!(hyperedges,hyperedge)
+            end
+        end
+    end
+    return hyperedges
 end
 
-function getcuthyperedges(hypergraph::HyperGraph,partition::Vector)
-end
+function getcuthyperedges(hypergraph::HyperGraph,partition::Vector{Vector{HyperNode}})
 
+end
 
 #Simple 2 level partition from a vector of integers
 function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
-    partition = HyperPartition()
+    hyperpartition = HyperPartition()
 
     #convert membership vector to vector of vectors
     hypernode_partitions = getpartitionlist(hypergraph,node_membership_vector)
 
     #get induced hypergraph from nodes
-    partition_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
+    induced_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
     cut_edges = getcuthyperedges(hypergraph,hypernode_partitions)
+
+    partition_parent = PartitionParent(cut_edges)
 
     node_partitions = Vector{NodePartitions}()
     for i = 1:length(hypernode_partitions)
-        push!(node_partitions,NodePartition(hypernode_partitions[i],partition_edges[i]))
+        push!(node_partitions,NodePartition(hypernode_partitions[i],induced_edges[i],partition_parent))
     end
 
-
-
-    partition.node_partitions = hypernode_partitions
-    partitions.
+    hyperpartition.node_partitions = node_partitions
+    hyperpartition.partition_tree = [partition_parent]
 
 
     return hyperpartition
-
 end
 
 #NOTE: Could also be a Dual Clique Graph
 function HyperPartition(clique_graph::CliqueExpandedGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}))
 
     hyperpartition = HyperPartition()
+
     #figure out the hypergraph partition based on the graph partition
+
+
+
 
     return hyperpartition
 end
 
-function HyperPartition(bipartite_graph::BipartiteGraph,conversion_map::ProjectionMap,membership_vector::Vector{Int64});selection = :shared_nodes)
+function HyperPartition(bipartite_graph::BipartiteGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64});selection = :shared_nodes)
 
     hyperpartition = HyperPartition()
 
     return hyperpartition
 end
 
-function HyperPartition(dual_hyper_graph::AbstractHyperGraph,conversion_map::ProjectionMap,membership_vector::Vector{Int64}))
+function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}))
 
     hyperpartition = HyperPartition()
 

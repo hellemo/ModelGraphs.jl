@@ -10,7 +10,7 @@ LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{AbstractLinkConstrain
 function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode})#ref::LinkConstraintRef)
     #Add hyper edge
     hypernodes = gethypernode.(modelnodes)
-    hyperedge = NestedHyperGraphs.add_hyperedge!(gethypergraph(graph),hypernodes...)
+    hyperedge = NHG.add_hyperedge!(gethypergraph(graph),hypernodes...)
 
     #Map to LinkEdge
     #Either create new LinkEdge or look up existing one

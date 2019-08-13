@@ -26,6 +26,11 @@ end
 #Node Constraints
 #Wrap NLconstraint because NLconstraint extensions don't really work yet.  Easy to deprecate later.
 macro NLnodeconstraint(node,args...)
+    code = quote
+        @assert isa($node,ModelNode)  #Check the inputs are the correct types.  This needs to throw
+        JuMP.@NLconstraint($(getmodel(node)),($(args...)))  #link model extends @constraint macro
+    end
+    return esc(code)
 end
 
 
@@ -47,8 +52,18 @@ end
 
 
 #Graph Objectives
-macro graphobjective
+macro graphobjective(graph,args...)
+    code = quote
+        @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+        JuMP.@objective($graph,($(args...)))  #link model extends @constraint macro
+    end
+    return esc(code)
 end
 
-macro NLgraphobjective
+macro NLgraphobjective(graph,args...)
+    code = quote
+        @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+        JuMP.@NLobjective($graph,($(args...)))  #link model extends @constraint macro
+    end
+    return esc(code)
 end
