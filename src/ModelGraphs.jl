@@ -1,4 +1,4 @@
-module AlgebraicGraphs
+module ModelGraphs
 
 using NestedHyperGraphs
 

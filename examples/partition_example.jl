@@ -1,5 +1,5 @@
 using JuMP
-using AlgebraicGraphs  #ModelGraphs?
+using ModelGraphs
 using Ipopt
 
 using KaHyPar

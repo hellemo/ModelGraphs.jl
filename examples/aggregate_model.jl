@@ -1,5 +1,5 @@
 using JuMP
-using AlgebraicGraphs
+using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()

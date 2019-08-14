@@ -1,5 +1,5 @@
 using JuMP
-using AlgebraicGraphs
+using ModelGraphs
 using Ipopt
 
 function nl_model()

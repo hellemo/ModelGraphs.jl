@@ -1,4 +1,4 @@
-name = "AlgebraicGraphs"
+name = "ModelGraphs"
 uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"
 authors = ["Jordan Jalving <jhjalving@gmail.com>"]
 version = "0.1.0"
