@@ -73,6 +73,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     end
 end
 
+
 ########################################################
 # HyperGraph Interface
 ########################################################
