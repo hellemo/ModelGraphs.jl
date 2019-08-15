@@ -1,24 +1,24 @@
-
 using JuMP
-using AlgebraicGraphs
+using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()
 optimizer = with_optimizer(Ipopt.Optimizer)
+#setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
 n1 = add_node!(graph)
 n2 = add_node!(graph)
 
 m1 = JuMP.Model()
-JuMP.@variable(m1,0 <= x <= 2)
-JuMP.@variable(m1,0 <= y <= 3)
-JuMP.@constraint(m1,x+y <= 4)
-JuMP.@objective(m1,Min,x)
+@variable(m1,0 <= x <= 2)
+@variable(m1,0 <= y <= 3)
+@constraint(m1,x+y <= 4)
+@objective(m1,Min,x)
 
-m2 = JuMP.Model()
-JuMP.@variable(m2,x)
-JuMP.@NLconstraint(m2,ref,exp(x) >= 2)
+m2 = Model()
+@variable(m2,x)
+@NLconstraint(m2,exp(x) >= 2)
 
 
 #Set models on nodes and edges
@@ -34,8 +34,5 @@ for link in links
     println(link)
 end
 
-optimize!(graph,optimizer)
-
-# println("n1[:x]= ",JuMP.value(n1[:x]))
-# println("n2[:x]= ",JuMP.value(n2[:x]))
-# println("objective = ", objectivevalue(graph))
+jump_model,reference_map = create_jump_graph_model(graph)
+optimize!(jump_model,optimizer)
