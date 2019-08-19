@@ -57,6 +57,30 @@ partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
 optimize!(modelgraph,ipopt)
 
+
+
+hyperpartition = HyperPartition(hypergraph,partition1)
+new_modelgraph,ref_map = aggregate(modelgraph,hyperpartition)
+optimize!(new_modelgraph,ipopt)
+
+println()
+println("Original Graph Solution")
 println("n1[:x]= ",nodevalue(n1[:x]))
 println("n1[:y]= ",nodevalue(n1[:y]))
+
+println("n2[:x]= ",nodevalue(n2[:x]))
+println("n2[:y]= ",nodevalue(n2[:y]))
+
+println("n3[:x]= ",nodevalue(n3[:x]))
 println("n4[:x]= ",nodevalue(n4[:x]))
+
+println()
+println("Aggregated Graph Solution")
+println("n1[:x]= ",nodevalue(ref_map[n1[:x]]))
+println("n1[:y]= ",nodevalue(ref_map[n1[:y]]))
+
+println("n2[:x]= ",nodevalue(ref_map[n2[:x]]))
+println("n2[:y]= ",nodevalue(ref_map[n2[:y]]))
+
+println("n3[:x]= ",nodevalue(ref_map[n3[:x]]))
+println("n4[:x]= ",nodevalue(ref_map[n4[:x]]))

@@ -155,6 +155,71 @@ function aggregate(modelgraph::ModelGraph)
     return aggregate_model, reference_map
 end
 
+#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
+function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+    println("Building Aggregate Model Graph using HyperPartition")
+
+    #Create New ModelGraphs
+    parent_dict = Dict()
+    for parent in hyperpartition.partition_parents
+        new_model_graph = ModelGraph()
+        parent_dict[parent] = new_model_graph
+    end
+
+    top_model_graph = parent_dict[hyperpartition.partition_parents[1]]
+    reference_map = AggregationMap(top_model_graph)  #old model graph => new modelgraph
+
+
+    #BOTTOM LEVEL NODES
+    #Aggregate subgraphs to create bottom level nodes
+    for partition in hyperpartition.partitions
+        hypergraph = partition.hypergraph
+        submodelgraph = create_sub_modelgraph(graph,hypergraph)
+
+        aggregate_model,agg_ref_map = aggregate(submodelgraph)
+        merge!(reference_map,agg_ref_map)
+
+        parent_graph = parent_dict[partition.parent]
+        aggregate_node = add_node!(parent_graph)
+        set_model(aggregate_node,aggregate_model)
+    end
+
+
+    # #Now add shared nodes and shared edges
+    for parent in hyperpartition.partition_parents
+        shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
+        shared_edges = parent.sharededges
+
+        parent_mg = parent_dict[parent]
+
+        #LINK VARIABLES
+        # master = aggregate(shared_nodes) #get linkvariables from shared nodes
+        # set_master(parent_mg,master)
+        master = Model()
+        for shared_node in shared_nodes
+            error("Shared nodes not supported yet")
+            #identify edges here and figure out which link variables to make
+        end
+        parent_mg.mastermodel = master
+
+        #LINK CONSTRAINTS
+        for shared_edge in shared_edges
+            linkedge = getlinkedge(graph,shared_edge)
+            for linkconstraintref in linkedge.linkconstraints
+                linkconstraint = LinkConstraint(linkconstraintref)
+                new_con = _copy_constraint(linkconstraint,reference_map)
+                JuMP.add_constraint(parent_mg,new_con)  #this is a link constraint
+            end
+        end
+
+        if parent.parent != nothing
+            parent_subgraph = parent_dict[parent.parent]
+            add_subgraph!(subgraph,new_model_graph)
+        end
+    end
+    return top_model_graph,reference_map
+end
+
 #Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
 function aggregate(graph::ModelGraph,n_levels::Int64)
     new_model_graph = ModelGraph()
