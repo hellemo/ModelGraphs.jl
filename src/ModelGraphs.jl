@@ -36,7 +36,7 @@ HyperPartition,
 AbstractGraphOptimizer,#BendersOptimizer,DDOptimizer, ADMMOptimizer,
 
 #Graph Functions
-add_node!,getnode,getnodes,getlinkedges,getnumnodes,gethypergraph,
+add_node!,getnode,getnodes,getlinkedge,getlinkedges,getnumnodes,gethypergraph,
 getlinkconstraints,getlinkvariables,
 
 #Model functions

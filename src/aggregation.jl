@@ -59,13 +59,13 @@ getaggnodeconstraints(node::AggregatedNode) = collect(keys(node.constraintmap))
 #############################################################################################
 """
     AggregationMap
-    Mapping between variable and constraint reference of a node model to the Aggregated Model.
+    Mapping between variable and constraint reference of a ModelGraph to an Aggregated Model.
     The reference of the aggregated model can be obtained by indexing the map with the reference of the corresponding original modelnode.
 """
 struct AggregationMap
-    aggregate_model::JuMP.Model                             #An aggregate model
-    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}         #map variables in original modelgraph to aggregatemodel
-    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}     #map constraints in original modelgraph to aggregatemodel
+    aggregate_model::JuMP.AbstractModel                             #An aggregate model (Could be another ModelGraph)
+    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original modelgraph to aggregatemodel
+    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original modelgraph to aggregatemodel
 end
 
 function Base.getindex(reference_map::AggregationMap, vref::JuMP.VariableRef)  #reference_map[node_var] --> aggregated_copy_var
@@ -93,7 +93,7 @@ end
 #     reference_map.varmap[node_vref] = graph_vref
 # end
 
-AggregationMap(m::JuMP.Model) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
+AggregationMap(m::JuMP.AbstractModel) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
 
 function Base.merge!(ref_map1::AggregationMap,ref_map2::AggregationMap)
     merge!(ref_map1.varmap,ref_map2.varmap)

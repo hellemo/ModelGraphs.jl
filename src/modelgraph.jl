@@ -17,8 +17,10 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Map from hypernodes and hyperedges to model nodes and link edges
     modelnodes::Dict{HyperNode,ModelNode}
-    linkedges::Dict{HyperEdge,LinkEdge}
+    linkedges::Dict{HyperEdge,LinkEdge}         #local link edges
+
     subgraphs::Vector{AbstractModelGraph}
+    sublinkedges::Dict{HyperEdge,LinkEdge}      #reference to subgraph link edges
 
     #Link variables
     masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
@@ -52,6 +54,7 @@ mutable struct ModelGraph <: AbstractModelGraph
                     Dict{HyperNode,ModelNode}(),
                     Dict{HyperEdge,LinkEdge}(),
                     Vector{AbstractModelGraph}(),
+                    Dict{HyperEdge,LinkEdge}(),
                     Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
                     Dict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
@@ -83,6 +86,16 @@ function NHG.add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
     sub_hypergraph = gethypergraph(subgraph)
     add_subgraph!(hypergraph,sub_hypergraph)
     push!(graph.subgraphs,subgraph)
+
+
+    for node in getnodes(sub_hypergraph)
+        graph.modelnodes[node] = getnode(subgraph,node)
+    end
+
+    for hyperedge in getedges(sub_hypergraph)
+        graph.sublinkedges[hyperedge] = getlinkedge(subgraph,hyperedge)
+    end
+
     return nothing
 end
 
@@ -105,7 +118,12 @@ function Base.getindex(graph::ModelGraph,node::ModelNode)
 end
 
 
-getlinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.linkedges[hyperedge]
+getlocallinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.linkedges[hyperedge]
+getsublinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.sublinkedges[hyperedge]
+function getlinkedge(graph::ModelGraph,hyperedge::HyperEdge)
+    d = merge(graph.linkedges,graph.sublinkedges)
+    return d[hyperedge]
+end
 
 function getlinkedge(graph::ModelGraph,index::Int64)
     hyperedge = gethyperedge(gethypergraph(graph),index)
@@ -118,7 +136,7 @@ function getlinkedge(graph::ModelGraph,vertices::Int...)
 end
 
 function getlinkedges(graph::ModelGraph)
-    return getlinkedge.(gethyperedges(graph.hypergraph))
+    return getlinkedge.(NHG.gethyperedges(graph.hypergraph))
 end
 
 function getindex(graph::ModelGraph,linkedge::LinkEdge)

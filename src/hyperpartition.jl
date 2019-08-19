@@ -16,7 +16,7 @@ PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNo
 
 mutable struct HyperPartition
     partitions::Vector{SubgraphPartition}  #bottom level partitions
-    partition_tree::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
+    partition_parents::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
 end
 HyperPartition() = HyperPartition(Vector{SubgraphPartition}(),Vector{PartitionParent}())
 
@@ -94,72 +94,105 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         push!(partitions,SubgraphPartition(new_hypers[i],partition_parent))
     end
     hyperpartition.partitions = partitions
-    hyperpartition.partition_tree = [partition_parent]
+    hyperpartition.partition_parents = [partition_parent]
 
     return hyperpartition
 end
 
-# #Create a SubModelGraph from a hypergraph
-# function submodelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
-#     submg = ModelGraph()
-#
-#     modelnodes = [getnode(modelgraph,hypernode) for hypernode in getnodes(hypergraph)]
-#     linkedges = [getedge(modelgraph,hyperedge) for hypernode in getnodes(hypergraph)]
-#
-#     submg.
-#
-# end
-#
-# # #Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
-# function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
-#     println("Building Aggregate Model Graph using HyperPartition")
-#
-#     new_model_graph = ModelGraph()
-#
-#     #Get model subgraphs.  These will contain model nodes and LinkEdges.
-#     hypergraphs_to_aggregate =  [hyperpartition.partitions[i].hypergraph for i = 1:length(hyperpartition.partitions)]   #hypergraphs
-#
-#     modelgraphs_to_aggregate = submodelgraph.(hypergraphs_to_aggregate)
-#
-#     reference_map = AggregationMap()
-#
-#     #Aggregate subgraphs and create bottom level nodes
-#     for subgraph in modelgraphs_to_aggregate
-#         aggregate_model,agg_ref_map = aggregate(subgraph)
-#         merge!(reference_map,agg_ref_map)
-#
-#         aggregate_node = add_node!(new_model_graph)
-#         setmodel(aggregate_node,aggregate_model)
-#     end
-#
-#     #Go up through hierarchy creating nested subgraphs
-#     #TODO: Figure out how to create the nested structure
-#     parent = hyerpartition.partitoin_tree[1]
-#     for
-#
-#
-#         #CREATE NEW MASTER
-#         create_master(shared_nodes)
-#
-#         for edge in shared_edges
-#             for linkconstraint in shared_edge.linkconstraints
-#                 copy_constraint!(new_model_graph,linkconstraint,variable_map)
-#             end
-#         end
-#
-#     end
-#     #Highest level shared information
-#     shared_nodes = layer.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
-#     shared_edges = layer.sharededges
-#
-#     return new_model_graph
-# end
+#Create a SubModelGraph from a HyperGraph specification
+function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
+    submg = ModelGraph()
+    submg.hypergraph = hypergraph
+
+    for hypernode in getnodes(hypergraph)
+        modelnode = getnode(modelgraph,hypernode)
+        submg.modelnodes[hypernode] = modelnode
+    end
+
+    for hyperedge in getedges(hypergraph)
+        linkedge = getlinkedge(modelgraph,hyperedge)  #could be in a subgraph
+        submg.linkedges[hyperedge] = linkedge
+        for linkconstraintref in linkedge.linkconstraints
+            linkconstraint = LinkConstraint(linkconstraintref)
+            idx = linkconstraintref.idx
+            submg.linkconstraints[idx] = linkconstraint
+        end
+    end
+    return submg
+end
+
+#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
+function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+    println("Building Aggregate Model Graph using HyperPartition")
+
+    #Create New ModelGraphs
+    parent_dict = Dict()
+    for parent in hyperpartition.partition_parents
+        new_model_graph = ModelGraph()
+        parent_dict[parent] = new_model_graph
+    end
+
+    top_model_graph = parent_dict[hyperpartition.partition_parents[1]]
+    reference_map = AggregationMap(top_model_graph)  #old model graph => new modelgraph
+
+
+    #BOTTOM LEVEL NODES
+    #Aggregate subgraphs to create bottom level nodes
+    for partition in hyperpartition.partitions
+        hypergraph = partition.hypergraph
+        submodelgraph = create_sub_modelgraph(graph,hypergraph)
+
+        aggregate_model,agg_ref_map = aggregate(submodelgraph)
+        merge!(reference_map,agg_ref_map)
+
+        parent_graph = parent_dict[partition.parent]
+        aggregate_node = add_node!(parent_graph)
+        set_model(aggregate_node,aggregate_model)
+    end
+
+
+    # #Now add shared nodes and shared edges
+    # for parent in hyperpartition.partition_parents
+    #     shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
+    #     shared_edges = parent.sharededges
+    #
+    #     parent_mg = parent_dict[parent]
+    #
+    #     #LINK VARIABLES
+    #     # master = aggregate(shared_nodes) #get linkvariables from shared nodes
+    #     # set_master(parent_mg,master)
+    #     master = Model()
+    #     for shared_node in shared_nodes
+    #         error("Shared nodes not supported yet")
+    #         #identify edges here and figure out which link variables to make
+    #     end
+    #     parent_mg.master_model = master
+    #
+    #     #LINK CONSTRAINTS
+    #     for shared_edge in shared_edges
+    #         for linkconstraint in shared_edge.linkconstraints
+    #             new_con = copy_constraint!(parent_mg,linkconstraint,reference_map)
+    #             JuMP.add_constraint(parent_mg,new_con)  #this is a link constraint
+    #         end
+    #     end
+    #
+    #     if parent.parent != nothing
+    #         parent_subgraph = parent_dict[parent.parent]
+    #         add_subgraph!(subgraph,new_model_graph)
+    #     end
+    # end
+    #
+    # return parent_dict[hyperpartition.partition_parents[1]]  #Assume first parent is the highest level.  Might need to check this.
+
+        return top_model_graph,reference_map
+
+
+end
 
 
 
-
-# #NOTE: Could also be a Dual Clique Graph
-# function HyperPartition(clique_graph::CliqueExpandedGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}))
+#TODO
+# function HyperPartition(clique_graph::NHG.CliqueExpandedGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
 #
 #     hyperpartition = HyperPartition()
 #
@@ -168,20 +201,20 @@ end
 #     return hyperpartition
 # end
 #
-# function HyperPartition(bipartite_graph::BipartiteGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64});selection = :shared_nodes)
+# function HyperPartition(bipartite_graph::NHG.BipartiteGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64};selection = :shared_nodes)
 #
 #     hyperpartition = HyperPartition()
 #
 #     return hyperpartition
 # end
 #
-# function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}))
+# function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64})
 #
 #     hyperpartition = HyperPartition()
 #
 #     return hyperpartition
 # end
-
+#
 
 
 

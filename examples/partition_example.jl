@@ -5,15 +5,15 @@ using Ipopt
 using KaHyPar
 using SparseArrays
 
-graph = ModelGraph()
+modelgraph = ModelGraph()
 
 #setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = add_node!(graph)
-n2 = add_node!(graph)
-n3 = add_node!(graph)
-n4 = add_node!(graph)
+n1 = add_node!(modelgraph)
+n2 = add_node!(modelgraph)
+n3 = add_node!(modelgraph)
+n4 = add_node!(modelgraph)
 #Add edges between the nodes
 
 
@@ -47,15 +47,15 @@ set_model(n4,m4)
 ipopt = with_optimizer(Ipopt.Optimizer)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-@linkconstraint(graph,n4[:x] == n1[:x])
-@linkconstraint(graph,n1[:y] + n2[:y] + n3[:x] <= 2 )
+@linkconstraint(modelgraph,n4[:x] == n1[:x])
+@linkconstraint(modelgraph,n1[:y] + n2[:y] + n3[:x] <= 2 )
 
-hypergraph = gethypergraph(graph)
+hypergraph = gethypergraph(modelgraph)
 A = sparse(hypergraph)
 partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
 partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
-optimize!(graph,ipopt)
+optimize!(modelgraph,ipopt)
 
 println("n1[:x]= ",nodevalue(n1[:x]))
 println("n1[:y]= ",nodevalue(n1[:y]))
