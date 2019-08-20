@@ -124,13 +124,15 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
         submg.modelnodes[hypernode] = modelnode
     end
 
+    i = 1
     for hyperedge in getedges(hypergraph)
         linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
             linkconstraint = LinkConstraint(linkconstraintref)
-            idx = linkconstraintref.idx
-            submg.linkconstraints[idx] = linkconstraint
+            #idx = linkconstraintref.idx
+            submg.linkconstraints[i] = linkconstraint
+            i += 1
         end
     end
     return submg

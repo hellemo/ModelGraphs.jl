@@ -172,11 +172,14 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
 
     #BOTTOM LEVEL NODES
     #Aggregate subgraphs to create bottom level nodes
+    submodelgraphs = []
     for partition in hyperpartition.partitions
         hypergraph = partition.hypergraph
-        submodelgraph = create_sub_modelgraph(graph,hypergraph)
+        submodelgraph = ModelGraphs.create_sub_modelgraph(graph,hypergraph)
+        push!(submodelgraphs,submodelgraph)
 
         aggregate_model,agg_ref_map = aggregate(submodelgraph)
+
         merge!(reference_map,agg_ref_map)
 
         parent_graph = parent_dict[partition.parent]
