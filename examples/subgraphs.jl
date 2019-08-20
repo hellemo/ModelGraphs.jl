@@ -14,7 +14,7 @@ end
 
 #the top level graph
 graph = ModelGraph()
-set_optimizer(graph,with_optimizer(Ipopt.Optimizer))
+#set_optimizer(graph,with_optimizer(Ipopt.Optimizer))
 
 #System 1
 graph1 = ModelGraph()
@@ -34,4 +34,4 @@ add_subgraph!(graph,graph1)
 add_subgraph!(graph,graph2)
 @linkconstraint(graph,n1[:x] == n3[:x])
 
-optimize!(graph)
+optimize!(graph,with_optimizer(Ipopt.Optimizer))

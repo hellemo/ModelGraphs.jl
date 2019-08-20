@@ -36,18 +36,22 @@ HyperPartition,
 AbstractGraphOptimizer,#BendersOptimizer,DDOptimizer, ADMMOptimizer,
 
 #Graph Functions
-add_node!,getnode,getnodes,getlinkedge,getlinkedges,getnumnodes,gethypergraph,
-getlinkconstraints,getlinkvariables,
+gethypergraph, add_subgraph!,
+
+add_node!, getnode, getnodes, getnumnodes,
+
+getlinkedge,getlinkedges,
+
 
 #Model functions
 set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,
-link_variables!,
+link_variables!,getlinkconstraints,getlinkvariables,
 
 #Aggregation
 aggregate,aggregate!,
 
 #solve handles
-optimize!,#bendersolve,dual_decomposition_solve,
+optimize!,
 
 #Solution management
 nodevalue,nodedual,linkdual,
@@ -80,11 +84,13 @@ include("nlp_extension.jl")
 
 include("macros.jl")
 
+include("hyperpartition.jl")
+
 include("aggregation.jl")          #An aggregated JuMP model
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 
-include("hyperpartition.jl")
+
 
 function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plots.jl")

@@ -16,7 +16,7 @@ PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNo
 
 mutable struct HyperPartition
     partitions::Vector{SubgraphPartition}  #bottom level partitions
-    partition_parents::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
+    parents::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
 end
 HyperPartition() = HyperPartition(Vector{SubgraphPartition}(),Vector{PartitionParent}())
 
@@ -48,13 +48,28 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
             for hyperedge in hypergraph.node_map[hypernode]  #getedges(hypergraph,hypernode)
                 if !(hyperedge in checked_edges)  #If it's a new link constraint
                     edge_hypernodes = collect(hyperedge.vertices)
-                    #edge_hypernodes =  map((x) -> getnode(hypergraph,x),edge_vertices) #gethypernodes(edge)
-                    if all(node -> node in edge_hypernodes,partition)
+                    if all(node -> node in partition,edge_hypernodes)
                         push!(induced_edges[i],hyperedge)
                     else
                         push!(shared_edges,hyperedge)
                     end
                     push!(checked_edges,hyperedge)
+                end
+            end
+
+            for subgraph in subgraphs(hypergraph)
+                if haskey(subgraph.node_map,hypernode)
+                    for hyperedge in subgraph.node_map[hypernode]
+                        if !(hyperedge in checked_edges)  #If it's a new link constraint
+                            edge_hypernodes = collect(hyperedge.vertices)
+                            if all(node -> node in partition,edge_hypernodes)
+                                push!(induced_edges[i],hyperedge)
+                            else
+                                push!(shared_edges,hyperedge)
+                            end
+                            push!(checked_edges,hyperedge)
+                        end
+                    end
                 end
             end
         end
@@ -94,7 +109,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         push!(partitions,SubgraphPartition(new_hypers[i],partition_parent))
     end
     hyperpartition.partitions = partitions
-    hyperpartition.partition_parents = [partition_parent]
+    hyperpartition.parents = [partition_parent]
 
     return hyperpartition
 end
@@ -110,7 +125,7 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
 
     for hyperedge in getedges(hypergraph)
-        linkedge = getlinkedge(modelgraph,hyperedge)  #could be in a subgraph
+        linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
             linkconstraint = LinkConstraint(linkconstraintref)

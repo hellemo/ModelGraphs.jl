@@ -161,12 +161,12 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
 
     #Create New ModelGraphs
     parent_dict = Dict()
-    for parent in hyperpartition.partition_parents
+    for parent in hyperpartition.parents
         new_model_graph = ModelGraph()
         parent_dict[parent] = new_model_graph
     end
 
-    top_model_graph = parent_dict[hyperpartition.partition_parents[1]]
+    top_model_graph = parent_dict[hyperpartition.parents[1]]
     reference_map = AggregationMap(top_model_graph)  #old model graph => new modelgraph
 
 
@@ -186,7 +186,7 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
 
 
     # #Now add shared nodes and shared edges
-    for parent in hyperpartition.partition_parents
+    for parent in hyperpartition.parents
         shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
         shared_edges = parent.sharededges
 
@@ -204,7 +204,7 @@ function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
 
         #LINK CONSTRAINTS
         for shared_edge in shared_edges
-            linkedge = getlinkedge(graph,shared_edge)
+            linkedge = findlinkedge(graph,shared_edge)
             for linkconstraintref in linkedge.linkconstraints
                 linkconstraint = LinkConstraint(linkconstraintref)
                 new_con = _copy_constraint(linkconstraint,reference_map)
@@ -292,7 +292,9 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
     for (name, value) in JuMP.object_dictionary(node_model)
         #agg_node.obj_dict[name] = reference_map[value]
-        agg_node.obj_dict[name] = getindex.(reference_map, value)
+        if typeof(value) in [JuMP.VariableRef,JuMP.ConstraintRef,LinkVariableRef]
+            agg_node.obj_dict[name] = getindex.(reference_map, value)
+        end
     end
 
     #OBJECTIVE FUNCTION (store expression on aggregated_nodes)
