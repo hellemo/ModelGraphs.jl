@@ -28,7 +28,7 @@ end
 macro NLnodeconstraint(node,args...)
     code = quote
         @assert isa($node,ModelNode)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@NLconstraint($(getmodel(node)),($(args...)))  #link model extends @constraint macro
+        JuMP.@NLconstraint((getmodel($node)),($(args...)))  #link model extends @constraint macro
     end
     return esc(code)
 end

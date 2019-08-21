@@ -13,14 +13,12 @@ mutable struct ModelGraph <: AbstractModelGraph
     hypergraph::HyperGraph
 
     #Store master variables and constraints in a stand-alone JuMP Model
-    mastermodel::JuMP.Model
+    mastermodel::JuMP.Model #TODO: Make this a master node.  It will be possible to have link constraints that connect a master node to other nodes
 
     #Map from hypernodes and hyperedges to model nodes and link edges
     modelnodes::Dict{HyperNode,ModelNode}
     linkedges::Dict{HyperEdge,LinkEdge}         #local link edges
-
     subgraphs::Vector{AbstractModelGraph}
-    #sublinkedges::Dict{HyperEdge,LinkEdge}      #reference to subgraph link edges
 
     #Link variables
     masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
@@ -90,9 +88,9 @@ function NHG.add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
         graph.modelnodes[node] = getnode(subgraph,node)
     end
 
-    for hyperedge in getedges(sub_hypergraph)
-        graph.sublinkedges[hyperedge] = getlinkedge(subgraph,hyperedge)
-    end
+    # for hyperedge in getedges(sub_hypergraph)
+    #     graph.sublinkedges[hyperedge] = getlinkedge(subgraph,hyperedge)
+    # end
 
     return nothing
 end
@@ -190,14 +188,22 @@ JuMP.objective_function(graph::AbstractModelGraph) = graph.objective_function
 JuMP.set_objective_function(graph::AbstractModelGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
 JuMP.set_objective_function(graph::AbstractModelGraph, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(graph, func)
 
+
 function JuMP.set_objective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     graph.objective_sense = sense
     graph.objective_function = func
 end
-#JuMP.objective_value(graph::AbstractModelGraph) = getobjectivevalue(graph.linkmodel)
+
+function JuMP.objective_value(graph::AbstractModelGraph)
+    objective = JuMP.objective_function(graph)
+    return nodevalue(objective)
+end
+
+# nodevalue(lvref::LinkVariableRef) = JuMP.
 
 JuMP.object_dictionary(m::ModelGraph) = m.obj_dict
 JuMP.objective_sense(m::ModelGraph) = m.objective_sense
+
 
 #####################################################
 #  Link Variables
@@ -369,8 +375,6 @@ end
 MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(graph.linkconstraints)
 
 
-
-
 #################################
 # Optimizer
 #################################
@@ -396,6 +400,8 @@ show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 # Analysis Functions
 ####################################
 function getblockmatrix(graph::ModelGraph)
+    #return matrix with master node added
+    #Add all subgraphs as blocks too
 end
 
 function SparseArrays.sparse(graph::ModelGraph)

@@ -56,7 +56,17 @@ getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
+
 nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
+function nodevalue(expr::JuMP.GenericAffExpr)
+    ret_value = 0.0
+    for (var,coeff) in expr.terms
+        ret_value += coeff*nodevalue(var)
+    end
+    ret_value += expr.constant
+    return ret_value
+end
+
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NHG.getnode(con).constraint_dual_values[con]
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NHG.getnode(con).nl_constraint_dual_values[con]
 
@@ -70,7 +80,7 @@ function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
     node.model = m
     m.ext[:modelnode] = node
 end
-
+@deprecate setmodel set_model
 """
 is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
 
@@ -138,6 +148,10 @@ JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
 
 JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 
+function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+    JuMP.set_objective(getmodel(modelnode),sense,func)
+end
+
 
 ##############################################
 # Get Model Node
@@ -184,10 +198,6 @@ function string(node::ModelNode)
 end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)
-
-
-
-
 
 
 

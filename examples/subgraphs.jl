@@ -14,7 +14,6 @@ end
 
 #the top level graph
 graph = ModelGraph()
-#set_optimizer(graph,with_optimizer(Ipopt.Optimizer))
 
 #System 1
 graph1 = ModelGraph()

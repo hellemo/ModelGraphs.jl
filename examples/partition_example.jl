@@ -7,8 +7,6 @@ using SparseArrays
 
 modelgraph = ModelGraph()
 
-#setsolver(graph,Ipopt.IpoptSolver())
-
 #Add nodes to a GraphModel
 n1 = add_node!(modelgraph)
 n2 = add_node!(modelgraph)
@@ -56,7 +54,6 @@ partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
 partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
 optimize!(modelgraph,ipopt)
-
 
 
 hyperpartition = HyperPartition(hypergraph,partition1)

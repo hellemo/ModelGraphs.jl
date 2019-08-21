@@ -1,6 +1,6 @@
-using JuMP
 using ModelGraphs
 using Ipopt
+using JuMP
 
 graph = ModelGraph()
 optimizer = with_optimizer(Ipopt.Optimizer)
@@ -27,11 +27,6 @@ set_model(n2,m2)
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Get all of the link constraints in a graph
-links = getlinkconstraints(graph)
-for link in links
-    println(link)
-end
 
 optimize!(graph,optimizer)
 

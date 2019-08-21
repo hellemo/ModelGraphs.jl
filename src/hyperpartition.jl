@@ -35,7 +35,8 @@ function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
     return collect(values(partitions))
 end
 
-#Naive implementation to get induced and shared hyperedges given a set of node partitions
+#NOTE Naive implementation to get induced and shared hyperedges given a set of node partitions
+#TODO: Use incidence matrix and partition list to figure out what the induced and cut edges are
 function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
     nparts = length(partitions)
     induced_edges = [Vector{HyperEdge}() for _ = 1:nparts]
@@ -137,9 +138,6 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
     return submg
 end
-
-
-
 
 
 #TODO
