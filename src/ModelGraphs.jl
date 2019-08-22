@@ -1,7 +1,6 @@
 module ModelGraphs
 
 using NestedHyperGraphs
-
 using Requires
 using LinearAlgebra
 using DataStructures
