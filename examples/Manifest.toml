@@ -167,8 +167,8 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[ModelGraphs]]
 deps = ["DataStructures", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "Requires", "SparseArrays"]
-git-tree-sha1 = "346555ef5b94a895550246b2c9ecef958974d137"
-repo-rev = "development"
+git-tree-sha1 = "fdfb9de8d20e2804946d96a8524c6f0f8f1f22ec"
+repo-rev = "master"
 repo-url = "https://github.com/jalving/ModelGraphs.jl.git"
 uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"
 version = "0.1.0"
