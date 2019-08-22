@@ -12,5 +12,10 @@ MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[compat]
+MathOptInterface = "~0.9"
+JuMP = "~0.19"
+julia = "1"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

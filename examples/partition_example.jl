@@ -61,7 +61,7 @@ new_modelgraph,ref_map = aggregate(modelgraph,hyperpartition)
 optimize!(new_modelgraph,ipopt)
 
 println()
-println("Original Graph Solution")
+println("Aggregate Entire Graph Solution")
 println("n1[:x]= ",nodevalue(n1[:x]))
 println("n1[:y]= ",nodevalue(n1[:y]))
 
@@ -72,7 +72,8 @@ println("n3[:x]= ",nodevalue(n3[:x]))
 println("n4[:x]= ",nodevalue(n4[:x]))
 
 println()
-println("Aggregated Graph Solution")
+println("Aggregated Partitioned Graph Solution (solution should be the same)")
+println("")
 println("n1[:x]= ",nodevalue(ref_map[n1[:x]]))
 println("n1[:y]= ",nodevalue(ref_map[n1[:y]]))
 
