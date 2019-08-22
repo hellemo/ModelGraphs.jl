@@ -166,8 +166,8 @@ version = "0.7.7"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[ModelGraphs]]
-deps = ["DataStructures", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "Requires", "SparseArrays"]
-git-tree-sha1 = "fdfb9de8d20e2804946d96a8524c6f0f8f1f22ec"
+deps = ["DataStructures", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "NestedHyperGraphs", "Requires", "SparseArrays"]
+git-tree-sha1 = "7c277083979b106935afdfb5529e23f3f031e180"
 repo-rev = "master"
 repo-url = "https://github.com/jalving/ModelGraphs.jl.git"
 uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"
@@ -178,6 +178,14 @@ deps = ["Compat"]
 git-tree-sha1 = "ce3b85e484a5d4c71dd5316215069311135fa9f2"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "0.3.2"
+
+[[NestedHyperGraphs]]
+deps = ["LightGraphs", "SparseArrays"]
+git-tree-sha1 = "bdb0bf92419bfeff8e9c6fb83d5f522f772719ed"
+repo-rev = "master"
+repo-url = "https://github.com/jalving/NestedHyperGraphs.jl.git"
+uuid = "c0c75086-b334-11e9-328b-e3c1e6b85a38"
+version = "0.1.0"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
