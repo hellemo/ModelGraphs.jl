@@ -56,6 +56,8 @@ getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
+setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
+getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 
 nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
 function nodevalue(expr::JuMP.GenericAffExpr)
