@@ -167,7 +167,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[ModelGraphs]]
 deps = ["DataStructures", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "NestedHyperGraphs", "Requires", "SparseArrays"]
-git-tree-sha1 = "15149b7b6e2aea0afdc676dea8d9cea5b0a070f1"
+git-tree-sha1 = "66ccb7d9251f411327e1d1027606c6991b96cd02"
 repo-rev = "development"
 repo-url = "/home/jordan/.julia/dev/ModelGraphs"
 uuid = "7c4945c3-4d72-5fdd-9fe8-d9d2b0887164"

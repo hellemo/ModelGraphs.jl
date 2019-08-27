@@ -189,7 +189,7 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
 
     i = 1
-    for hyperedge in getallhyperedges(hypergraph)
+    for hyperedge in NHG.getallhyperedges(hypergraph)
         linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
