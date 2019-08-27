@@ -147,7 +147,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
 
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
-    induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
+    induced_edge_partitions,shared_edges = identifyhyperedges2(hypergraph,hypernode_vectors)
 
     #Create new Hypergraphs
     new_hypers = Vector{HyperGraph}()
