@@ -87,10 +87,10 @@ function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{Hy
     I = []
     J = []
     for i = 1:nparts
-       for j in partitions[i]
-           j_index = getindex(hypergraph,j)
+       for hypernode in partitions[i]
+           j = getindex(hypergraph,hypernode)
            push!(I,i)
-           push!(J,j_index)
+           push!(J,j)
        end
     end
 
@@ -108,25 +108,34 @@ function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{Hy
     indices = findall(cross_vector .!= 0)                   #nonzero indices of the cross vector.  These are edges that cross partitions.
     indices = [indices[i].I[2] for i = 1:length(indices)]   #convert to Integers
 
-    cross_matrix = A[:,indices]                             #Get cut rows of the incidence matrix
-    n_cross_edges = size(cross_matrix)[2]
 
     shared_edges = NHG.HyperEdge[]
-    for i = 1:n_cross_edges
-       node_indices = cross_matrix[:,i].nzind
-       push!(shared_edges,HyperEdge())          #LightGraphs.Edge(node_indices[1],node_indices[2]))
+    for index in indices
+        push!(shared_edges,gethyperedge(hypergraph,index))
     end
+    # cross_matrix = A[:,indices]                             #Get cut rows of the incidence matrix
+    # n_cross_edges = size(cross_matrix)[2]
+    #
+    # shared_edges = NHG.HyperEdge[]
+    # for i = 1:n_cross_edges
+    #    node_indices = cross_matrix[:,i].nzind
+    #    push!(shared_edges,HyperEdge())                      #LightGraphs.Edge(node_indices[1],node_indices[2]))
+    # end
 
     #GET INDUCED PARTITION EDGES (I.E GET THE EDGES LOCAL TO EACH PARTITION)
     partition_edges = Vector[Vector{NHG.HyperEdge}() for _ = 1:nparts]
     for i = 1:nparts
         inds = findall(C[i,:] .!= 0)
-        new_inds = filter(x -> !(x in indices), inds)
-        local_matrix = A[:,new_inds]
-        for j = 1:length(new_inds)
-            node_indices = local_matrix[:,j].nzind
-            push!(partition_edges[i],LightGraphs.Edge(node_indices[1],node_indices[2]))
+        new_inds = filter(x -> !(x in indices), inds) #these are edge indices
+        for new_ind in new_inds
+            push!(partition_edges[i],gethyperedge(hypergraph,new_ind))
         end
+        # local_matrix = A[:,new_inds]
+        # for j = 1:length(new_inds)
+        #     node_indices = local_matrix[:,j].nzind
+        #     push!(partition_edges[i],LightGraphs.Edge(node_indices[1],node_indices[2]))
+        # end
+
     end
 
     return partition_edges,shared_edges
@@ -152,7 +161,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         end
 
         for hyperedge in induced_edges
-            add_hyperedge!(hyper,hyperedge)
+            add_sub_hyperedge!(hyper,hyperedge)
         end
 
         push!(new_hypers,hyper)
@@ -180,12 +189,11 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
 
     i = 1
-    for hyperedge in getedges(hypergraph)
+    for hyperedge in getallhyperedges(hypergraph)
         linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
             linkconstraint = LinkConstraint(linkconstraintref)
-            #idx = linkconstraintref.idx
             submg.linkconstraints[i] = linkconstraint
             i += 1
         end
