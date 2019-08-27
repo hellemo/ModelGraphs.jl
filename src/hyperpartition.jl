@@ -161,7 +161,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         end
 
         for hyperedge in induced_edges
-            add_sub_hyperedge!(hyper,hyperedge)
+            NHG.add_sub_hyperedge!(hyper,hyperedge)
         end
 
         push!(new_hypers,hyper)
