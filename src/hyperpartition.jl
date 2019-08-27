@@ -78,6 +78,60 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
     return induced_edges,shared_edges
 end
 
+function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
+    println("Identifying Shared Edges")
+
+    nparts = length(partitions)
+
+    #Create partition matrix
+    I = []
+    J = []
+    for i = 1:nparts
+       for j in partitions[i]
+           j_index = getindex(hypergraph,j)
+           push!(I,i)
+           push!(J,j_index)
+       end
+    end
+
+    V = ones(length(J))
+    G = sparse(I,J,V)  #Node partition matrix
+
+    A = sparse(hypergraph)
+    C = G*A  #Edge partitions
+
+    #FIND THE SHARED EDGES
+    #Get indices of shared edges
+    sum_vector = sum(C,dims = 1)
+    max_vector = maximum(C,dims = 1)
+    cross_vector = sum_vector - max_vector
+    indices = findall(cross_vector .!= 0)                   #nonzero indices of the cross vector.  These are edges that cross partitions.
+    indices = [indices[i].I[2] for i = 1:length(indices)]   #convert to Integers
+
+    cross_matrix = A[:,indices]                             #Get cut rows of the incidence matrix
+    n_cross_edges = size(cross_matrix)[2]
+
+    shared_edges = NHG.HyperEdge[]
+    for i = 1:n_cross_edges
+       node_indices = cross_matrix[:,i].nzind
+       push!(shared_edges,HyperEdge())          #LightGraphs.Edge(node_indices[1],node_indices[2]))
+    end
+
+    #GET INDUCED PARTITION EDGES (I.E GET THE EDGES LOCAL TO EACH PARTITION)
+    partition_edges = Vector[Vector{NHG.HyperEdge}() for _ = 1:nparts]
+    for i = 1:nparts
+        inds = findall(C[i,:] .!= 0)
+        new_inds = filter(x -> !(x in indices), inds)
+        local_matrix = A[:,new_inds]
+        for j = 1:length(new_inds)
+            node_indices = local_matrix[:,j].nzind
+            push!(partition_edges[i],LightGraphs.Edge(node_indices[1],node_indices[2]))
+        end
+    end
+
+    return partition_edges,shared_edges
+end
+
 #Simple 2 level partition from a vector of integers
 function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vector::Vector{Int64})
     hyperpartition = HyperPartition()
