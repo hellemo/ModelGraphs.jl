@@ -99,7 +99,8 @@ function is_linked_variable(var::JuMP.AbstractVariableRef)
         return var in keys(getnode(var).linkvariablemap)
     end
 end
-#is_linked_variable(var::JuMP.AbstractVariableRef) = var in keys(getnode(var).linkvariablemap)
+
+is_linked_to_master(node::Model) = !(isempty(node.linkvariablemap))
 
 
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node

@@ -298,9 +298,6 @@ function JuMP.add_constraint(graph::ModelGraph, con::ScalarMasterConstraint, nam
     return cref
 end
 
-#graph.linkvar_constraint_index += 1
-#cref = LinkVarConstraintRef(m, m.linkvar_constraint_index)
-
 # Model Extras
 JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
 JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
@@ -399,10 +396,35 @@ show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 ####################################
 # Analysis Functions
 ####################################
-function getblockmatrix(graph::ModelGraph)
-    #return matrix with master node added
-    #Add all subgraphs as blocks too
+#Create an incidence matrix representing the underlying hypergraph
+function getincidencematrix(graph::ModelGraph)
+    return sparse(graph.hypergraph)
 end
 
-function SparseArrays.sparse(graph::ModelGraph)
+#Create a sparse matrix representing the ModelGraph structure.
+function getblockmatrix(graph::ModelGraph)
+    hypergraph = gethypergraph(graph)
+    A = sparse(hypergraph)
+    A = sparse(A')
+
+    master_column = Int.(zeros(size(A)[1]))
+    top_block = hcat(master_column, A)
+
+    n = 1 + getnumnodes(graph)
+    bottom_block = Int.(zeros(n - 1,n))
+    block_matrix = vcat(top_block,bottom_block) #1 master + n nodes
+
+    #Fill in entries for link variables
+    m = size(top_block)[1]
+    block_matrix[1,1] = 1
+    for node in getnodes(graph)
+        index = getindex(graph,node) + 1
+        block_matrix[index,index] = 1
+        #if is_linked_to_master(node)
+        if !(isempty(node.linkvariablemap))
+            #block_matrix[m + index + 1,1] = 1
+            block_matrix[1,m + index] = 1
+        end
+    end
+    return block_matrix
 end
