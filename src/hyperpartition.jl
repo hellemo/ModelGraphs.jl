@@ -35,52 +35,7 @@ function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
     return collect(values(partitions))
 end
 
-#NOTE Naive implementation to get induced and shared hyperedges given a set of node partitions
-#TODO: Use incidence matrix and partition list to figure out what the induced and cut edges are
 function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
-    nparts = length(partitions)
-    induced_edges = [Vector{HyperEdge}() for _ = 1:nparts]
-    shared_edges = Vector{HyperEdge}()  #between partitions
-
-    checked_edges = Vector{HyperEdge}()
-
-    for (i,partition) in enumerate(partitions)
-        for hypernode in partition
-            for hyperedge in hypergraph.node_map[hypernode]  #getedges(hypergraph,hypernode)
-                if !(hyperedge in checked_edges)  #If it's a new link constraint
-                    edge_hypernodes = collect(hyperedge.vertices)
-                    if all(node -> node in partition,edge_hypernodes)
-                        push!(induced_edges[i],hyperedge)
-                    else
-                        push!(shared_edges,hyperedge)
-                    end
-                    push!(checked_edges,hyperedge)
-                end
-            end
-
-            for subgraph in subgraphs(hypergraph)
-                if haskey(subgraph.node_map,hypernode)
-                    for hyperedge in subgraph.node_map[hypernode]
-                        if !(hyperedge in checked_edges)  #If it's a new link constraint
-                            edge_hypernodes = collect(hyperedge.vertices)
-                            if all(node -> node in partition,edge_hypernodes)
-                                push!(induced_edges[i],hyperedge)
-                            else
-                                push!(shared_edges,hyperedge)
-                            end
-                            push!(checked_edges,hyperedge)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return induced_edges,shared_edges
-end
-
-function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
-    println("Identifying Shared Edges")
-
     nparts = length(partitions)
 
     #Create partition matrix
@@ -113,14 +68,6 @@ function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{Hy
     for index in indices
         push!(shared_edges,gethyperedge(hypergraph,index))
     end
-    # cross_matrix = A[:,indices]                             #Get cut rows of the incidence matrix
-    # n_cross_edges = size(cross_matrix)[2]
-    #
-    # shared_edges = NHG.HyperEdge[]
-    # for i = 1:n_cross_edges
-    #    node_indices = cross_matrix[:,i].nzind
-    #    push!(shared_edges,HyperEdge())                      #LightGraphs.Edge(node_indices[1],node_indices[2]))
-    # end
 
     #GET INDUCED PARTITION EDGES (I.E GET THE EDGES LOCAL TO EACH PARTITION)
     partition_edges = Vector[Vector{NHG.HyperEdge}() for _ = 1:nparts]
@@ -130,12 +77,6 @@ function identifyhyperedges2(hypergraph::HyperGraph,partitions::Vector{Vector{Hy
         for new_ind in new_inds
             push!(partition_edges[i],gethyperedge(hypergraph,new_ind))
         end
-        # local_matrix = A[:,new_inds]
-        # for j = 1:length(new_inds)
-        #     node_indices = local_matrix[:,j].nzind
-        #     push!(partition_edges[i],LightGraphs.Edge(node_indices[1],node_indices[2]))
-        # end
-
     end
 
     return partition_edges,shared_edges
@@ -147,8 +88,11 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
 
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
-    induced_edge_partitions,shared_edges = identifyhyperedges2(hypergraph,hypernode_vectors)
 
+    println("Identifying Shared and Induced Edges")
+    induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
+
+    println("Creating Sub Model Graphs")
     #Create new Hypergraphs
     new_hypers = Vector{HyperGraph}()
     for i = 1:length(hypernode_vectors)
@@ -161,12 +105,13 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         end
 
         for hyperedge in induced_edges
-            NHG.add_sub_hyperedge!(hyper,hyperedge)
+            NHG.add_sub_hyperedge!(hyper,hyperedge)  #NOTE HyperEdge Construction might be taking too long
         end
 
         push!(new_hypers,hyper)
     end
 
+    println("Creating Parent")
     partition_parent = PartitionParent(shared_edges)
     partitions = Vector{SubgraphPartition}()
     for i = 1:length(new_hypers)
@@ -203,7 +148,7 @@ end
 
 
 #TODO
-# function HyperPartition(clique_graph::NHG.CliqueExpandedGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
+# function HyperPartition(clique_graph::NHG.DualCliqueGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
 #
 #     hyperpartition = HyperPartition()
 #
@@ -227,70 +172,7 @@ end
 # end
 #
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# #Naive implementation.  Need to use incidence matrix to do this correctly, but first I need to find better way to deal with subgraph hyperedges
-#get induced hypergraph from nodes
-# induced_edges = getinducedhyperedges.(hypergraph,hypernode_partitions)
-# cut_edges = getcuthyperedges(hypergraph,hypernode_partitions)
-# function getinducedhyperedges(hypergraph::HyperGraph,nodes::Vector{HyperNode})
-#     hyperedges = []
-#     for node in nodes
-#         for hyperedge in hypergraph.node_map[node]  #this is only edges in the given hypergraph
-#             if all(hyperedge.vertices in nodes)
-#                 push!(hyperedges,hyperedge)
-#             end
-#         end
-#     end
-#     return hyperedges
-# end
-#
-# function getcuthyperedges(hypergraph::HyperGraph,partition::Vector{Vector{HyperNode}})
-#
+#NOTE (s)
 # end
 # #Case 0
 # hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
@@ -328,24 +210,3 @@ end
 # #shared nodes cannot be in any partitions
 #
 # #shared nodes cannot be incident to a shared edge
-#
-# #Given a vector of node indices, create a model partition that contains shared edges
-# function ModelPartition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
-#
-#     #We need to build a ModelPartition which contains hypergraph partitions, shared edges between partitions, and shared nodes (with their supporting edges)
-#     node_partitions,shared_nodes = _identify_partitions(graph)
-#
-#     return_shared_entities = unique(_map_entities(shared_entities,projection_map))
-#     #NOTE: Need to keep vector the same size. #If there are duplicate entries across partitions, then they must also show up in shared
-#     return_partition_entities = [unique(_map_entities(local_entitiy,projection_map)) for local_entitiy in local_entities]
-#
-#     #Make sure no partition entities are in shared entities.  It's possible that a local entity maps to a linkconstraint that is actually shared.
-#     for return_part in return_partition_entities
-#         filter!(e ->  !(e in return_shared_entities),return_part)
-#     end
-#
-#     #return PartitionData(return_partitions,return_partition_entities,return_shared_entities)
-#
-#
-#     return ModelPartition
-# end
