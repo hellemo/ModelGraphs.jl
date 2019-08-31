@@ -1,9 +1,8 @@
 using ModelGraphs
-using Ipopt
+using Plots
+theme(:juno)
 
 graph = ModelGraph()
-optimizer = with_optimizer(Ipopt.Optimizer)
-
 
 @linkvariable(graph,z[1:2])
 @masterconstraint(graph,z[1] + z[2] <= 2)
@@ -24,13 +23,8 @@ link_variables!(graph[:z][1],n1[:z])
 @constraint(n2,z + x >= 4)
 link_variables!(graph[:z][2],n2[:z])
 
-#Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n1[:x] == n2[:x])
 @graphobjective(graph,Min,n1[:y] + n2[:x])
 
-optimize!(graph,optimizer)
 
-println("n1[:x]= ",nodevalue(n1[:x]))
-println("n1[:y]= ",nodevalue(n1[:y]))
-println("n2[:x]= ",nodevalue(n2[:x]))
-println("objective = ", objective_value(graph))
+spy(graph,markersize = 30)

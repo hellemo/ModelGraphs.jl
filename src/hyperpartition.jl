@@ -111,7 +111,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         push!(new_hypers,hyper)
     end
 
-    println("Creating Parent")
+    println("Creating Partition Parent")
     partition_parent = PartitionParent(shared_edges)
     partitions = Vector{SubgraphPartition}()
     for i = 1:length(new_hypers)

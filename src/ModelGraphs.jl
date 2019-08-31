@@ -42,6 +42,8 @@ add_node!, getnode, getnodes, getnumnodes,
 
 getlinkedge,getlinkedges,
 
+getblockmatrix,getincidencematrix,
+
 
 #Model functions
 set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,

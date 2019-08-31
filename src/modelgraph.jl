@@ -397,33 +397,39 @@ show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 # Analysis Functions
 ####################################
 #Create an incidence matrix representing the underlying hypergraph
-function getincidencematrix(graph::ModelGraph)
-    return sparse(graph.hypergraph)
+function getincidencematrix(graph::ModelGraph;include_master_node = false)
+    if include_master_node
+        error("master node in incidence matrix not yet supported")
+    else
+        return sparse(graph.hypergraph)
+    end
 end
 
 #Create a sparse matrix representing the ModelGraph structure.
 function getblockmatrix(graph::ModelGraph)
     hypergraph = gethypergraph(graph)
-    A = sparse(hypergraph)
-    A = sparse(A')
+    A = sparse(hypergraph)  #incidence matrix.  Nodes are rows, hyperedges are columns.
 
-    master_column = Int.(zeros(size(A)[1]))
-    top_block = hcat(master_column, A)
+    A = sparse(A')          #flip nodes to columns
 
-    n = 1 + getnumnodes(graph)
-    bottom_block = Int.(zeros(n - 1,n))
-    block_matrix = vcat(top_block,bottom_block) #1 master + n nodes
+    master_column = Int.(zeros(size(A)[1]))  #create a master column with all zeros
+
+    top_block = hcat(master_column, A)       #the top block containing master constraints (left) and link constraints (right)
+
+    n = 1 + getnumnodes(graph)               #dimension of bottom block (all the nodes and the master)
+    bottom_block = Int.(zeros(n - 1,n))      #n-1 rows (# of nodes) n columns (nodes + master)
+    block_matrix = vcat(top_block,bottom_block)
 
     #Fill in entries for link variables
     m = size(top_block)[1]
-    block_matrix[1,1] = 1
+    if !(isempty(graph.linkvariables))
+        block_matrix[1,1] = 1
+    end
     for node in getnodes(graph)
         index = getindex(graph,node) + 1
         block_matrix[index,index] = 1
-        #if is_linked_to_master(node)
         if !(isempty(node.linkvariablemap))
-            #block_matrix[m + index + 1,1] = 1
-            block_matrix[1,m + index] = 1
+            block_matrix[m + index - 1,1] = 1
         end
     end
     return block_matrix
