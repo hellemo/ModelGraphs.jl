@@ -427,7 +427,7 @@ function getblockmatrix(graph::ModelGraph)
     end
     for node in getnodes(graph)
         index = getindex(graph,node) + 1
-        block_matrix[index,index] = 1
+        block_matrix[m + index - 1,index] = 1
         if !(isempty(node.linkvariablemap))
             block_matrix[m + index - 1,1] = 1
         end
