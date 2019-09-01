@@ -408,16 +408,15 @@ end
 #Create a sparse matrix representing the ModelGraph structure.
 function getblockmatrix(graph::ModelGraph)
     hypergraph = gethypergraph(graph)
-    A = sparse(hypergraph)  #incidence matrix.  Nodes are rows, hyperedges are columns.
+    A = sparse(hypergraph)                      #incidence matrix.  Nodes are rows, hyperedges are columns.
 
-    A = sparse(A')          #flip nodes to columns
+    A = sparse(A')                              #flip nodes to columns
+    master_column = Int.(zeros(size(A)[1]))     #create a master column with all zeros
 
-    master_column = Int.(zeros(size(A)[1]))  #create a master column with all zeros
+    top_block = hcat(master_column, A)          #the top block containing master constraints (left) and link constraints (right)
 
-    top_block = hcat(master_column, A)       #the top block containing master constraints (left) and link constraints (right)
-
-    n = 1 + getnumnodes(graph)               #dimension of bottom block (all the nodes and the master)
-    bottom_block = Int.(zeros(n - 1,n))      #n-1 rows (# of nodes) n columns (nodes + master)
+    n = 1 + getnumnodes(graph)                  #dimension of bottom block (all the nodes and the master)
+    bottom_block = Int.(zeros(n - 1,n))         #n-1 rows (# of nodes) n columns (nodes + master)
     block_matrix = vcat(top_block,bottom_block)
 
     #Fill in entries for link variables
