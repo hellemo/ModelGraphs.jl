@@ -159,6 +159,8 @@ end
 is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
 has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 has_NLobjective(graph::AbstractModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
+has_subgraphs(graph::AbstractModelGraph) = !(isempty(graph.subgraphs))
+has_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
 getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
 getnumlinkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
 getnumNLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)

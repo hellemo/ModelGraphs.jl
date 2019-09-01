@@ -48,6 +48,7 @@ getblockmatrix,getincidencematrix,
 #Model functions
 set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,
 link_variables!,getlinkconstraints,getlinkvariables,getattribute,setattribute,
+has_objective,has_NLobjective,has_NLlinkconstraints,has_subgraphs,
 
 #Aggregation
 aggregate,aggregate!,
