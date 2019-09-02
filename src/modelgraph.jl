@@ -161,9 +161,9 @@ has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP
 has_NLobjective(graph::AbstractModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
 has_subgraphs(graph::AbstractModelGraph) = !(isempty(graph.subgraphs))
 has_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
-getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
-getnumlinkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
-getnumNLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
+num_linkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
+num_linkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
+num_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
 getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph)))
 
 getmastermodel(graph) = graph.mastermodel
@@ -179,6 +179,18 @@ function all_linkconstraints(graph::AbstractModelGraph)
     end
     append!(links,getlinkconstraints(graph))
     return links
+end
+
+function JuMP.num_variables(graph::AbstractModelGraph)
+    n_master_variables = 0
+    n_master_variables += JuMP.num_variables(getmastermodel(graph))
+    for subgraph in subgraphs(graph)
+        n_master_variables += JuMP.num_variables(getmastermodel(subgraph))
+    end
+
+    n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
+
+    return n_master_variables + n_node_variables
 end
 
 #JuMP Model Extenstion
@@ -395,43 +407,32 @@ print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 
 
-####################################
-# Analysis Functions
-####################################
-#Create an incidence matrix representing the underlying hypergraph
-function getincidencematrix(graph::ModelGraph;include_master_node = false)
-    if include_master_node
-        error("master node in incidence matrix not yet supported")
-    else
-        return sparse(graph.hypergraph)
-    end
-end
 
-#Create a sparse matrix representing the ModelGraph structure.
-function getblockmatrix(graph::ModelGraph)
-    hypergraph = gethypergraph(graph)
-    A = sparse(hypergraph)                      #incidence matrix.  Nodes are rows, hyperedges are columns.
-
-    A = sparse(A')                              #flip nodes to columns
-    master_column = Int.(zeros(size(A)[1]))     #create a master column with all zeros
-
-    top_block = hcat(master_column, A)          #the top block containing master constraints (left) and link constraints (right)
-
-    n = 1 + getnumnodes(graph)                  #dimension of bottom block (all the nodes and the master)
-    bottom_block = Int.(zeros(n - 1,n))         #n-1 rows (# of nodes) n columns (nodes + master)
-    block_matrix = vcat(top_block,bottom_block)
-
-    #Fill in entries for link variables
-    m = size(top_block)[1]
-    if !(isempty(graph.linkvariables))
-        block_matrix[1,1] = 1
-    end
-    for node in getnodes(graph)
-        index = getindex(graph,node) + 1
-        block_matrix[m + index - 1,index] = 1
-        if !(isempty(node.linkvariablemap))
-            block_matrix[m + index - 1,1] = 1
-        end
-    end
-    return block_matrix
-end
+# #Create a sparse matrix representing the ModelGraph structure.
+# function getblockmatrix(graph::ModelGraph)
+#     hypergraph = gethypergraph(graph)
+#     A = sparse(hypergraph)                      #incidence matrix.  Nodes are rows, hyperedges are columns.
+#     A = sparse(A')                              #flip nodes to columns
+#
+#     master_column = Int.(zeros(size(A)[1]))     #create a master column with all zeros
+#
+#     top_block = hcat(master_column, A)          #the top block containing master constraints (left) and link constraints (right)
+#
+#     n = 1 + getnumnodes(graph)                  #dimension of bottom block (all the nodes and the master)
+#     bottom_block = Int.(zeros(n - 1,n))         #n-1 rows (# of nodes) n columns (nodes + master)
+#     block_matrix = vcat(top_block,bottom_block)
+#
+#     #Fill in entries for link variables
+#     m = size(top_block)[1]
+#     if !(isempty(graph.linkvariables))
+#         block_matrix[1,1] = 1
+#     end
+#     for node in getnodes(graph)
+#         index = getindex(graph,node) + 1
+#         block_matrix[m + index - 1,index] = 1
+#         if !(isempty(node.linkvariablemap))
+#             block_matrix[m + index - 1,1] = 1
+#         end
+#     end
+#     return block_matrix
+# end
