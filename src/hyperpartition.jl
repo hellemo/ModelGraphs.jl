@@ -92,7 +92,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
     println("Identifying Shared and Induced Edges")
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
 
-    println("Creating Sub Model Graphs")
+    println("Creating Sub Hyper Graphs")
     #Create new Hypergraphs
     new_hypers = Vector{HyperGraph}()
     for i = 1:length(hypernode_vectors)
@@ -145,6 +145,20 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
     return submg
 end
+
+
+
+####################################
+#Print Functions
+####################################
+function string(partition::HyperPartition)
+    """
+    HyperPartition:
+    partitions: $(length(partition.partitions))
+    """
+end
+print(io::IO, partition::HyperPartition) = print(io, string(partition))
+show(io::IO,partition::HyperPartition) = print(io,partition)
 
 
 #TODO
