@@ -7,7 +7,7 @@ function plotblockmatrix(graph::ModelGraph;markershape = :square,colorbar = noth
 
 
     for node_view in node_views
-        node_view .= 3
+        node_view[node_view .== 1] .== 3
     end
 
     kwargs2 = Dict()
