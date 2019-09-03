@@ -78,7 +78,6 @@ abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
-include("utils.jl")
 
 include("modelnode.jl")
 
@@ -95,6 +94,8 @@ include("hyperpartition.jl")
 include("aggregation.jl")          #An aggregated JuMP model
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
+
+include("utils.jl")
 
 include("block_matrix.jl")
 

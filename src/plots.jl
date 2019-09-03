@@ -9,7 +9,6 @@ function Plots.spy(graph::ModelGraph;markershape = :square,markersize = 20,color
     for node in getnodes(graph)
         row_range = node_row_range[node]
         col_range = node_col_range[node]
-
         A[row_range,col_range] .= 3   #diagonal blocks will be blue
     end
 

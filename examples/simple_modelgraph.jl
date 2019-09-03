@@ -15,7 +15,7 @@ n2 = add_node!(graph)
 @variable(n1,0 <= x <= 2)
 @variable(n1,0 <= y <= 3)
 @variable(n1, z >= 0)
-@constraint(n1,x+y >= 4)
+@constraint(n1,x+y+z >= 4)
 link_variables!(graph[:z][1],n1[:z])
 
 @variable(n2,x)

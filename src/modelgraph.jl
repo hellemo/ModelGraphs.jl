@@ -399,8 +399,8 @@ function string(graph::ModelGraph)
     """
     Model Graph:
     model nodes: $(getnumnodes(graph))
-    link variables: $(getnumlinkvariables(graph))
-    link constraints: $(getnumlinkconstraints(graph))
+    link variables: $(num_linkvariables(graph))
+    link constraints: $(num_linkconstraints(graph))
     """
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
