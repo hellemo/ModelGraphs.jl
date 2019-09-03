@@ -257,8 +257,6 @@ function link_jacobian_structure(graph::ModelGraph)
         end
     end
 
-    println(var_map)
-
     @append_to_link_jacobian_sparsity con_data.linear_le_constraints
     @append_to_link_jacobian_sparsity con_data.linear_ge_constraints
     @append_to_link_jacobian_sparsity con_data.linear_interval_constraints
