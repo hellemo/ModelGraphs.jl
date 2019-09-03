@@ -49,8 +49,9 @@ function getblockdata(graph::ModelGraph)
 
     node_row_offsets = Vector{Int64}()
     node_col_offsets = Vector{Int64}()
-    node_col_ranges = Dict()
-    node_row_ranges = Dict()
+    # node_col_ranges = Dict()
+    # node_row_ranges = Dict()
+    node_views = []
 
     node_row_offset = top_offset + 1
     node_col_offset = n_master_variables + 1
@@ -68,6 +69,7 @@ function getblockdata(graph::ModelGraph)
         end_col = start_col + n_vars - 1
 
         Aview = view(A,start_row:end_row,start_col:end_col)
+        push!(node_views,Aview)
 
         for pair in Anode
             Aview[pair[1],pair[2]] = 1
@@ -85,14 +87,15 @@ function getblockdata(graph::ModelGraph)
 
         end
 
-        node_col_ranges[node] = start_col:end_col
-        node_row_ranges[node] = start_row:end_row
+        # node_row_ranges[node] = start_row:end_row
+        # node_col_ranges[node] = start_col:end_col
+
 
         node_row_offset += n_cons
         node_col_offset += n_vars
     end
 
-    return A,node_row_ranges,node_col_ranges
+    return A,node_views#node_row_ranges,node_col_ranges
 end
 
 getblockmatrix(graph::ModelGraph) = getblockdata(graph)[1]
