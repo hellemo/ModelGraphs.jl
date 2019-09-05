@@ -24,10 +24,12 @@ HyperPartition() = HyperPartition(Vector{SubgraphPartition}(),Vector{PartitionPa
 function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
     unique_parts = unique(membership_vector)  #get unique membership entries
 
+    unique_parts = sort(unique_parts)
+
     nparts = length(unique_parts)             #number of partitions
 
     #partitions = [Vector{HyperNode}() for _ = 1:nparts]
-    partitions = Dict{Int64,Vector{HyperNode}}((k,[]) for k in unique_parts)
+    partitions = OrderedDict{Int64,Vector{HyperNode}}((k,[]) for k in unique_parts)
     for (vertex,part) in enumerate(membership_vector)
         push!(partitions[part],getnode(hypergraph,vertex))
     end
