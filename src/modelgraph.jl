@@ -22,12 +22,12 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Link variables
     masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
-    linkvariables::Dict{Int,AbstractLinkVariableRef}                                #Link Variables in master model
+    linkvariables::OrderedDict{Int,AbstractLinkVariableRef}                                #Link Variables in master model
     linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.VariableRef}}        #Map of link variables in master model to corresponding variables in ModelNodes.
     linkvariable_names::Dict{Int,String}
 
     #Link constraints
-    linkconstraints::Dict{Int,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
+    linkconstraints::OrderedDict{Int,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
     linkconstraint_names::Dict{Int,String}
 
     #Objective
@@ -53,10 +53,10 @@ mutable struct ModelGraph <: AbstractModelGraph
                     Dict{HyperEdge,LinkEdge}(),
                     Vector{AbstractModelGraph}(),
                     Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
-                    Dict{Int, JuMP.AbstractVariable}(),
+                    OrderedDict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
                     Dict{Int,String}(),
-                    Dict{Int, AbstractLinkConstraint}(),
+                    OrderedDict{Int, AbstractLinkConstraint}(),
                     Dict{Int, String}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
@@ -168,6 +168,7 @@ getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph
 
 getmastermodel(graph) = graph.mastermodel
 
+#NOTE: Order is random
 getlinkvariables(graph::ModelGraph) = collect(values(graph.link_variables))
 getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 
