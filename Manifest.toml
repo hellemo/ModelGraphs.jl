@@ -152,8 +152,8 @@ uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "0.3.2"
 
 [[NestedHyperGraphs]]
-deps = ["LightGraphs", "SparseArrays"]
-git-tree-sha1 = "4478c5b8f158c2be8e6ec8da2124d037334063ac"
+deps = ["DataStructures", "LightGraphs", "SparseArrays"]
+git-tree-sha1 = "b31e2243a1b578de97f151b0d0ed1f1412413df5"
 repo-rev = "development"
 repo-url = "/home/jordan/.julia/dev/NestedHyperGraphs"
 uuid = "c0c75086-b334-11e9-328b-e3c1e6b85a38"

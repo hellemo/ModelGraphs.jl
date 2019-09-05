@@ -51,7 +51,10 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
        end
     end
 
-    V = ones(length(J))
+    #V = ones(length(J))
+
+    V = Int.(ones(length(J)))
+
     G = sparse(I,J,V)  #Node partition matrix
 
     A = sparse(hypergraph)
