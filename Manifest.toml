@@ -153,7 +153,7 @@ version = "0.3.2"
 
 [[NestedHyperGraphs]]
 deps = ["LightGraphs", "SparseArrays"]
-git-tree-sha1 = "f7bfd4c003e905dbb6658fdf29056edd57381945"
+git-tree-sha1 = "4478c5b8f158c2be8e6ec8da2124d037334063ac"
 repo-rev = "development"
 repo-url = "/home/jordan/.julia/dev/NestedHyperGraphs"
 uuid = "c0c75086-b334-11e9-328b-e3c1e6b85a38"
@@ -211,10 +211,10 @@ deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpecialFunctions]]
-deps = ["BinDeps", "BinaryProvider", "Libdl", "Test"]
-git-tree-sha1 = "0b45dc2e45ed77f445617b99ff2adf0f5b0f23ea"
+deps = ["BinDeps", "BinaryProvider", "Libdl"]
+git-tree-sha1 = "3bdd374b6fd78faf0119b8c5d538788dbf910c6e"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "0.7.2"
+version = "0.8.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
