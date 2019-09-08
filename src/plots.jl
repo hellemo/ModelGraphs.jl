@@ -3,11 +3,17 @@ using Plots
 #TODO: Handle subgraphs (sub-blocks)
 function plotblockmatrix(graph::ModelGraph;markershape = :square,colorbar = nothing, c = ColorGradient([:red,:blue]), kwargs...)
 
-    A,node_views = getblockdata(graph)
+    A,node_row_ranges,node_col_ranges = getblockdata(graph)
 
+    for node in getnodes(graph)
+        I = node_row_ranges[node]
+        J = node_col_ranges[node]
 
-    for node_view in node_views
-        node_view[node_view .== 1] .= 3
+        Ablock = A[I,J]
+        for i = 1:length(Ablock.nzval)
+            Ablock.nzval[i] = 3
+        end
+        A[I,J] = Ablock
     end
 
     kwargs2 = Dict()
@@ -36,8 +42,8 @@ function plotblockmatrix(graph::ModelGraph;markershape = :square,colorbar = noth
     xlims!(p,(0,n_cols + 1))
     ylims!(p,(0,n_rows + 1))
 
-    xlabel!(p,"# Variables")
-    ylabel!(p,"# Constraints")
+    xlabel!(p,"Variables")
+    ylabel!(p,"Constraints")
 
     return p
 end
