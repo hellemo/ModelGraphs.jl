@@ -42,7 +42,7 @@ add_node!, getnode, getnodes, getnumnodes,
 
 getlinkedge,getlinkedges,
 
-getblockmatrix,getincidencematrix,
+getblockmatrix,getincidencematrix,plotblockmatrix,
 
 
 #Model functions
