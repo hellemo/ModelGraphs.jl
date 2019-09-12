@@ -245,6 +245,8 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #reference_map = GraphReferenceMap(m,MOIU.IndexMap())
     reference_map = AggregationMap(aggregate_model)
 
+
+    constraint_types = JuMP.list_of_constraint_types(node_model)
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
         if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
@@ -261,19 +263,40 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
             agg_node.variablemap[new_x] = var
         end
     end
+    # #ADD VARIABLE CONSTRAINTS SEPARATELY.  Need to do this because linked variables get counted multiple times.
+    # for (func,set) in constraint_types
+    #     if func == JuMP.VariableRef
+    #         if !(is_linked_variable(var))
+    #             constraint_refs = JuMP.all_constraints(node_model, func, set)
+    #             for constraint_ref in constraint_refs
+    #                 constraint = JuMP.constraint_object(constraint_ref)
+    #                 new_constraint = _copy_constraint(constraint,reference_map)
+    #                 new_ref= JuMP.add_constraint(aggregate_model,new_constraint)
+    #                 agg_node.constraintmap[new_ref] = constraint_ref
+    #                 reference_map[constraint_ref] = new_ref
+    #             end
+    #         end
+    #     end
+    # end
 
-    #COPY CONSTRAINTS
+    #COPY ALL OTHER CONSTRAINTS
     #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
-    constraint_types = JuMP.list_of_constraint_types(node_model)
     for (func,set) in constraint_types
         constraint_refs = JuMP.all_constraints(node_model, func, set)
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(constraint_ref)
+            if func == JuMP.VariableRef
+                var = constraint.func
+                if is_linked_variable(var)  #Don't add multiple copies of a linked variable constraint
+                    continue
+                end
+            end
             new_constraint = _copy_constraint(constraint,reference_map)
             new_ref= JuMP.add_constraint(aggregate_model,new_constraint)
             agg_node.constraintmap[new_ref] = constraint_ref
             reference_map[constraint_ref] = new_ref
         end
+
     end
 
     #COPY NONLINEAR CONSTRAINTS
