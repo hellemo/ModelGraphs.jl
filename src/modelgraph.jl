@@ -169,7 +169,7 @@ getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph
 getmastermodel(graph) = graph.mastermodel
 
 #NOTE: Order is random
-getlinkvariables(graph::ModelGraph) = collect(values(graph.link_variables))
+getlinkvariables(graph::ModelGraph) = collect(values(graph.linkvariables))
 getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 
 #Go through subgraphs and get all linkconstraints
