@@ -328,6 +328,7 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     if !(_has_nonlinear_obj(node_model))
         #AFFINE OR QUADTRATIC OBJECTIVE
         new_objective = _copy_objective(node_model,reference_map)
+        #TODO: Check objective sense
         agg_node.objective = new_objective
     else
         #NONLINEAR OBJECTIVE
