@@ -42,10 +42,14 @@ add_node!, getnode, getnodes, getnumnodes,
 
 getlinkedge,getlinkedges,
 
+getblockmatrix,getincidencematrix,plotblockmatrix,
+
 
 #Model functions
-set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,
-link_variables!,getlinkconstraints,getlinkvariables,
+set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,getmastermodel,
+link_variables!,getlinkconstraints,getlinkvariables,getattribute,setattribute,
+has_objective,has_NLobjective,has_NLlinkconstraints,has_subgraphs,
+num_linkconstraints,num_linkvariables,
 
 #Aggregation
 aggregate,aggregate!,
@@ -74,6 +78,7 @@ abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
+
 include("modelnode.jl")
 
 include("linkedge.jl")
@@ -90,8 +95,11 @@ include("aggregation.jl")          #An aggregated JuMP model
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 
+include("utils.jl")
 
+include("block_matrix.jl")
 
+#include("plots.jl")
 function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plots.jl")
 end

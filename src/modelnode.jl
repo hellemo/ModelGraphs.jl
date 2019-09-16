@@ -56,6 +56,8 @@ getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
+setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
+getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 
 nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
 function nodevalue(expr::JuMP.GenericAffExpr)
@@ -97,7 +99,8 @@ function is_linked_variable(var::JuMP.AbstractVariableRef)
         return var in keys(getnode(var).linkvariablemap)
     end
 end
-#is_linked_variable(var::JuMP.AbstractVariableRef) = var in keys(getnode(var).linkvariablemap)
+
+is_linked_to_master(node::Model) = !(isempty(node.linkvariablemap))
 
 
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
@@ -130,6 +133,18 @@ end
 function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
     cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
     return cref
+end
+
+function num_node_constraints(node::ModelNode)
+    m = getmodel(node)
+    num_cons = 0
+    for (func,set) in JuMP.list_of_constraint_types(m)
+        if func != JuMP.VariableRef
+            num_cons += JuMP.num_constraints(m,func,set)
+        end
+    end
+    num_cons += JuMP.num_nl_constraints(m)
+    return num_cons
 end
 
 """

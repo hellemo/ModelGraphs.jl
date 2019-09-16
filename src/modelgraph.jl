@@ -22,12 +22,12 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Link variables
     masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
-    linkvariables::Dict{Int,AbstractLinkVariableRef}                                #Link Variables in master model
+    linkvariables::OrderedDict{Int,AbstractLinkVariableRef}                                #Link Variables in master model
     linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.VariableRef}}        #Map of link variables in master model to corresponding variables in ModelNodes.
     linkvariable_names::Dict{Int,String}
 
     #Link constraints
-    linkconstraints::Dict{Int,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
+    linkconstraints::OrderedDict{Int,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
     linkconstraint_names::Dict{Int,String}
 
     #Objective
@@ -53,10 +53,10 @@ mutable struct ModelGraph <: AbstractModelGraph
                     Dict{HyperEdge,LinkEdge}(),
                     Vector{AbstractModelGraph}(),
                     Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
-                    Dict{Int, JuMP.AbstractVariable}(),
+                    OrderedDict{Int, JuMP.AbstractVariable}(),
                     Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
                     Dict{Int,String}(),
-                    Dict{Int, AbstractLinkConstraint}(),
+                    OrderedDict{Int, AbstractLinkConstraint}(),
                     Dict{Int, String}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
@@ -159,14 +159,17 @@ end
 is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
 has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 has_NLobjective(graph::AbstractModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
-getnumlinkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
-getnumlinkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
-getnumNLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
+has_subgraphs(graph::AbstractModelGraph) = !(isempty(graph.subgraphs))
+has_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
+num_linkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
+num_linkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
+num_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
 getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph)))
 
 getmastermodel(graph) = graph.mastermodel
 
-getlinkvariables(graph::ModelGraph) = collect(values(graph.link_variables))
+#NOTE: Order is random
+getlinkvariables(graph::ModelGraph) = collect(values(graph.linkvariables))
 getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 
 #Go through subgraphs and get all linkconstraints
@@ -177,6 +180,18 @@ function all_linkconstraints(graph::AbstractModelGraph)
     end
     append!(links,getlinkconstraints(graph))
     return links
+end
+
+function JuMP.num_variables(graph::AbstractModelGraph)
+    n_master_variables = 0
+    n_master_variables += JuMP.num_variables(getmastermodel(graph))
+    for subgraph in subgraphs(graph)
+        n_master_variables += JuMP.num_variables(getmastermodel(subgraph))
+    end
+
+    n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
+
+    return n_master_variables + n_node_variables
 end
 
 #JuMP Model Extenstion
@@ -298,9 +313,6 @@ function JuMP.add_constraint(graph::ModelGraph, con::ScalarMasterConstraint, nam
     return cref
 end
 
-#graph.linkvar_constraint_index += 1
-#cref = LinkVarConstraintRef(m, m.linkvar_constraint_index)
-
 # Model Extras
 JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
 JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
@@ -388,21 +400,40 @@ function string(graph::ModelGraph)
     """
     Model Graph:
     model nodes: $(getnumnodes(graph))
-    link variables: $(getnumlinkvariables(graph))
-    link constraints: $(getnumlinkconstraints(graph))
+    link variables: $(num_linkvariables(graph))
+    link constraints: $(num_linkconstraints(graph))
     """
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
 
 
-####################################
-# Analysis Functions
-####################################
-function getblockmatrix(graph::ModelGraph)
-    #return matrix with master node added
-    #Add all subgraphs as blocks too
-end
 
-function SparseArrays.sparse(graph::ModelGraph)
-end
+# #Create a sparse matrix representing the ModelGraph structure.
+# function getblockmatrix(graph::ModelGraph)
+#     hypergraph = gethypergraph(graph)
+#     A = sparse(hypergraph)                      #incidence matrix.  Nodes are rows, hyperedges are columns.
+#     A = sparse(A')                              #flip nodes to columns
+#
+#     master_column = Int.(zeros(size(A)[1]))     #create a master column with all zeros
+#
+#     top_block = hcat(master_column, A)          #the top block containing master constraints (left) and link constraints (right)
+#
+#     n = 1 + getnumnodes(graph)                  #dimension of bottom block (all the nodes and the master)
+#     bottom_block = Int.(zeros(n - 1,n))         #n-1 rows (# of nodes) n columns (nodes + master)
+#     block_matrix = vcat(top_block,bottom_block)
+#
+#     #Fill in entries for link variables
+#     m = size(top_block)[1]
+#     if !(isempty(graph.linkvariables))
+#         block_matrix[1,1] = 1
+#     end
+#     for node in getnodes(graph)
+#         index = getindex(graph,node) + 1
+#         block_matrix[m + index - 1,index] = 1
+#         if !(isempty(node.linkvariablemap))
+#             block_matrix[m + index - 1,1] = 1
+#         end
+#     end
+#     return block_matrix
+# end
