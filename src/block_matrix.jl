@@ -83,7 +83,7 @@ function getblockdata(graph::ModelGraph)
         J = [IJ_pairs[i][2] for i = 1:length(IJ_pairs)]
         V = Int.(ones(length(I)))
 
-        Anode = sparse(I,J,V)
+        Anode = sparse(I,J,V)  #TODO: Enfroce dimensions
 
         # Anode = A[I,J]
         # for (p,v) in zip(Anode.colptr,Anode.nzval)
@@ -97,16 +97,17 @@ function getblockdata(graph::ModelGraph)
         start_col = node_col_offset
         end_col = start_col + n_vars - 1
 
-        A[start_row:end_row,start_col:end_col] = Anode
+        A[start_row:end_row,start_col:end_col] = Anode  #sizes match
 
+        #TODO: Fix issues with variables that have no constraints.  Need to keep their dimensions in Anode
         for (local_var,master_var) in node.linkvariablemap
-            master_column = master_var.vref.index.value
+            master_column = master_var.vref.index.value        #master variables are the first indices
 
             local_column = local_var.index.value
-            local_constraint_indices = Anode[:,local_column]
+            local_constraint_indices = Anode[:,local_column]        #Anode[:,local_column]?
 
             for local_index in local_constraint_indices.nzind
-                A[start_row + local_index - 1,master_column] = 1
+                A[start_row + local_index - 1 , master_column] = 1
             end
         end
 
@@ -123,11 +124,11 @@ end
 
 getblockmatrix(graph::ModelGraph) = getblockdata(graph)[1]
 
-function getdetailedblockmatrix(graph::ModelGraph)
-end
+# function getdetailedblockmatrix(graph::ModelGraph)
+# end
 
-function getdetailednestedblockmatrix(graph::ModelGraph)
-end
+# function getdetailednestedblockmatrix(graph::ModelGraph)
+# end
 
 #TODO: This is a little more challenging
 function getnestedblockmatrix(graph::ModelGraph)
