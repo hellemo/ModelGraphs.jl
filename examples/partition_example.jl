@@ -31,9 +31,11 @@ m2 = Model()
 
 m3 = Model()
 @variable(m3,x >= 0)
+@constraint(m3,x <= 3)
 
 m4 = Model()
 @variable(m4,0 <= x <= 1)
+@constraint(m4, x <= 3)
 
 
 #Set models on nodes and edges
