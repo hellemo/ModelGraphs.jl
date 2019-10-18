@@ -1,5 +1,5 @@
 using JuMP
-using AlgebraicGraphs
+using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()
@@ -54,3 +54,5 @@ optimize!(graph,ipopt)
 
 #Query solution
 nodevalue(n2[:x])
+
+true

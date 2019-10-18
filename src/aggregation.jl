@@ -433,9 +433,9 @@ function _copy_constraint(constraint::JuMP.ScalarConstraint,ref_map::Aggregation
     return new_con
 end
 
-function _copy_constraint(constraints::JuMP.VectorConstraint,ref_map::AggregationMap)
-    new_funcs = [_copy_constraint_func(con.func) for con in constraints]
-    new_con = JuMP.VectorConstraint(new_func,constraint.set,constraint.shape)
+function _copy_constraint(constraint::JuMP.VectorConstraint,ref_map::AggregationMap)
+    new_funcs = [_copy_constraint_func(func,ref_map) for func in constraint.func]
+    new_con = JuMP.VectorConstraint(new_funcs,constraint.set,constraint.shape)
     return new_con
 end
 
