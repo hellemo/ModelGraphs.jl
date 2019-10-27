@@ -69,13 +69,13 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
     indices = [indices[i].I[2] for i = 1:length(indices)]   #convert to Integers
 
 
-    shared_edges = NHG.HyperEdge[]
+    shared_edges = HyperEdge[]
     for index in indices
         push!(shared_edges,gethyperedge(hypergraph,index))
     end
 
     #GET INDUCED PARTITION EDGES (I.E GET THE EDGES LOCAL TO EACH PARTITION)
-    partition_edges = Vector[Vector{NHG.HyperEdge}() for _ = 1:nparts]
+    partition_edges = Vector[Vector{HyperEdge}() for _ = 1:nparts]
     for i = 1:nparts
         inds = findall(C[i,:] .!= 0)
         new_inds = filter(x -> !(x in indices), inds) #these are edge indices
@@ -88,7 +88,7 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
 end
 
 #Simple 2 level partition from a vector of integers
-function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vector::Vector{Int64})
+function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
     hyperpartition = HyperPartition()
 
     #convert membership vector to vector of vectors
@@ -110,7 +110,7 @@ function HyperPartition(hypergraph::NHG.AbstractHyperGraph,node_membership_vecto
         end
 
         for hyperedge in induced_edges
-            NHG.add_sub_hyperedge!(hyper,hyperedge)  #NOTE HyperEdge Construction might be taking too long
+            add_sub_hyperedge!(hyper,hyperedge)  #NOTE HyperEdge Construction might be taking too long
         end
 
         push!(new_hypers,hyper)
@@ -139,7 +139,7 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     end
 
     i = 1
-    for hyperedge in NHG.getallhyperedges(hypergraph)
+    for hyperedge in getallhyperedges(hypergraph)
         linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
@@ -167,7 +167,7 @@ show(io::IO,partition::HyperPartition) = print(io,partition)
 
 
 #TODO
-# function HyperPartition(clique_graph::NHG.DualCliqueGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
+# function HyperPartition(clique_graph::DualCliqueGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
 #
 #     hyperpartition = HyperPartition()
 #
@@ -176,14 +176,14 @@ show(io::IO,partition::HyperPartition) = print(io,partition)
 #     return hyperpartition
 # end
 #
-# function HyperPartition(bipartite_graph::NHG.BipartiteGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64};selection = :shared_nodes)
+# function HyperPartition(bipartite_graph::BipartiteGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64};selection = :shared_nodes)
 #
 #     hyperpartition = HyperPartition()
 #
 #     return hyperpartition
 # end
 #
-# function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::NHG.ProjectionMap,membership_vector::Vector{Int64})
+# function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64})
 #
 #     hyperpartition = HyperPartition()
 #

@@ -78,7 +78,7 @@ end
 # HyperGraph Interface
 ########################################################
 gethypergraph(modelgraph::ModelGraph) = modelgraph.hypergraph
-function NHG.add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
+function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
     hypergraph = gethypergraph(graph)
     sub_hypergraph = gethypergraph(subgraph)
     add_subgraph!(hypergraph,sub_hypergraph)
@@ -95,17 +95,17 @@ function NHG.add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
     return nothing
 end
 
-NHG.subgraphs(modelgraph) = modelgraph.subgraphs
+subgraphs(modelgraph) = modelgraph.subgraphs
 
 getmodelnode(graph::ModelGraph,hypernode::HyperNode) = graph.modelnodes[hypernode]
-NHG.getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
+getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
 
-function NHG.getnode(graph::ModelGraph,index::Int64)
-    hypernode = NHG.getnode(gethypergraph(graph),index)
+function getnode(graph::ModelGraph,index::Int64)
+    hypernode = getnode(gethypergraph(graph),index)
     return getmodelnode(graph,hypernode)
 end
-function NHG.getnodes(graph::ModelGraph)
-    return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(NHG.getnodes(graph.hypergraph))
+function getnodes(graph::ModelGraph)
+    return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(getnodes(graph.hypergraph))
 end
 
 function Base.getindex(graph::ModelGraph,node::ModelNode)
@@ -145,8 +145,8 @@ function getlinkedge(graph::ModelGraph,vertices::Int...)
 end
 
 function getlinkedges(graph::ModelGraph)
-    return map(x -> getlinkedge(graph,x),NHG.gethyperedges(graph.hypergraph))
-    #return getlinkedge.(NHG.gethyperedges(graph.hypergraph))
+    return map(x -> getlinkedge(graph,x),gethyperedges(graph.hypergraph))
+    #return getlinkedge.(gethyperedges(graph.hypergraph))
 end
 
 function getindex(graph::ModelGraph,linkedge::LinkEdge)
@@ -164,7 +164,7 @@ has_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data != nothing && 
 num_linkconstraints(graph::AbstractModelGraph) = length(graph.linkconstraints)
 num_linkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
 num_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
-getnumnodes(graph::AbstractModelGraph) = length(NHG.getnodes(gethypergraph(graph)))
+getnumnodes(graph::AbstractModelGraph) = length(getnodes(gethypergraph(graph)))
 
 getmastermodel(graph) = graph.mastermodel
 
@@ -175,7 +175,7 @@ getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 #Go through subgraphs and get all linkconstraints
 function all_linkconstraints(graph::AbstractModelGraph)
     links = []
-    for subgraph in NHG.subgraphs(graph)
+    for subgraph in subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
     end
     append!(links,getlinkconstraints(graph))
@@ -273,7 +273,7 @@ function link_variables!(lvref::LinkVariableRef,vref::JuMP.VariableRef)
     if !(vref in graph.linkvariable_map[lvref])
         push!(graph.linkvariable_map[lvref],vref)
     end
-    node = NHG.getnode(vref)
+    node = getnode(vref)
     node.linkvariablemap[vref] = lvref
     return nothing
 end
@@ -335,14 +335,14 @@ end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
 
-function NHG.getnodes(con::LinkConstraint)
-    return [NHG.getnode(var) for var in keys(con.func.terms)]   #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
+function getnodes(con::LinkConstraint)
+    return [getnode(var) for var in keys(con.func.terms)]   #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
 end
 #return getnodes(con.link_edge)
 #return getnodes(con.hyperedge)
 #return map(n -> getnode(con.graph,n),con.node_indices)
-NHG.getnodes(cref::LinkConstraintRef) = NHG.getnodes(cref.linkedge)
-getnumnodes(con::LinkConstraint) = length(NHG.getnodes(con))
+getnodes(cref::LinkConstraintRef) = getnodes(cref.linkedge)
+getnumnodes(con::LinkConstraint) = length(getnodes(con))
 
 #Add a LinkConstraint to a ModelGraph and Update its LinkEdges
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
@@ -351,7 +351,7 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
 
     #Setup graph information
     hypergraph = gethypergraph(graph)
-    hypernodes = sort(unique([getindex(hypergraph,NHG.getnode(var).hypernode) for var in keys(con.func.terms)]))
+    hypernodes = sort(unique([getindex(hypergraph,getnode(var).hypernode) for var in keys(con.func.terms)]))
     modelnodes = [NHG.getnode(graph,index) for index in hypernodes]
     linkedge = add_link_edge!(graph,modelnodes)
 
