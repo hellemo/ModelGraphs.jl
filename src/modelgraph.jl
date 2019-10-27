@@ -117,8 +117,6 @@ end
 getlocallinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.linkedges[hyperedge]
 getsublinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.sublinkedges[hyperedge]
 function getlinkedge(graph::ModelGraph,hyperedge::HyperEdge)
-    # d = merge(graph.linkedges,graph.sublinkedges)
-    # return d[hyperedge]
     return graph.linkedges[hyperedge]
 end
 
