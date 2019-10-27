@@ -189,9 +189,11 @@ function add_subgraph!(graph::HyperGraph,subgraph::HyperGraph)
     for node in getnodes(subgraph)
         add_node!(graph,node)  #add the HyperNode to the hypergraph
     end
-    for edge in getedges(subgraph)
-        add_sub_hyperedge!(graph,edge)
-    end
+
+    #TODO Fix.  This is slow.
+    # for edge in getedges(subgraph)
+    #     add_sub_hyperedge!(graph,edge)
+    # end
     for subgraph in subgraphs(subgraph)
         add_subgraph!(graph,subgraph)
     end
