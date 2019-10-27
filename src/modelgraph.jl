@@ -352,7 +352,7 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     #Setup graph information
     hypergraph = gethypergraph(graph)
     hypernodes = sort(unique([getindex(hypergraph,getnode(var).hypernode) for var in keys(con.func.terms)]))
-    modelnodes = [NHG.getnode(graph,index) for index in hypernodes]
+    modelnodes = [getnode(graph,index) for index in hypernodes]
     linkedge = add_link_edge!(graph,modelnodes)
 
     cref = LinkConstraintRef(graph, graph.linkconstraint_index,linkedge)
