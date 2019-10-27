@@ -131,7 +131,7 @@ function add_sub_hyperedge!(hypergraph::AbstractHyperGraph, hyperedge::HyperEdge
     # if has_edge(hypergraph,hyperedge)  #NOTE: I don't think this would ever happen
     #     return hyperedge
 
-    if haskey(hyperedge.indexmap,hypergraph)  #if the hyperedge already belongs to this hypergraph
+    if haskey(hyperedge.index_map,hypergraph)  #if the hyperedge already belongs to this hypergraph
     # elseif hyperedge in hypergraph.hyperedge_vector     #if it's already a sub hyperedge
         return hyperedge
     else
