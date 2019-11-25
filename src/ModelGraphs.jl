@@ -1,7 +1,5 @@
 module ModelGraphs
 
-using NestedHyperGraphs
-
 using Requires
 using LinearAlgebra
 using DataStructures
@@ -9,7 +7,7 @@ using SparseArrays
 
 using MathOptInterface
 const MOI = MathOptInterface
-const NHG = NestedHyperGraphs
+#const NHG = NestedHyperGraphs
 
 using JuMP
 macro exportall(pkg)
@@ -19,9 +17,40 @@ end
 
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base: ==,show,print,string,getindex,copy
+import LightGraphs:AbstractGraph,AbstractEdge,Graph
+import DataStructures.OrderedDict
 
 #Model Graph
-export AbstractModelGraph, ModelGraph,
+export
+
+######################################
+# HYPERGRAPHS
+######################################
+HyperGraph, HyperEdge,HyperNode,
+
+# Hypergraph getters
+gethypergraph, getnode, getnodes, getnumnodes, subgraphs, getindices, getlabel, getedge, getedges, gethyperedge, gethyperedges, getindex, getsubgraphs, getsubgraph,
+
+# Hypergraph adders
+add_node!,add_edge!,add_hyperedge!,add_subgraph!,
+
+# Hypergraph functions
+in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to,get_connected_from,
+
+in_neighbors,out_neighbors,neighbors,has_edge, in_edges, out_edges,
+
+# Hypergraph Projections
+BipartiteGraph, CliqueExpandedGraph,
+
+copy_graph,
+
+#Projections
+dual_hyper_graph, clique_expansion, dual_clique_expansion, star_expansion,
+
+#################################
+# MODELGRAPHS
+################################
+AbstractModelGraph, ModelGraph,
 
 #Nodes and Edges,
 ModelNode,LinkEdge,
@@ -33,32 +62,35 @@ LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
 HyperPartition,
 
 #Solvers/Optimizers
-AbstractGraphOptimizer,#BendersOptimizer,DDOptimizer, ADMMOptimizer,
+AbstractGraphOptimizer,
 
-#Graph Functions
-gethypergraph, add_subgraph!,
+# ModelGraph checks
+has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
-add_node!, getnode, getnodes, getnumnodes,
+num_linkconstraints, num_linkvariables,
 
-getlinkedge,getlinkedges,
+# ModelGraph getters
+getlinkedge,getlinkedges, getmodel, getmastermodel,
 
-getblockmatrix,getincidencematrix,plotblockmatrix,
+getblockmatrix, getincidencematrix, getlinkconstraints, getlinkvariables, getattribute,
 
+# ModelGraph setters
+set_model, set_optimizer, reset_model, setattribute,
 
-#Model functions
-set_model,set_optimizer,reset_model,is_nodevariable,is_linked_variable,getmodel,has_model,getmastermodel,
-link_variables!,getlinkconstraints,getlinkvariables,getattribute,setattribute,
-has_objective,has_NLobjective,has_NLlinkconstraints,has_subgraphs,
-num_linkconstraints,num_linkvariables,
+# Variable functions
+is_nodevariable, is_linked_variable, link_variables!,
 
-#Aggregation
-aggregate,aggregate!,
+# Aggregation
+aggregate, aggregate!,
 
-#solve handles
+# solve handles
 optimize!,
 
-#Solution management
-nodevalue,nodedual,linkdual,
+# Solution management
+nodevalue, nodedual,  linkdual,
+
+# extras
+plotblockmatrix,
 
 #macros
 @linkconstraint, @NLlinkconstraint, @linkvariable,
@@ -78,6 +110,11 @@ abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
+include("hypergraphs/hypergraph.jl")
+
+include("hypergraphs/cliquegraph.jl")
+
+include("hypergraphs/projections.jl")
 
 include("modelnode.jl")
 

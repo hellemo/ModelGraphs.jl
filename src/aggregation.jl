@@ -36,7 +36,7 @@ getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:Agg
 getlinkconstraints(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkconstraints
 getlinkvariables(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkvariables
 getNLlinkconstraints(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).NLlinkconstraints
-NHG.getnodes(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).nodes
+getnodes(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).nodes
 
 #Create a new new node on an AggregateModel
 function add_aggregated_node!(m::JuMP.Model)

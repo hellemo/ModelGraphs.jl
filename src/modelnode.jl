@@ -33,7 +33,7 @@ function ModelNode(hypernode::HyperNode)
 end
 
 
-function NHG.add_node!(graph::AbstractModelGraph)
+function add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)
     hypernode = add_node!(hypergraph)
     modelnode = ModelNode(hypernode)
@@ -41,8 +41,8 @@ function NHG.add_node!(graph::AbstractModelGraph)
     return modelnode
 end
 
-function NHG.add_node!(graph::AbstractModelGraph,m::JuMP.AbstractModel)
-    node = NHG.add_node!(graph)
+function add_node!(graph::AbstractModelGraph,m::JuMP.AbstractModel)
+    node = add_node!(graph)
     set_model(node,m)
     return node
 end
@@ -59,7 +59,7 @@ getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
 setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 
-nodevalue(var::JuMP.VariableRef) = NHG.getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
+nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
     for (var,coeff) in expr.terms
@@ -69,8 +69,8 @@ function nodevalue(expr::JuMP.GenericAffExpr)
     return ret_value
 end
 
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = NHG.getnode(con).constraint_dual_values[con]
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = NHG.getnode(con).nl_constraint_dual_values[con]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
+nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
 
 """
 set_model(node::ModelNode,m::AbstractModel)
@@ -171,10 +171,10 @@ end
 ##############################################
 # Get Model Node
 ##############################################
-NHG.getnode(m::JuMP.Model) = m.ext[:modelnode]
+getnode(m::JuMP.Model) = m.ext[:modelnode]
 
 #Get the corresponding node for a JuMP variable reference
-function NHG.getnode(var::JuMP.VariableRef)
+function getnode(var::JuMP.VariableRef)
     if haskey(var.model.ext,:modelnode)
         return getnode(var.model)
     else
@@ -183,7 +183,7 @@ function NHG.getnode(var::JuMP.VariableRef)
     end
 end
 
-function NHG.getnode(con::JuMP.ConstraintRef)
+function getnode(con::JuMP.ConstraintRef)
     if haskey(con.model.ext,:modelnode)
         return getnode(con.model)
     else
@@ -192,18 +192,18 @@ function NHG.getnode(con::JuMP.ConstraintRef)
 end
 
 """
-NHG.getnode(model::AbstractModel)
+getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Model
 """
-NHG.getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
+getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
 
 """
-NHG.getnode(model::AbstractModel)
+getnode(model::AbstractModel)
 
 Get the ModelNode corresponding to a JuMP Variable
 """
-NHG.getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
+getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
 
 ###############################################
 # Printing
