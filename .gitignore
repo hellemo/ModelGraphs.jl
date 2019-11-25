@@ -10,3 +10,5 @@ development\.jl
 development2\.jl
 
 development1\.jl
+
+examples/modelnodes\.jl

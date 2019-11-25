@@ -199,7 +199,7 @@ end
 
 JuMP.objective_function(graph::AbstractModelGraph) = graph.objective_function
 JuMP.set_objective_function(graph::AbstractModelGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
-JuMP.set_objective_function(graph::AbstractModelGraph, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(graph, func)
+JuMP.set_objective_function(graph::AbstractModelGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
 
 
 function JuMP.set_objective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
@@ -213,7 +213,6 @@ function JuMP.objective_value(graph::AbstractModelGraph)
 end
 
 # nodevalue(lvref::LinkVariableRef) = JuMP.
-
 JuMP.object_dictionary(m::ModelGraph) = m.obj_dict
 JuMP.objective_sense(m::ModelGraph) = m.objective_sense
 
@@ -404,34 +403,3 @@ function string(graph::ModelGraph)
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-
-
-# #Create a sparse matrix representing the ModelGraph structure.
-# function getblockmatrix(graph::ModelGraph)
-#     hypergraph = gethypergraph(graph)
-#     A = sparse(hypergraph)                      #incidence matrix.  Nodes are rows, hyperedges are columns.
-#     A = sparse(A')                              #flip nodes to columns
-#
-#     master_column = Int.(zeros(size(A)[1]))     #create a master column with all zeros
-#
-#     top_block = hcat(master_column, A)          #the top block containing master constraints (left) and link constraints (right)
-#
-#     n = 1 + getnumnodes(graph)                  #dimension of bottom block (all the nodes and the master)
-#     bottom_block = Int.(zeros(n - 1,n))         #n-1 rows (# of nodes) n columns (nodes + master)
-#     block_matrix = vcat(top_block,bottom_block)
-#
-#     #Fill in entries for link variables
-#     m = size(top_block)[1]
-#     if !(isempty(graph.linkvariables))
-#         block_matrix[1,1] = 1
-#     end
-#     for node in getnodes(graph)
-#         index = getindex(graph,node) + 1
-#         block_matrix[m + index - 1,index] = 1
-#         if !(isempty(node.linkvariablemap))
-#             block_matrix[m + index - 1,1] = 1
-#         end
-#     end
-#     return block_matrix
-# end
