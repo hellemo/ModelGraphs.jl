@@ -15,6 +15,7 @@ mutable struct ModelNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
     linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to linkvariables
+    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
@@ -27,7 +28,7 @@ end
 # Add Model Nodes
 ############################################
 function ModelNode(hypernode::HyperNode)
-     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{Int64,AbstractLinkConstraint}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
      node.model.ext[:modelnode] = node
      return node
 end

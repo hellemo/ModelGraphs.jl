@@ -108,6 +108,8 @@ function getnodes(graph::ModelGraph)
     return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(getnodes(graph.hypergraph))
 end
 
+
+
 function Base.getindex(graph::ModelGraph,node::ModelNode)
     hypernode = gethypernode(node)
     return getindex(gethypergraph(graph),hypernode)

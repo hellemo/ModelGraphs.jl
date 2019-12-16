@@ -1,39 +1,47 @@
+#NOTE The Partition object describes recursive hypergraph partitions.  Different hypergraph projections can be partitioned and used to create Partition objects that reflect the associated decomposition
+
 abstract type AbstractPartition end
 
-struct SubgraphPartition <: AbstractPartition
+#A hypergraph community with a parent
+struct PartitionLeaf <: AbstractPartition
     hypergraph::HyperGraph
     parent::Union{Nothing,AbstractPartition}
 end
 
+#PartitionParent descrives shared nodes and shared edges among its children
 struct PartitionParent <: AbstractPartition
-    sharednodes::Vector{HyperNode}          #think master node with link variables
-    sharededges::Vector{HyperEdge}          #link constraints
+    sharednodes::Vector{HyperNode}          #shared nodes group into a master problem
+
+    sharededges::Vector{HyperEdge}          #shared edges become link constraints
+
     parent::Union{Nothing,PartitionParent}
     children::Vector{AbstractPartition}
 end
 PartitionParent(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionParent(sharednodes,sharededges,nothing,Vector{AbstractPartition}())
 PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNode}(),sharededges,nothing,Vector{AbstractPartition}())
 
-mutable struct HyperPartition
-    partitions::Vector{SubgraphPartition}  #bottom level partitions
-    parents::Vector{PartitionParent}  #tree structure describing recursive structure and shared nodes and edges
+#A partition describes the entire partition structure.
+mutable struct Partition
+    subpartitions::Vector{PartitionLeaf}  #bottom level communities (i.e. Leaf Communities)
+    parents::Vector{PartitionParent}          #tree structure describing recursive structure and shared nodes and edges
 end
-HyperPartition() = HyperPartition(Vector{SubgraphPartition}(),Vector{PartitionParent}())
+Partition() = Partition(Vector{PartitionLeaf}(),Vector{PartitionParent}())
+
+# mutable struct OverlappingPartition
+#     subpartitions::Vector{PartitionLeaf}
+#     overlaps::Vector{Vector{HyperNode}}
+# end
 
 #Convert membership vector to lists of indices
 function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
     unique_parts = unique(membership_vector)  #get unique membership entries
-
     unique_parts = sort(unique_parts)
-
     nparts = length(unique_parts)             #number of partitions
 
-    #partitions = [Vector{HyperNode}() for _ = 1:nparts]
     partitions = OrderedDict{Int64,Vector{HyperNode}}((k,[]) for k in unique_parts)
     for (vertex,part) in enumerate(membership_vector)
         push!(partitions[part],getnode(hypergraph,vertex))
     end
-
     return collect(values(partitions))
 end
 
@@ -51,23 +59,17 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
        end
     end
 
-    #V = ones(length(J))
-
     V = Int.(ones(length(J)))
-
     G = sparse(I,J,V)  #Node partition matrix
-
     A = sparse(hypergraph)
     C = G*A  #Edge partitions
 
-    #FIND THE SHARED EDGES
-    #Get indices of shared edges
+    #FIND THE SHARED EDGES, Get indices of shared edges
     sum_vector = sum(C,dims = 1)
     max_vector = maximum(C,dims = 1)
     cross_vector = sum_vector - max_vector
     indices = findall(cross_vector .!= 0)                   #nonzero indices of the cross vector.  These are edges that cross partitions.
     indices = [indices[i].I[2] for i = 1:length(indices)]   #convert to Integers
-
 
     shared_edges = HyperEdge[]
     for index in indices
@@ -88,16 +90,17 @@ function identifyhyperedges(hypergraph::HyperGraph,partitions::Vector{Vector{Hyp
 end
 
 #Simple 2 level partition from a vector of integers
-function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
-    hyperpartition = HyperPartition()
+#Can be used for both a row-net HyperGraph or a clique-expansion Graph
+function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
+    hyperpartition = Partition()
 
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
 
-    println("Identifying Shared and Induced Edges")
+    #println("Identifying Shared and Induced Edges")
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
 
-    println("Creating Sub Hyper Graphs")
+    #println("Creating Sub Hyper Graphs")
     #Create new Hypergraphs
     new_hypers = Vector{HyperGraph}()
     for i = 1:length(hypernode_vectors)
@@ -116,7 +119,7 @@ function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::V
         push!(new_hypers,hyper)
     end
 
-    println("Creating Partition Parent")
+    #println("Creating Partition Parent")
     partition_parent = PartitionParent(shared_edges)
     partitions = Vector{SubgraphPartition}()
     for i = 1:length(new_hypers)
@@ -128,7 +131,8 @@ function HyperPartition(hypergraph::AbstractHyperGraph,node_membership_vector::V
     return hyperpartition
 end
 
-#Create a SubModelGraph from a HyperGraph specification
+
+#Create a ModelGraph Subgraph from a HyperGraph
 function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     submg = ModelGraph()
     submg.hypergraph = hypergraph
@@ -156,18 +160,18 @@ end
 ####################################
 #Print Functions
 ####################################
-function string(partition::HyperPartition)
+function string(partition::Partition)
     """
-    HyperPartition:
+    Partition:
     partitions: $(length(partition.partitions))
     """
 end
-print(io::IO, partition::HyperPartition) = print(io, string(partition))
-show(io::IO,partition::HyperPartition) = print(io,partition)
+print(io::IO, partition::Partition) = print(io, string(partition))
+show(io::IO,partition::Partition) = print(io,partition)
 
 
 #TODO
-# function HyperPartition(clique_graph::DualCliqueGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
+# function Partition(clique_graph::DualCliqueGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64}) #NOTE: Could also be a Dual Clique Graph
 #
 #     hyperpartition = HyperPartition()
 #
@@ -176,14 +180,14 @@ show(io::IO,partition::HyperPartition) = print(io,partition)
 #     return hyperpartition
 # end
 #
-# function HyperPartition(bipartite_graph::BipartiteGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64};selection = :shared_nodes)
+# function Partition(bipartite_graph::BipartiteGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64};selection = :shared_nodes)
 #
 #     hyperpartition = HyperPartition()
 #
 #     return hyperpartition
 # end
 #
-# function HyperPartition(dual_hyper_graph::AbstractHyperGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64})
+# function Partition(dual_hyper_graph::AbstractHyperGraph,projection_map::ProjectionMap,membership_vector::Vector{Int64})
 #
 #     hyperpartition = HyperPartition()
 #
@@ -223,9 +227,3 @@ show(io::IO,partition::HyperPartition) = print(io,partition)
 # membership_vector = Metis.partition(dual_clique_graph,4)
 # model_partition = ModelPartition(dual_clique_graph,projection_map,membership_vector)
 # #get hypergraphs using induced subgraph
-#
-# #shared edges cannot be in any partitions
-#
-# #shared nodes cannot be in any partitions
-#
-# #shared nodes cannot be incident to a shared edge

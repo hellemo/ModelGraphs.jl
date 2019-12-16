@@ -1,3 +1,4 @@
+#link variables can be added to a graph
 macro linkvariable(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
@@ -37,7 +38,7 @@ end
 macro linkconstraint(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@constraint($graph,($(args...)))    #this will call add_constraint(graph::ModelGraph)
+        JuMP.@constraint($graph,($(args...)))   #this will call add_constraint(graph::ModelGraph)
     end
     return esc(code)
 end
@@ -45,7 +46,7 @@ end
 macro NLlinkconstraint(graph,args...)
     code = quote
         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@NLconstraint($graph,($(args...)))  #link model extends @constraint macro
+        JuMP.@NLconstraint($graph,($(args...)))
     end
     return esc(code)
 end
@@ -66,4 +67,7 @@ macro NLgraphobjective(graph,args...)
         JuMP.@NLobjective($graph,($(args...)))  #link model extends @constraint macro
     end
     return esc(code)
+end
+
+macro modelnodes(graph,args...)
 end

@@ -4,6 +4,7 @@ using Requires
 using LinearAlgebra
 using DataStructures
 using SparseArrays
+using Distributed
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -83,6 +84,9 @@ is_nodevariable, is_linked_variable, link_variables!,
 # Aggregation
 aggregate, aggregate!,
 
+# Distribute
+distribute,
+
 # solve handles
 optimize!,
 
@@ -126,7 +130,7 @@ include("nlp_extension.jl")
 
 include("macros.jl")
 
-include("hyperpartition.jl")
+include("partition.jl")
 
 include("aggregation.jl")          #An aggregated JuMP model
 
@@ -135,6 +139,8 @@ include("solve.jl")              #Aggregate and solve with an MOI Solver
 include("utils.jl")
 
 include("block_matrix.jl")
+
+include("distribute.jl")
 
 #include("plots.jl")
 function __init__()

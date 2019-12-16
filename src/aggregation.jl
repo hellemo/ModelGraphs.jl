@@ -109,7 +109,6 @@ function aggregate(modelgraph::ModelGraph)
     reference_map = AggregationMap(aggregate_model)
 
     master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph),reference_map)
-    #merge!(reference_map,master_reference_map)
 
     #COPY NODE MODELS INTO AGGREGATED MODEL
     has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
@@ -157,7 +156,7 @@ function aggregate(modelgraph::ModelGraph)
 end
 
 #Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
-function aggregate(graph::ModelGraph,hyperpartition::HyperPartition)
+function aggregate(graph::ModelGraph,hyperpartition::Partition)
     println("Building Aggregate Model Graph using HyperPartition")
 
     #Create New ModelGraphs
@@ -232,7 +231,7 @@ end
 
 
 #previously _buildnodemodel!
-function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)          #jump_node
+function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)
 
     agg_node = add_aggregated_node!(aggregate_model)
 
@@ -242,10 +241,7 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
               "able to aggregate into a new JuMP Model.")
     end
 
-    #reference_map = GraphReferenceMap(m,MOIU.IndexMap())
     reference_map = AggregationMap(aggregate_model)
-
-
     constraint_types = JuMP.list_of_constraint_types(node_model)
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
@@ -472,7 +468,4 @@ function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregationMap)#
     JuMP.objective_sense(d.m) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
     new_obj = Expr(:call,:*,:($sense),new_obj)
     return new_obj
-end
-
-function set_sum_of_objectives(graph::ModelGraph)
 end
