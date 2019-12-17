@@ -20,7 +20,6 @@ function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode})
         link_edge = LinkEdge(hyperedge)
         graph.linkedges[hyperedge] = link_edge
     end
-
     return link_edge
 end
 

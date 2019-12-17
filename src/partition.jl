@@ -93,14 +93,11 @@ end
 #Can be used for both a row-net HyperGraph or a clique-expansion Graph
 function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
     hyperpartition = Partition()
-
+    
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
-
-    #println("Identifying Shared and Induced Edges")
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
 
-    #println("Creating Sub Hyper Graphs")
     #Create new Hypergraphs
     new_hypers = Vector{HyperGraph}()
     for i = 1:length(hypernode_vectors)
@@ -119,7 +116,6 @@ function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector
         push!(new_hypers,hyper)
     end
 
-    #println("Creating Partition Parent")
     partition_parent = PartitionParent(shared_edges)
     partitions = Vector{SubgraphPartition}()
     for i = 1:length(new_hypers)
@@ -130,32 +126,6 @@ function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector
 
     return hyperpartition
 end
-
-
-#Create a ModelGraph Subgraph from a HyperGraph
-function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
-    submg = ModelGraph()
-    submg.hypergraph = hypergraph
-
-    for hypernode in getnodes(hypergraph)
-        modelnode = getnode(modelgraph,hypernode)
-        submg.modelnodes[hypernode] = modelnode
-    end
-
-    i = 1
-    for hyperedge in getallhyperedges(hypergraph)
-        linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
-        submg.linkedges[hyperedge] = linkedge
-        for linkconstraintref in linkedge.linkconstraints
-            linkconstraint = LinkConstraint(linkconstraintref)
-            submg.linkconstraints[i] = linkconstraint
-            i += 1
-        end
-    end
-    return submg
-end
-
-
 
 ####################################
 #Print Functions

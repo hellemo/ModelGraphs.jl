@@ -134,11 +134,15 @@ include("partition.jl")
 
 include("aggregation.jl")          #An aggregated JuMP model
 
+include("copy_functions.jl")
+
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 
 include("utils.jl")
 
 include("block_matrix.jl")
+
+include("model_builders.jl")
 
 include("distribute.jl")
 

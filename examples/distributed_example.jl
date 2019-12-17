@@ -13,7 +13,7 @@ end
 
 include("simple_modelgraph.jl")
 
-remote_references = distribute(graph,workers())
+remote_references = distribute(graph,workers(),remote_name = :graph)
 
 
 # specify, number of mpi workers, launch cmd, etc.

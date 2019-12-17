@@ -16,11 +16,16 @@ manager=MPIManager(np=2)
 addprocs(manager)
 
 workers = manager.mpi2j
-
-remote_references = distribute(graph,workers,:graph)  #create the variable graph on each worker
-
-
+remote_references = distribute(graph,workers,remote_name = :graph)  #create the variable graph on each worker
 @mpi_do manager begin
-    # get local mg
     pipsnlp_solve(graph)
 end
+
+rank_zero = manager.mpi2j[0] #julia process representing rank 0
+solution = fetch(@spawnat(rank_zero, getfield(Main, :graph)))
+
+# @mpi_do manager begin
+#     using MPI
+#     comm=MPI.COMM_WORLD
+#     println("Hello world, I am $(MPI.Comm_rank(comm)) of $(MPI.Comm_size(comm))")
+# end

@@ -343,7 +343,7 @@ end
 getnodes(cref::LinkConstraintRef) = getnodes(cref.linkedge)
 getnumnodes(con::LinkConstraint) = length(getnodes(con))
 
-#Add a LinkConstraint to a ModelGraph and Update its LinkEdges
+#Add a LinkConstraint to a ModelGraph and update its LinkEdges
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
     graph.linkconstraint_index += 1
     link_con = LinkConstraint(con)      #convert ScalarConstraint to a LinkConstraint
@@ -352,13 +352,34 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     hypergraph = gethypergraph(graph)
     hypernodes = sort(unique([getindex(hypergraph,getnode(var).hypernode) for var in keys(con.func.terms)]))
     modelnodes = [getnode(graph,index) for index in hypernodes]
+
     linkedge = add_link_edge!(graph,modelnodes)
 
     cref = LinkConstraintRef(graph, graph.linkconstraint_index,linkedge)
     push!(linkedge.linkconstraints,cref)
     graph.linkconstraints[cref.idx] = link_con
     JuMP.set_name(cref, name)
+
+    for (var,coeff) in link_con.func.terms
+      node = getnode(var)
+      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
+    end
     return cref
+end
+
+#Add to a partial linkconstraint on a modelnode
+function _add_to_partial_linkconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+    @assert getnode(var) == node
+    if haskey(node.partial_linkconstraints,index)
+        linkcon = node.partial_linkconstraints[index]
+        JuMP.add_to_expression!(linkcon.func, coeff,var)
+    else
+        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+        new_func.terms[var] = coeff
+        new_func.constant = constant
+        linkcon = LinkConstraint(new_func,set)
+        node.partial_linkconstraints[index] = linkcon
+    end
 end
 
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.AbstractConstraint, name::String="")
