@@ -1,6 +1,6 @@
 #Distribute a modelgraph among workers.  Each worker should have the same master model.  Each worker will be allocated some of the nodes in the modelgraph
-function ModelGraphs.distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :graph)
-
+function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :graph)
+    #NOTE: Linkconstraints keep their indices in new graphs, NOTE: Link constraint row index needs to match on each worker
     #NOTE: Does not yet support subgraphs.  Aggregate first
 
     #Create remote channel to store the nodes we want to send
@@ -55,7 +55,7 @@ function ModelGraphs.distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_
         push!(remote_references,ref2)
     end
 
-    #NOTE: Linkconstraints keep their indices in new graphs, NOTE: Link constraint row index needs to match on each worker
+
 
     return remote_references
 end

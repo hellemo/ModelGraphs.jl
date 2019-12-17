@@ -67,7 +67,7 @@ mutable struct ModelGraph <: AbstractModelGraph
                     nothing
                     )
 
-        modelgraph.mastermodel.ext[:modelgraph] = modelgraph
+        modelgraph.mastermodel.ext[:modelgraph] = true
 
         return modelgraph
     end
