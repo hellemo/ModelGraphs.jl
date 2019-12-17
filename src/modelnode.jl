@@ -14,25 +14,31 @@ mutable struct ModelNode <: JuMP.AbstractModel
 
     #The model
     model::JuMP.AbstractModel
-    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to linkvariables
+    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to parent linkvariables
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
     constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
+
+    #Extension data
+    ext::Dict{Symbol,Any}
 end
+
+#TODO: NodeVariable.  Wrapper to a JuMP Variable  node_variable => model_variable
+
 
 
 #############################################
 # Add Model Nodes
 ############################################
 function ModelNode(hypernode::HyperNode)
-     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{Int64,AbstractLinkConstraint}(),Dict{MOI.VariableIndex,Float64}(),Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}())
+     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{Int64,AbstractLinkConstraint}(),Dict{MOI.VariableIndex,Float64}(),
+     Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}(),Dict{Symbol,Any}())
      node.model.ext[:modelnode] = node
      return node
 end
-
 
 function add_node!(graph::AbstractModelGraph)
     hypergraph = gethypergraph(graph)

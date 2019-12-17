@@ -22,9 +22,9 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
 end
 
 
-function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
+function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
     graph = ModelGraph()
-    graph.master = master
+    graph.mastermodel = master
 
     #Add nodes to worker's graph.  Each worker should have the same number of nodes, but some will be empty.
     for i = 1:n_nodes
@@ -32,8 +32,8 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
     end
 
     #Populate models for given nodes
-    for node in modelnodes
-        index = node.ext[:index]  #need node index in highest level
+    for (i,node) in enumerate(modelnodes)
+        index = node_indices[i]  #need node index in highest level
         new_node = getnode(graph,index)
         setmodel(new_node,getmodel(node))
         new_node.partial_linkconstraints = node.partial_linkconstraints
@@ -43,13 +43,14 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
     #We need the graph to have the partial constraints over graph nodes
     graph.linkconstraints = _add_link_terms(modelnodes)
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
-    graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons 
+    graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
     return graph
 end
 
 function _add_link_terms(modelnodes::Vector{ModelNode})
     linkconstraints = Dict()
     for node in modelnodes
+        println(node)
         partial_links = node.partial_linkconstraints
         for (idx,linkconstraint) in partial_links
             if !(haskey(linkconstraints,idx))   #create link constraint
@@ -58,8 +59,12 @@ function _add_link_terms(modelnodes::Vector{ModelNode})
                 linkcon = LinkConstraint(new_func,set)
                 linkconstraints[idx] = linkcon
             else #update linkconstraint
-                newlinkcon = node.partial_linkconstraints[index]
-                JuMP.add_to_expression!(newlinkcon.func,linkconstraint.func)
+                newlinkcon = linkconstraints[idx]
+                nodelinkcon = node.partial_linkconstraints[idx]
+                newlinkcon = LinkConstraint(newlinkcon.func + nodelinkcon.func,newlinkcon.set)
+                linkconstraints[idx] = newlinkcon
+                #newlinkcon.func = newlinkcon.func + nodelinkcon.func
+                #JuMP.add_to_expression!(newlinkcon.func,nodelinkcon.func)
             end
         end
     end
