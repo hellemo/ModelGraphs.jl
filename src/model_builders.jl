@@ -21,7 +21,6 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     return submg
 end
 
-
 function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
     graph = ModelGraph()
     graph.mastermodel = master
@@ -35,11 +34,9 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
     for (i,node) in enumerate(modelnodes)
         index = node_indices[i]  #need node index in highest level
         new_node = getnode(graph,index)
-        setmodel(new_node,getmodel(node))
+        set_model(new_node,getmodel(node))
         new_node.partial_linkconstraints = node.partial_linkconstraints
-        #copy_partial_linkconstraints!(node,new_node)  #create copies of partial linkconstraints
     end
-
     #We need the graph to have the partial constraints over graph nodes
     graph.linkconstraints = _add_link_terms(modelnodes)
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
@@ -48,9 +45,8 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
 end
 
 function _add_link_terms(modelnodes::Vector{ModelNode})
-    linkconstraints = Dict()
+    linkconstraints = OrderedDict()
     for node in modelnodes
-        println(node)
         partial_links = node.partial_linkconstraints
         for (idx,linkconstraint) in partial_links
             if !(haskey(linkconstraints,idx))   #create link constraint
@@ -63,8 +59,6 @@ function _add_link_terms(modelnodes::Vector{ModelNode})
                 nodelinkcon = node.partial_linkconstraints[idx]
                 newlinkcon = LinkConstraint(newlinkcon.func + nodelinkcon.func,newlinkcon.set)
                 linkconstraints[idx] = newlinkcon
-                #newlinkcon.func = newlinkcon.func + nodelinkcon.func
-                #JuMP.add_to_expression!(newlinkcon.func,nodelinkcon.func)
             end
         end
     end

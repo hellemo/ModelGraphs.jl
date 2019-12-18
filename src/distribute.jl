@@ -40,21 +40,22 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     println("Distributing graph among workers: $to_workers")
     remote_references = []
     #Fill channel with sets of nodes to send
-    for (i,worker) in enumerate(to_workers)
-        println(worker)
-        @spawnat(1, put!(channel_nodes, allocations[i]))
-        @spawnat(1, put!(channel_indices, node_indices[i]))
-        ref1 = @spawnat worker begin
-            Core.eval(Main, Expr(:(=), :master, fetch(channel_master)[1]))
-            Core.eval(Main, Expr(:(=), :nodes, take!(channel_nodes)))
-            Core.eval(Main, Expr(:(=), :node_indices, take!(channel_indices)))
+    @sync begin
+        for (i,worker) in enumerate(to_workers)
+            println(worker)
+            @spawnat(1, put!(channel_nodes, allocations[i]))
+            @spawnat(1, put!(channel_indices, node_indices[i]))
+            ref1 = @spawnat worker begin
+                Core.eval(Main, Expr(:(=), :master, fetch(channel_master)[1]))
+                Core.eval(Main, Expr(:(=), :nodes, take!(channel_nodes)))
+                Core.eval(Main, Expr(:(=), :node_indices, take!(channel_indices)))
+            end
+            wait(ref1)
+
+            ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),n_nodes,n_linkeq_cons,n_linkineq_cons)))
+            push!(remote_references,ref2)
+
         end
-        wait(ref1)
-
-        ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),n_nodes,n_linkeq_cons,n_linkineq_cons)))
-        push!(remote_references,ref2)
-        wait(ref2)
-
+        return remote_references
     end
-    return remote_references
 end
