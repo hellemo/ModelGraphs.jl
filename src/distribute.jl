@@ -53,9 +53,8 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
 
         ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),n_nodes,n_linkeq_cons,n_linkineq_cons)))
         push!(remote_references,ref2)
+        wait(ref2)
+
     end
-
-
-
     return remote_references
 end

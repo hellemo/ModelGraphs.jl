@@ -12,14 +12,16 @@ using Distributed
 include("simple_modelgraph.jl")
 
 # specify, number of mpi workers, launch cmd, etc.
-manager=MPIManager(np=2)
-# start mpi workers and add them as julia workers too.
-addprocs(manager)
-
-workers = manager.mpi2j
+if !(isdefined(Main,:manager))
+    manager=MPIManager(np=2)
+    # start mpi workers and add them as julia workers too.
+    addprocs(manager)
+end
+julia_workers = collect(values(manager.mpi2j))
 
 #Distribute the graph to workers
-remote_references = distribute(graph,workers,remote_name = :graph)  #create the variable graph on each worker
+println(julia_workers)
+remote_references = distribute(graph,julia_workers,remote_name = :graph)  #create the variable graph on each worker
 
 # @mpi_do manager begin
 #     pipsnlp_solve(graph)
