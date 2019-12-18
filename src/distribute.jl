@@ -2,7 +2,6 @@
 function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :graph)
     #NOTE: Linkconstraints keep their indices in new graphs, NOTE: Link constraint row index needs to match on each worker
     #NOTE: Does not yet support subgraphs.  Aggregate first
-
     #Create remote channel to store the nodes we want to send
     channel_nodes = RemoteChannel(1)    #we will allocate and send nodes to workers
     channel_indices = RemoteChannel(1)
@@ -34,7 +33,6 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
         j += nodes_per_worker
     end
     master = getmastermodel(mg)
-    println("putting master in channel")
     put!(channel_master, [master])  #put master model in channel
 
     println("Distributing graph among workers: $to_workers")
