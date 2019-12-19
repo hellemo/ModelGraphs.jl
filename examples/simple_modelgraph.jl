@@ -28,9 +28,9 @@ link_variables!(graph[:z][2],n2[:z])
 @linkconstraint(graph,n1[:x] == n2[:x])
 @graphobjective(graph,Min,n1[:y] + n2[:x])
 
-# optimize!(graph,optimizer)
-#
-# println("n1[:x]= ",nodevalue(n1[:x]))
-# println("n1[:y]= ",nodevalue(n1[:y]))
-# println("n2[:x]= ",nodevalue(n2[:x]))
-# println("objective = ", objective_value(graph))
+optimize!(graph,optimizer)
+
+println("n1[:x]= ",nodevalue(n1[:x]))
+println("n1[:y]= ",nodevalue(n1[:y]))
+println("n2[:x]= ",nodevalue(n2[:x]))
+println("objective = ", objective_value(graph))
