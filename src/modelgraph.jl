@@ -10,28 +10,36 @@ A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also
 """
 mutable struct ModelGraph <: AbstractModelGraph
     #Nested HyperGraph represents the problem structure
-    hypergraph::HyperGraph
+    #hypergraph::HyperGraph
 
     #Store master variables and constraints in a stand-alone JuMP Model
-    mastermodel::JuMP.Model
-    #masternode::ModelNode #TODO: Make this a master node.  It will be possible to have link constraints that connect a master node to other nodes
+    #mastermodel::JuMP.Model
+    masternode::ModelNode #TODO: Make this a master node.  It will be possible to have link constraints that connect a master node to other nodes
 
-    #Map from hypernodes and hyperedges to model nodes and link edges
-    modelnodes::Dict{HyperNode,ModelNode}
-    linkedges::Dict{HyperEdge,LinkEdge}         #local link edges
+    # Map from hypernodes and hyperedges to model nodes and link edges
+    # modelnodes::Dict{Int64,ModelNode}         #local model nodes
+    # linkedges::Dict{Int64,LinkEdge}           #local link edges
+
+    #Topology
+    modelnodes::Vector{ModelNode}               #local model nodes
+    linkedges::Vector{LinkEdge}                 #local link edges.  These can also connect nodes across subgraphs
+    node_idx_map::Dict{ModelNode,Int64}
+    edge_idx_map::Dict{LinkEdge,Int64}
     subgraphs::Vector{AbstractModelGraph}
+    #graphindex::Int64
+    linkedge_map::OrderedDict{Set,LinkEdge}     #Sets of vertices map to a linkedge
 
     #Link variables
-    masterlinkvariables::Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}      #Link Variables from higher level master model
-    linkvariables::OrderedDict{Int,AbstractLinkVariableRef}                         #Link Variables in master model
-    linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.VariableRef}}        #Map of link variables in master model to corresponding variables in ModelNodes.
+    linkvariables::OrderedDict{Int,AbstractLinkVariableRef}                         #Link Variables in master node
+    linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.AbstractVariableRef}}        #Map of link variables in master model to corresponding variables in ModelNodes.
     linkvariable_names::Dict{Int,String}
 
     #Link constraints
-    linkconstraints::OrderedDict{Int64,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
-    linkeqconstraints::OrderedDict{Int64,Int64}
-    linkineqconstraints::OrderedDict{Int64,Int64}
-    linkconstraint_names::Dict{Int,String}
+    #linkconstraints::OrderedDict{Int64,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
+    linkeqconstraints::OrderedDict{Int64,AbstractLinkConstraint}
+    linkineqconstraints::OrderedDict{Int64,AbstractLinkConstraint}
+    linkeqconstraint_names::Dict{Int,String}
+    linkineqconstraint_names::Dict{Int,String}
 
     #Objective
     objective_sense::MOI.OptimizationSense
@@ -44,7 +52,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     linkvariable_index::Int
     linkeqconstraint_index::Int           #keep track of master and link constraints
     linkineqconstraint_index::Int
-    linkconstraint_index::Int
+    #linkconstraint_index::Int
 
     #Model Information
     obj_dict::Dict{Symbol,Any}
@@ -54,23 +62,23 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Constructor
     function ModelGraph()
-        modelgraph = new(HyperGraph(),
-                    JuMP.Model(),
-                    Dict{HyperNode,ModelNode}(),
-                    Dict{HyperEdge,LinkEdge}(),
+        modelgraph = new(ModelNode(),
+                    Vector{ModelNode}(),
+                    Vector{LinkEdge}(),
+                    Dict{ModelNode,Int64}(),
+                    Dict{LinkEdge,Int64}(),
                     Vector{AbstractModelGraph}(),
-                    Dict{AbstractLinkVariableRef,AbstractLinkVariableRef}(),
-                    OrderedDict{Int, JuMP.AbstractVariable}(),
-                    Dict{JuMP.AbstractVariable, JuMP.AbstractVariable}(),
+                    OrderedDict{Set,LinkEdge}(),
+                    OrderedDict{Int,AbstractLinkVariableRef}(),
+                    Dict{AbstractLinkVariableRef,Vector{JuMP.AbstractVariableRef}}(),
                     Dict{Int,String}(),
                     OrderedDict{Int, AbstractLinkConstraint}(),
-                    OrderedDict{Int64,Int64}(),
-                    OrderedDict{Int64,Int64}(),
-                    Dict{Int, String}(),
+                    OrderedDict{Int, AbstractLinkConstraint}(),
+                    OrderedDict{Int64,String}(),
+                    OrderedDict{Int64,String}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     nothing,
-                    0,
                     0,
                     0,
                     0,
@@ -78,7 +86,8 @@ mutable struct ModelGraph <: AbstractModelGraph
                     nothing
                     )
 
-        modelgraph.mastermodel.ext[:modelgraph] = true
+        modelgraph.masternode.ext[:modelgraph] = true
+        modelgraph.node_idx_map[modelgraph.masternode] = 0
 
         return modelgraph
     end
@@ -86,78 +95,58 @@ end
 
 
 ########################################################
-# HyperGraph Interface
+# ModelGraph Interface
 ########################################################
-gethypergraph(modelgraph::ModelGraph) = modelgraph.hypergraph
+#TODO: gethypergraph(modelgraph::ModelGraph) = modelgraph.hypergraph
 function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
-    hypergraph = gethypergraph(graph)
-    sub_hypergraph = gethypergraph(subgraph)
-    add_subgraph!(hypergraph,sub_hypergraph)
     push!(graph.subgraphs,subgraph)
-    for node in getnodes(sub_hypergraph)
-        graph.modelnodes[node] = getnode(subgraph,node)
-    end
-    # for hyperedge in getedges(sub_hypergraph)
-    #     graph.sublinkedges[hyperedge] = getlinkedge(subgraph,hyperedge)
-    # end
-    return nothing
+    return graph
 end
-
-subgraphs(modelgraph) = modelgraph.subgraphs
-getmodelnode(graph::ModelGraph,hypernode::HyperNode) = graph.modelnodes[hypernode]
-getnode(graph::ModelGraph,hypernode::HyperNode) = getmodelnode(graph,hypernode)
-
-function getnode(graph::ModelGraph,index::Int64)
-    hypernode = getnode(gethypergraph(graph),index)
-    return getmodelnode(graph,hypernode)
-end
+getsubgraphs(modelgraph) = modelgraph.subgraphs
 
 function getnodes(graph::ModelGraph)
-    return map(x -> getnode(graph,x),getnodes(graph.hypergraph))    #return ge   tmodelnode.(getnodes(graph.hypergraph))
-end
-
-function Base.getindex(graph::ModelGraph,node::ModelNode)
-    hypernode = gethypernode(node)
-    return getindex(gethypergraph(graph),hypernode)
-end
-
-getlocallinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.linkedges[hyperedge]
-getsublinkedge(graph::ModelGraph,hyperedge::HyperEdge) = graph.sublinkedges[hyperedge]
-function getlinkedge(graph::ModelGraph,hyperedge::HyperEdge)
-    return graph.linkedges[hyperedge]
-end
-
-function findlinkedge(graph::ModelGraph,hyperedge::HyperEdge)
-    if haskey(graph.linkedges,hyperedge)
-        return graph.linkedges[hyperedge]
-    else
-        for subgraph in subgraphs(graph)
-            if haskey(subgraph.linkedges,hyperedge)
-                return subgraph.linkedges[hyperedge]
-            end
-        end
+    nodes = graph.modelnodes
+    for subgraph in graph.subgraphs
+        nodes = [nodes;subgraph.modelnodes]
     end
+    return nodes
 end
 
-function getlinkedge(graph::ModelGraph,index::Int64)
-    hyperedge = gethyperedge(gethypergraph(graph),index)
-    return getlinkedge(graph,hyperedge)
+getlocalnode(graph::ModelGraph,index::Int64) = graph.modelnodes[index]
+function getnode(graph,index)
+    nodes = getnodes(graph)
+    return nodes[index]
+end
+function Base.getindex(graph::ModelGraph,node::ModelNode)
+    return graph.node_idx_map[node]
 end
 
-function getlinkedge(graph::ModelGraph,vertices::Int...)
-    hyperedge = gethyperedge(graph.hypergraph,vertices...)
-    return getlinkedge(graph,hyperedge)
+#LinkEdges
+function getedges(graph::ModelGraph)
+    edges = graph.linkedges
+    for subgraph in graph.subgraphs
+        edges = [edges;subgraph.linkedges]
+    end
+    return edges
+end
+getlocaledge(graph::ModelGraph,idx::Int64) = graph.linkedges[idx]
+
+function getedge(graph::ModelGraph,idx::Int64)
+    edges = getedges(graph)
+    return edges[idx]
 end
 
-function getlinkedges(graph::ModelGraph)
-    return map(x -> getlinkedge(graph,x),gethyperedges(graph.hypergraph))
-    #return getlinkedge.(gethyperedges(graph.hypergraph))
+getedge(graph::ModelGraph,vertex_set::Set) = graph.linkedge_map[vertex_set]
+function getedge(graph::ModelGraph,vertices::Int...)
+    s = Set(collect(vertices))
+    return getlinkedge(graph,s)
 end
 
-function getindex(graph::ModelGraph,linkedge::LinkEdge)
-    hyperedge = gethyperedge(linkedge)
-    return getindex(gethypergraph(graph),hyperedge)
+function Base.getindex(graph::ModelGraph,linkedge::LinkEdge)
+    return graph.edge_idx_map[linkedge]
 end
+
+
 ########################################################
 # Model Management
 ########################################################
@@ -202,11 +191,9 @@ end
 ####################################
 # Objective
 ###################################
-
 JuMP.objective_function(graph::AbstractModelGraph) = graph.objective_function
 JuMP.set_objective_function(graph::AbstractModelGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
 JuMP.set_objective_function(graph::AbstractModelGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
-
 
 function JuMP.set_objective(graph::AbstractModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     graph.objective_sense = sense
@@ -341,13 +328,18 @@ LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
 function getnodes(con::LinkConstraint)
     return [getnode(var) for var in keys(con.func.terms)]   #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
 end
-#return getnodes(con.link_edge)
-#return getnodes(con.hyperedge)
-#return map(n -> getnode(con.graph,n),con.node_indices)
 getnodes(cref::LinkConstraintRef) = getnodes(cref.linkedge)
 getnumnodes(con::LinkConstraint) = length(getnodes(con))
 
 #Add a LinkConstraint to a ModelGraph and update its LinkEdges
+function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstraint,name::String = "")
+    @assert con.set == MOI.EqualTo
+
+end
+
+function add_link_inequality_constraint(graph::ModelGraph,con::JuMP.ScalarConstraint,name::String = "")
+end
+
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
     if isa(con.set,MOI.EqualTo)
         graph.linkeqconstraint_index += 1
@@ -358,8 +350,8 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     link_con = LinkConstraint(con)      #convert ScalarConstraint to a LinkConstraint
 
     #Setup graph structure
-    hypergraph = gethypergraph(graph)
-    hypernodes = sort(unique([getindex(hypergraph,getnode(var).hypernode) for var in keys(con.func.terms)]))
+    # hypergraph = gethypergraph(graph)
+    # hypernodes = sort(unique([getindex(hypergraph,getnode(var).hypernode) for var in keys(con.func.terms)]))
     modelnodes = [getnode(graph,index) for index in hypernodes]
     linkedge = add_link_edge!(graph,modelnodes)
 

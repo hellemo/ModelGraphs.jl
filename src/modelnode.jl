@@ -9,13 +9,16 @@ ModelNode()
 Creates an empty ModelNode.  Does not add it to a graph.
 """
 mutable struct ModelNode <: JuMP.AbstractModel
-    #Meta data and index information for the hypergraph
-    hypernode::HyperNode
-
     #The model
     model::JuMP.AbstractModel
+    nodevariable_index::Int64
+    nodevariables::OrderedDict{Int,AbstractNodeVariableRef}
+    nodevarnames::Dict{Int,String}
+
     linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to parent linkvariables
-    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
+
+    partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
+    partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
@@ -26,25 +29,34 @@ mutable struct ModelNode <: JuMP.AbstractModel
     ext::Dict{Symbol,Any}
 end
 
-#TODO: NodeVariable.  Wrapper to a JuMP Variable  node_variable => model_variable
-
-
-
+struct NodeVariableRef <: AbstractNodeVariableRef
+    vref::JuMP.VariableRef
+    node::ModelNode
+    idx::Int64
+end
 #############################################
 # Add Model Nodes
 ############################################
-function ModelNode(hypernode::HyperNode)
-     node = ModelNode(hypernode,JuMP.Model(),Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),Dict{Int64,AbstractLinkConstraint}(),Dict{MOI.VariableIndex,Float64}(),
-     Dict{MOI.ConstraintIndex,Float64}(),Dict{JuMP.NonlinearConstraintIndex,Float64}(),Dict{Symbol,Any}())
+function ModelNode()
+     node = ModelNode(JuMP.Model(),
+     0,
+     OrderedDict{Int,NodeVariableRef}(),
+     Dict{Int,String}(),
+     Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
+     Dict{Int64,AbstractLinkConstraint}(),
+     Dict{Int64,AbstractLinkConstraint}(),
+     Dict{MOI.VariableIndex,Float64}(),
+     Dict{MOI.ConstraintIndex,Float64}(),
+     Dict{JuMP.NonlinearConstraintIndex,Float64}(),
+     Dict{Symbol,Any}())
      node.model.ext[:modelnode] = node
      return node
 end
 
 function add_node!(graph::AbstractModelGraph)
-    hypergraph = gethypergraph(graph)
-    hypernode = add_node!(hypergraph)
-    modelnode = ModelNode(hypernode)
-    graph.modelnodes[hypernode] = modelnode
+    modelnode = ModelNode()
+    push!(graph.modelnodes,modelnode)
+    graph.node_idx_map[modelnode] = length(graph.modelnodes)
     return modelnode
 end
 
@@ -54,19 +66,20 @@ function add_node!(graph::AbstractModelGraph,m::JuMP.AbstractModel)
     return node
 end
 
-
 #############################################
 # Model Management
 ############################################
-"Get the underlying JuMP model for a node"
+#Get the underlying JuMP Model on a node
+JuMP.value(nvref::NodeVariableRef) = node.variable_values[nvref.vref]
 getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
+
 setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 
-nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]  #TODO #Get values of JuMP expressions
+nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
     for (var,coeff) in expr.terms
@@ -75,7 +88,6 @@ function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value += expr.constant
     return ret_value
 end
-
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
 
@@ -106,13 +118,8 @@ function is_linked_variable(var::JuMP.AbstractVariableRef)
         return var in keys(getnode(var).linkvariablemap)
     end
 end
-
 is_linked_to_master(node::Model) = !(isempty(node.linkvariablemap))
-
-
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
-
-gethypernode(node::ModelNode) = node.hypernode
 
 #############################################
 # JuMP Extension
@@ -130,12 +137,33 @@ function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
 end
 
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
-JuMP.variable_type(::ModelNode) = JuMP.VariableRef
+# JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 
-function JuMP.add_variable(node::ModelNode,  v::JuMP.AbstractVariable, name::String="")
-    vref = JuMP.add_variable(getmodel(node),v,name)
-    return vref
+Base.broadcastable(v::NodeVariableRef) = Ref(v)
+Base.copy(v::NodeVariableRef) = v
+Base.:(==)(v::NodeVariableRef, w::NodeVariableRef) = v.vref.model === w.vref.model && v.vref.index == w.vref.index
+JuMP.owner_model(v::NodeVariableRef) = v.node.model
+JuMP.isequal_canonical(v::NodeVariableRef, w::NodeVariableRef) = v.vref == w.vref
+JuMP.variable_type(::ModelNode) = NodeVariableRef
+
+JuMP.set_name(v::NodeVariableRef, s::String) = JuMP.set_name(v.vref,s)
+JuMP.name(v::NodeVariableRef) =  JuMP.name(v.vref)
+
+#Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
+function JuMP.add_variable(node::ModelNode, v::JuMP.AbstractVariable, name::String="")
+    node.nodevariable_index += 1
+    jump_vref = JuMP.add_variable(node.model,v,name)  #add the variable to the node model
+    node_vref = NodeVariableRef(jump_vref,node,node.nodevariable_index)
+    JuMP.set_name(node_vref, name)
+    return node_vref
 end
+
+#Delete a node variable
+function MOI.delete!(node::ModelNode, vref::NodeVariableRef)
+    delete!(node.nodevariables, vref.idx)
+    delete!(node.nodevarnames, vref.idx)
+end
+MOI.is_valid(node::ModelNode, vref::NodeVariableRef) = vref.idx in keys(node.nodevariables)
 
 function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
     cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
@@ -154,26 +182,13 @@ function num_node_constraints(node::ModelNode)
     return num_cons
 end
 
-"""
-JuMP.objective_function(node::ModelNode)
-
-Get a node objective function.
-"""
 JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
-
-"""
-JuMP.objective_function(node::ModelNode)
-
-Get node's objective value
-"""
 JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
-
 JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 
 function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective(getmodel(modelnode),sense,func)
 end
-
 
 ##############################################
 # Get Model Node
@@ -198,18 +213,7 @@ function getnode(con::JuMP.ConstraintRef)
     end
 end
 
-"""
-getnode(model::AbstractModel)
-
-Get the ModelNode corresponding to a JuMP Model
-"""
 getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
-
-"""
-getnode(model::AbstractModel)
-
-Get the ModelNode corresponding to a JuMP Variable
-"""
 getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
 
 ###############################################
@@ -220,8 +224,6 @@ function string(node::ModelNode)
 end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)
-
-
 
 # TODO
 # RECREATE LINK CONSTRAINTS IF POSSIBLE
@@ -245,31 +247,4 @@ show(io::IO,node::ModelNode) = print(io,node)
 # function reset_model(node::ModelNode,m::JuMP.AbstractModel)
 #     #reassign the model
 #     node.model = m
-# end
-
-# #TODO get incident edges to node and return those, or cache references on the node?
-# function getlinkconstraints(node::ModelNode)
-#     links = Dict()
-#     hypernode = gethypernode(node)
-#
-#     hyperedges = get_incident_edges(hypernode)  #This will return the hyper edges for each graph the hypernode is a part of
-#
-#     linkedges = getlinkedge.(hyperedges)
-#     linkconstraints = getlinkconstraints.(linkedges)
-#     # for (graph,refs) in node.linkconstraints
-#     #     links[graph] = Vector{LinkConstraint}()
-#     #     for ref in refs
-#     #         push!(links[graph],JuMP.constraint_object(ref))
-#     #     end
-#     # end
-#     return linkconstraints
-# end
-
-# TODO
-# function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
-#     links = []
-#     for ref in node.linkconrefs[graph]
-#         push!(links,LinkConstraint(ref))
-#     end
-#     return links
 # end

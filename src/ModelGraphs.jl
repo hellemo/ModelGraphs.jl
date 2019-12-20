@@ -111,6 +111,7 @@ abstract type AbstractModelGraph <: JuMP.AbstractModel end
 abstract type AbstractLinkEdge end
 abstract type AbstractLinkConstraintRef end
 abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
+abstract type AbstractNodeVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 

@@ -1,25 +1,20 @@
 ##############################################################################
 # ModelEdges
 ##############################################################################
-struct LinkEdge <: AbstractLinkEdge
-    hyperedge::HyperEdge                        #Reference to a HyperEdge
+mutable struct LinkEdge <: AbstractLinkEdge
+    vertices::Set{Int64}
     linkconstraints::Vector{AbstractLinkConstraintRef}  #Link constraints this edge represents
 end
-LinkEdge(hyperedge::HyperEdge) = LinkEdge(hyperedge,Vector{AbstractLinkConstraintRef}())
+LinkEdge() = LinkEdge(Vector{Int64}(),Set{Int64}(),Vector{AbstractLinkConstraintRef}())
 
-function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode})#ref::LinkConstraintRef)
-    #Add hyper edge
-    hypernodes = gethypernode.(modelnodes)
-    hyperedge = add_hyperedge!(gethypergraph(graph),hypernodes...)
-
-    #Map to LinkEdge
-    #Either create new LinkEdge or look up existing one
-    if haskey(graph.linkedges,hyperedge)
-        link_edge = graph.linkedges[hyperedge]
-    else
-        link_edge = LinkEdge(hyperedge)
-        graph.linkedges[hyperedge] = link_edge
-    end
+function add_link_edge!(graph::AbstractModelGraph,modelnodes::Vector{ModelNode}) #ref::LinkConstraintRef)
+    node_indices = [graph.idx_map[node] for node in modelnodes]
+    linkedge = LinkEdge(node_indices)
+    n_links = length(graph.linkedges)
+    idx = n_links + 1
+    push!(graph.linkedges,linkedge)
+    graph.linkedge_map[linkedge.vertices] = linkedge
+    graph.edge_idx_map[linkedge] = idx
     return link_edge
 end
 
