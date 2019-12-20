@@ -3,6 +3,9 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     #NOTE: Linkconstraints keep their indices in new graphs, NOTE: Link constraint row index needs to match on each worker
     #NOTE: Does not yet support subgraphs.  Aggregate first
     #Create remote channel to store the nodes we want to send
+
+    #IDEA: Create a channel from the master process to each worker?
+
     channel_nodes = RemoteChannel(1)    #we will allocate and send nodes to workers
     channel_indices = RemoteChannel(1)
     channel_master = RemoteChannel(1)   #we will send the master problem to each worker
@@ -33,7 +36,7 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
         j += nodes_per_worker
     end
     master = getmastermodel(mg)
-    put!(channel_master, [master])  #put master model in channel
+    put!(channel_master, [master])  #put master model (node) into channel
 
     println("Distributing graph among workers: $to_workers")
     remote_references = []
@@ -48,7 +51,8 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
                 Core.eval(Main, Expr(:(=), :node_indices, take!(channel_indices)))
             end
             wait(ref1)
-            ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),n_nodes,n_linkeq_cons,n_linkineq_cons)))
+            ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),
+            n_nodes,n_linkeq_cons,n_linkineq_cons,mg.linkeq_dict,mg.linkineq_dict)))
             push!(remote_references,ref2)
         end
         return remote_references

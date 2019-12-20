@@ -1,4 +1,4 @@
-#Create a ModelGraph Subgraph from a HyperGraph
+#Create a ModelGraph from a given Hypergraph
 function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     submg = ModelGraph()
     submg.hypergraph = hypergraph
@@ -10,7 +10,7 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
 
     i = 1
     for hyperedge in getallhyperedges(hypergraph)
-        linkedge = findlinkedge(modelgraph,hyperedge)  #could be in a subgraph
+        linkedge = findlinkedge(modelgraph,hyperedge)  #this could be in a subgraph
         submg.linkedges[hyperedge] = linkedge
         for linkconstraintref in linkedge.linkconstraints
             linkconstraint = LinkConstraint(linkconstraintref)
@@ -21,7 +21,8 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     return submg
 end
 
-function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
+function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,
+    linkeq_dict::Dict,linkineq_dict::Dict)
     graph = ModelGraph()
     graph.mastermodel = master
 
