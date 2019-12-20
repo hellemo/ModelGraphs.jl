@@ -21,8 +21,7 @@ function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph)
     return submg
 end
 
-function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,
-    linkeq_dict::Dict,linkineq_dict::Dict)
+function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,linkeq_dict::OrderedDict,linkineq_dict::OrderedDict)
     graph = ModelGraph()
     graph.mastermodel = master
 
@@ -42,6 +41,8 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
     graph.linkconstraints = _add_link_terms(modelnodes)
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
     graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
+    graph.obj_dict[:linkeq_dict] = linkeq_dict
+    graph.obj_dict[:linkineq_dict] = linkineq_dict
     return graph
 end
 

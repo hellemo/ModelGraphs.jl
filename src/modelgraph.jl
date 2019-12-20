@@ -370,9 +370,9 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     JuMP.set_name(cref, name)
 
     if isa(con.set,MOI.EqualTo)
-        graph.linkeqconstraints[graph.linkeqconstraint_index] = cref.idx
+        graph.linkeqconstraints[cref.idx] = graph.linkeqconstraint_index
     else
-        graph.linkineqconstraints[graph.linkineqconstraint_index] = cref.idx
+        graph.linkineqconstraints[cref.idx ] = graph.linkineqconstraint_index
     end
 
     #Add partial linkconstraint to connect model nodes
