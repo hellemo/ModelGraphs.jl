@@ -13,8 +13,8 @@ mutable struct ModelGraph <: AbstractModelGraph
     hypergraph::HyperGraph
 
     #Store master variables and constraints in a stand-alone JuMP Model
-    mastermodel::JuMP.Model #TODO: Make this a master node.  It will be possible to have link constraints that connect a master node to other nodes
-    #masternode::ModelNode
+    mastermodel::JuMP.Model
+    #masternode::ModelNode #TODO: Make this a master node.  It will be possible to have link constraints that connect a master node to other nodes
 
     #Map from hypernodes and hyperedges to model nodes and link edges
     modelnodes::Dict{HyperNode,ModelNode}

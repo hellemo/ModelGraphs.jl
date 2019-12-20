@@ -14,6 +14,6 @@ end
 include("simple_modelgraph.jl")
 
 #Get references to the graph on each worker
-remote_references = distribute(graph, workers(), remote_name = :graph)
+remote_references = distribute(mg, workers(), remote_name = :graph)
 r1 = remote_references[1]
 r2 = remote_references[2]
