@@ -173,7 +173,7 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition)
     #BOTTOM LEVEL NODES
     #Aggregate subgraphs to create bottom level nodes
     submodelgraphs = []
-    for partition in hyperpartition.partitions
+    for partition in hyperpartition.leafpartitions
         hypergraph = partition.hypergraph
         submodelgraph = ModelGraphs.create_sub_modelgraph(graph,hypergraph)
         push!(submodelgraphs,submodelgraph)

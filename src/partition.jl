@@ -2,27 +2,25 @@
 
 abstract type AbstractPartition end
 
-#A hypergraph community with a parent
+#A set of hypergraph nodes with a single parent
 struct PartitionLeaf <: AbstractPartition
-    hypergraph::HyperGraph
+    hypergraph::HyperGraph  #nodes in this partition leaf
     parent::Union{Nothing,AbstractPartition}
 end
 
 #PartitionParent descrives shared nodes and shared edges among its children
 struct PartitionParent <: AbstractPartition
     sharednodes::Vector{HyperNode}          #shared nodes group into a master problem
-
     sharededges::Vector{HyperEdge}          #shared edges become link constraints
-
     parent::Union{Nothing,PartitionParent}
     children::Vector{AbstractPartition}
 end
 PartitionParent(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionParent(sharednodes,sharededges,nothing,Vector{AbstractPartition}())
 PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNode}(),sharededges,nothing,Vector{AbstractPartition}())
 
-#A partition describes the entire partition structure.
+#A partition describes the entire partition structure of a Hypergraph.
 mutable struct Partition
-    subpartitions::Vector{PartitionLeaf}  #bottom level communities (i.e. Leaf Communities)
+    leafpartitions::Vector{PartitionLeaf}      #bottom level communities (i.e. Leaf Communities)
     parents::Vector{PartitionParent}          #tree structure describing recursive structure and shared nodes and edges
 end
 Partition() = Partition(Vector{PartitionLeaf}(),Vector{PartitionParent}())
@@ -93,7 +91,7 @@ end
 #Can be used for both a row-net HyperGraph or a clique-expansion Graph
 function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
     hyperpartition = Partition()
-    
+
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
@@ -117,11 +115,11 @@ function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector
     end
 
     partition_parent = PartitionParent(shared_edges)
-    partitions = Vector{SubgraphPartition}()
+    partitions = Vector{PartitionLeaf}()
     for i = 1:length(new_hypers)
-        push!(partitions,SubgraphPartition(new_hypers[i],partition_parent))
+        push!(partitions,PartitionLeaf(new_hypers[i],partition_parent))
     end
-    hyperpartition.partitions = partitions
+    hyperpartition.leafpartitions = partitions
     hyperpartition.parents = [partition_parent]
 
     return hyperpartition

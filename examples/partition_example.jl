@@ -56,7 +56,7 @@ partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 optimize!(modelgraph,ipopt)
 
 
-hyperpartition = HyperPartition(hypergraph,partition1)
+hyperpartition = Partition(hypergraph,partition1)
 new_modelgraph,ref_map = aggregate(modelgraph,hyperpartition)
 optimize!(new_modelgraph,ipopt)
 
