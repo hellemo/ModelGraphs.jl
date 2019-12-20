@@ -59,8 +59,8 @@ ModelNode,LinkEdge,
 #LinkVariable and LinkConstraint
 LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
 
-#HyperPartition
-HyperPartition,
+#Partition
+Partition,
 
 #Solvers/Optimizers
 AbstractGraphOptimizer,
