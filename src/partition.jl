@@ -25,6 +25,7 @@ mutable struct Partition
 end
 Partition() = Partition(Vector{PartitionLeaf}(),Vector{PartitionParent}())
 
+# TODO
 # mutable struct OverlappingPartition
 #     subpartitions::Vector{PartitionLeaf}
 #     overlaps::Vector{Vector{HyperNode}}

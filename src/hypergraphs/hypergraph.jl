@@ -24,10 +24,8 @@ mutable struct HyperGraph <: AbstractHyperGraph
     hyperedge_map::OrderedDict{Int64,HyperEdge}                  #look up hyperedges by index in the hypergraph
     hyperedges::OrderedDict{Set,AbstractHyperEdge}       #look up hyperedges using hypernodes.  These are LOCAL to the hypergraph
     node_map::Dict{HyperNode,Vector{AbstractHyperEdge}}  #map hypernodes to hyperedges they are incident to
-    index::Integer                                       #index in parent hypergraph #TODO: Index in each parent level
-    subgraphs::Vector{HyperGraph}
 end
-HyperGraph() = HyperGraph(HyperNode[],OrderedDict{Int64,HyperEdge}(),OrderedDict{Set,AbstractHyperEdge}(),Dict{HyperNode,Vector{AbstractHyperEdge}}(),0,HyperGraph[])
+HyperGraph() = HyperGraph(HyperNode[],OrderedDict{Int64,HyperEdge}(),OrderedDict{Set,AbstractHyperEdge}(),Dict{HyperNode,Vector{AbstractHyperEdge}}())
 
 #SparseMatrix from complete hypergraph (i.e. including the subgraph hyperedges)
 function SparseArrays.sparse(hypergraph::HyperGraph)
@@ -52,20 +50,20 @@ function SparseArrays.sparse(hypergraph::HyperGraph)
     return SparseArrays.sparse(I,J,V)
 end
 
-function localsparse(hypergraph::HyperGraph)
-    I = []
-    J = []
-    for hyperedge in gethyperedges(hypergraph)
-        edge_index = getindex(hypergraph,hyperedge)
-        for hypernode in hyperedge.vertices
-            vertex = getindex(hypergraph,hypernode)
-            push!(I,vertex)
-            push!(J,edge_index)
-        end
-    end
-    V = Int.(ones(length(I)))
-    return SparseArrays.sparse(I,J,V)
-end
+# function localsparse(hypergraph::HyperGraph)
+#     I = []
+#     J = []
+#     for hyperedge in gethyperedges(hypergraph)
+#         edge_index = getindex(hypergraph,hyperedge)
+#         for hypernode in hyperedge.vertices
+#             vertex = getindex(hypergraph,hypernode)
+#             push!(I,vertex)
+#             push!(J,edge_index)
+#         end
+#     end
+#     V = Int.(ones(length(I)))
+#     return SparseArrays.sparse(I,J,V)
+# end
 
 #HyperNode
 function LightGraphs.add_vertex!(hypergraph::AbstractHyperGraph)
@@ -100,7 +98,6 @@ LightGraphs.add_edge!(graph::AbstractHyperGraph,vertices::Int...) = add_hyperedg
 
 gethypernodes(edge::HyperEdge) = collect(edge.vertices)
 
-
 #Add new LOCAL HyperEdge to a HyperGraph
 function add_hyperedge!(hypergraph::AbstractHyperGraph,vertices::Int64...)
     hypernodes = map(x -> getnode(hypergraph,x),vertices)
@@ -127,23 +124,23 @@ function add_hyperedge!(hypergraph::AbstractHyperGraph,hypernodes::HyperNode...)
 end
 
 #Add an existing hyperedge to a hypergraph
-function add_sub_hyperedge!(hypergraph::AbstractHyperGraph, hyperedge::HyperEdge)
-    # if has_edge(hypergraph,hyperedge)  #NOTE: I don't think this would ever happen
-    #     return hyperedge
-
-    if haskey(hyperedge.index_map,hypergraph)  #if the hyperedge already belongs to this hypergraph
-    # elseif hyperedge in hypergraph.hyperedge_vector     #if it's already a sub hyperedge
-        return hyperedge
-    else
-        #Update the index map
-        index = ne(hypergraph) + 1
-        #push!(hypergraph.hyperedge_vector,hyperedge)
-        #v = length(hypergraph.hyperedge_vector)
-        hypergraph.hyperedge_map[index] = hyperedge
-        hyperedge.index_map[hypergraph] = index
-        return hyperedge
-    end
-end
+# function add_sub_hyperedge!(hypergraph::AbstractHyperGraph, hyperedge::HyperEdge)
+#     # if has_edge(hypergraph,hyperedge)  #NOTE: I don't think this would ever happen
+#     #     return hyperedge
+#
+#     if haskey(hyperedge.index_map,hypergraph)  #if the hyperedge already belongs to this hypergraph
+#     # elseif hyperedge in hypergraph.hyperedge_vector     #if it's already a sub hyperedge
+#         return hyperedge
+#     else
+#         #Update the index map
+#         index = ne(hypergraph) + 1
+#         #push!(hypergraph.hyperedge_vector,hyperedge)
+#         #v = length(hypergraph.hyperedge_vector)
+#         hypergraph.hyperedge_map[index] = hyperedge
+#         hyperedge.index_map[hypergraph] = index
+#         return hyperedge
+#     end
+# end
 
 #Get hyperedges
 

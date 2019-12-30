@@ -39,6 +39,8 @@ function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNo
     end
     #We need the graph to have the partial constraints over graph nodes
     graph.linkconstraints = _add_link_terms(modelnodes)
+    
+
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
     graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
     graph.obj_dict[:linkeq_dict] = linkeq_dict

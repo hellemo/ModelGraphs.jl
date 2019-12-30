@@ -25,7 +25,7 @@ end
 
 # #TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
 function _copysolution!(modelgraph::ModelGraph,ref_map::AggregationMap)
-    for node in getnodes(modelgraph)
+    for node in all_nodes(modelgraph)
         for var in JuMP.all_variables(node)
             node.variable_values[var] = JuMP.value(ref_map[var])
         end

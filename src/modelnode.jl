@@ -12,13 +12,13 @@ mutable struct ModelNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
     nodevariable_index::Int64
-    nodevariables::OrderedDict{Int,AbstractNodeVariableRef}
+    nodevariables::OrderedDict{Int,AbstractVariableRef}                  #model nodes have node variables
     nodevarnames::Dict{Int,String}
 
-    linkvariablemap::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #node variables to parent linkvariables
-
-    partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
-    partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
+    parent_linkvariable_map::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #map of nodevariables to parent linkvariables
+    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
+    # partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
+    # partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
@@ -29,22 +29,23 @@ mutable struct ModelNode <: JuMP.AbstractModel
     ext::Dict{Symbol,Any}
 end
 
-struct NodeVariableRef <: AbstractNodeVariableRef
-    vref::JuMP.VariableRef
-    node::ModelNode
-    idx::Int64
-end
+#A node variable is a simple wrapper around a JuMP Variable Reference
+# struct NodeVariableRef <: AbstractNodeVariableRef
+#     vref::JuMP.VariableRef
+#     node::ModelNode
+#     idx::Int64
+# end
 #############################################
 # Add Model Nodes
 ############################################
 function ModelNode()
      node = ModelNode(JuMP.Model(),
      0,
-     OrderedDict{Int,NodeVariableRef}(),
+     OrderedDict{Int,JuMP.VariableRef}(),
      Dict{Int,String}(),
      Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
      Dict{Int64,AbstractLinkConstraint}(),
-     Dict{Int64,AbstractLinkConstraint}(),
+    # Dict{Int64,AbstractLinkConstraint}(),
      Dict{MOI.VariableIndex,Float64}(),
      Dict{MOI.ConstraintIndex,Float64}(),
      Dict{JuMP.NonlinearConstraintIndex,Float64}(),
@@ -53,28 +54,18 @@ function ModelNode()
      return node
 end
 
-function add_node!(graph::AbstractModelGraph)
-    modelnode = ModelNode()
-    push!(graph.modelnodes,modelnode)
-    graph.node_idx_map[modelnode] = length(graph.modelnodes)
-    return modelnode
-end
-
-function add_node!(graph::AbstractModelGraph,m::JuMP.AbstractModel)
-    node = add_node!(graph)
-    set_model(node,m)
-    return node
-end
-
 #############################################
-# Model Management
+# ModelNode Management
 ############################################
 #Get the underlying JuMP Model on a node
-JuMP.value(nvref::NodeVariableRef) = node.variable_values[nvref.vref]
+
+JuMP.value(node::ModelNode,vref::VariableRef) = node.variable_values[vref]
+#nodevalue(vref::VariableRef) = vref.node.variable_values[vref]
 getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
-getlinkvariable(var::JuMP.VariableRef) = getnode(var).linkvariablemap[var].vref
+getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
+
 
 setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
@@ -100,6 +91,11 @@ function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
     m.ext[:modelnode] = node
+
+    #setup node references to model objects
+    # for var in JuMP.all_variables(m)
+    #     node.variable_values[var] = 
+
 end
 @deprecate setmodel set_model
 """
@@ -115,10 +111,10 @@ function is_linked_variable(var::JuMP.AbstractVariableRef)
     if haskey(m.ext,:modelgraph)
         return false
     else
-        return var in keys(getnode(var).linkvariablemap)
+        return var in keys(getnode(var).parent_linkvariable_map)
     end
 end
-is_linked_to_master(node::Model) = !(isempty(node.linkvariablemap))
+is_linked_to_master(node::Model) = !(isempty(node.parent_linkvariable_map))
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
 
 #############################################
@@ -126,7 +122,7 @@ is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                     
 ############################################
 function Base.getindex(node::ModelNode,symbol::Symbol)
     if haskey(node.model.obj_dict,symbol)
-        return getmodel(node)[symbol]
+        return getmodel(node)[symbol]#.vref
     else
         return getattribute(node,symbol)
     end
@@ -137,36 +133,21 @@ function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
 end
 
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
-# JuMP.variable_type(::ModelNode) = JuMP.VariableRef
-
-Base.broadcastable(v::NodeVariableRef) = Ref(v)
-Base.copy(v::NodeVariableRef) = v
-Base.:(==)(v::NodeVariableRef, w::NodeVariableRef) = v.vref.model === w.vref.model && v.vref.index == w.vref.index
-JuMP.owner_model(v::NodeVariableRef) = v.node.model
-JuMP.isequal_canonical(v::NodeVariableRef, w::NodeVariableRef) = v.vref == w.vref
-JuMP.variable_type(::ModelNode) = NodeVariableRef
-
-JuMP.set_name(v::NodeVariableRef, s::String) = JuMP.set_name(v.vref,s)
-JuMP.name(v::NodeVariableRef) =  JuMP.name(v.vref)
+JuMP.variable_type(::ModelNode) = JuMP.VariableRef
+#JuMP.variable_type(::ModelNode) = NodeVariableRef
 
 #Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
 function JuMP.add_variable(node::ModelNode, v::JuMP.AbstractVariable, name::String="")
     node.nodevariable_index += 1
     jump_vref = JuMP.add_variable(node.model,v,name)  #add the variable to the node model
-    node_vref = NodeVariableRef(jump_vref,node,node.nodevariable_index)
-    JuMP.set_name(node_vref, name)
-    return node_vref
+    #node_vref = NodeVariableRef(jump_vref,node,node.nodevariable_index)
+    node.nodevariables[node.nodevariable_index] = jump_vref
+    JuMP.set_name(jump_vref, name)
+    return jump_vref
 end
 
-#Delete a node variable
-function MOI.delete!(node::ModelNode, vref::NodeVariableRef)
-    delete!(node.nodevariables, vref.idx)
-    delete!(node.nodevarnames, vref.idx)
-end
-MOI.is_valid(node::ModelNode, vref::NodeVariableRef) = vref.idx in keys(node.nodevariables)
-
-function JuMP.add_constraint(node::ModelNode,  con::JuMP.AbstractConstraint, name::String="")
-    cref = JuMP.add_constraint(getmodel(node),con,name)          #also add to master model
+function JuMP.add_constraint(node::ModelNode, con::JuMP.AbstractConstraint, name::String="")
+    cref = JuMP.add_constraint(getmodel(node),con,name)
     return cref
 end
 
@@ -189,6 +170,7 @@ JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective(getmodel(modelnode),sense,func)
 end
+
 
 ##############################################
 # Get Model Node
@@ -225,6 +207,10 @@ end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)
 
+
+
+
+
 # TODO
 # RECREATE LINK CONSTRAINTS IF POSSIBLE
 # THROW WARNING IF THEY NEED TO BE DELETED
@@ -248,3 +234,61 @@ show(io::IO,node::ModelNode) = print(io,node)
 #     #reassign the model
 #     node.model = m
 # end
+
+######################################################
+# Node Constraints
+######################################################
+# TODO: Constraint with a LinkVariable in it
+# const NodeAffExpr = Union{NodeVariableRef,JuMP.GenericAffExpr{Float64,NodeVariableRef}}
+#
+# struct ScalarNodeConstraint{F <: NodeAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
+#     func::F
+#     set::S
+#     function ScalarNodeConstraint(F::NodeAffExpr,S::MOI.AbstractScalarSet)
+#         con = new{typeof(F),typeof(S)}(F,S)
+#     end
+# end
+#
+# function JuMP.build_constraint(_error::Function,func::NodeAffExpr,set::MOI.AbstractScalarSet)
+#     constraint = ScalarNodeConstraint(func, set)
+#     return constraint
+# end
+#
+# function JuMP.ScalarConstraint(con::ScalarNodeConstraint)
+#     terms = con.func.terms
+#     new_terms = OrderedDict([(linkvar_ref.vref,coeff) for (linkvar_ref,coeff) in terms])
+#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+#     new_func.terms = new_terms
+#     new_func.constant = con.func.constant
+#     return JuMP.ScalarConstraint(new_func,con.set)
+# end
+#
+# #Add a Node Constraint
+# function JuMP.add_constraint(node::ModelNode, con::ScalarNodeConstraint, name::String="")
+#     scalar_con = JuMP.ScalarConstraint(con)
+#     cref = JuMP.add_constraint(getmodel(node),scalar_con,name)          #also add to master model
+#     return cref
+# end
+#
+# # Model Extras
+# JuMP.show_constraints_summary(::IOContext,node::ModelNode) = ""
+# JuMP.show_backend_summary(::IOContext,m::ModelNode) = ""
+# Base.broadcastable(v::NodeVariableRef) = Ref(v)
+# Base.copy(v::NodeVariableRef) = v
+# Base.:(==)(v::NodeVariableRef, w::NodeVariableRef) = v.vref.model === w.vref.model && v.vref.index == w.vref.index
+# JuMP.owner_model(v::NodeVariableRef) = v.node.model
+# JuMP.isequal_canonical(v::NodeVariableRef, w::NodeVariableRef) = v.vref == w.vref
+# JuMP.variable_type(::ModelNode) = NodeVariableRef
+#
+# JuMP.set_name(v::NodeVariableRef, s::String) = JuMP.set_name(v.vref,s)
+# JuMP.name(v::NodeVariableRef) =  JuMP.name(v.vref)
+#
+#
+# #Delete a node variable
+# function MOI.delete!(node::ModelNode, vref::NodeVariableRef)
+#     delete!(node.nodevariables, vref.idx)
+#     delete!(node.nodevarnames, vref.idx)
+# end
+# MOI.is_valid(node::ModelNode, vref::NodeVariableRef) = vref.idx in keys(node.nodevariables)
+
+#getnode(var::NodeVariableRef) = var.node

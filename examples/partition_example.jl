@@ -48,12 +48,12 @@ ipopt = with_optimizer(Ipopt.Optimizer)
 @linkconstraint(modelgraph,n4[:x] == n1[:x])
 @linkconstraint(modelgraph,n1[:y] + n2[:y] + n3[:x] <= 2 )
 
-hypergraph = gethypergraph(modelgraph)
+optimize!(modelgraph,ipopt)
+
+hypergraph,hyper_map = gethypergraph(modelgraph) #create hypergraph object based on modelgraph
 A = sparse(hypergraph)
 partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
-partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
-
-optimize!(modelgraph,ipopt)
+#partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
 
 hyperpartition = Partition(hypergraph,partition1)

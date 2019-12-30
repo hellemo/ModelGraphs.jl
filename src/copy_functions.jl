@@ -103,3 +103,18 @@ function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.Variable
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con
 end
+
+#TODO
+function copy(mg::ModelGraph)
+    new_graph = ModelGraph()
+    for node in getnodes(mg)
+        new_node,ref_map = copy(node)   #creates new _models.  Use ref map to reference old graph variables
+        add_node!(new_graph,new_node)
+    end
+    for linkedge in getedges(mg)
+    end
+
+    #copy linkconstraints
+    #copy link variables
+
+end
