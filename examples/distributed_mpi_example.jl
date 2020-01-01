@@ -7,9 +7,9 @@ using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
 @everywhere using ModelGraphs
-@everywhere using ModelGraphMPISolvers
+#@everywhere using ModelGraphMPISolvers
 
-include("simple_modelgraph.jl")
+include("simple_modelgraph1.jl")
 
 # specify, number of mpi workers, launch cmd, etc.
 if !(isdefined(Main,:manager))
@@ -17,8 +17,10 @@ if !(isdefined(Main,:manager))
     # start mpi workers and add them as julia workers too.
     addprocs(manager)
 end
+#NOTE: This seems to have no value the first time I run this.
 julia_workers = collect(values(manager.mpi2j))
-#Distribute the graph to worke
+
+#Distribute the graph to workers
 remote_references = distribute(graph,julia_workers,remote_name = :graph)  #create the variable graph on each worker
 
 @mpi_do manager begin

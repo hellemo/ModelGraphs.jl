@@ -12,8 +12,6 @@ n1 = add_node!(modelgraph)
 n2 = add_node!(modelgraph)
 n3 = add_node!(modelgraph)
 n4 = add_node!(modelgraph)
-#Add edges between the nodes
-
 
 #Set a model on node 1
 m1 = Model()
@@ -57,13 +55,12 @@ A = sparse(hypergraph)
 partition_vector = KaHyPar.partition(A,2,configuration = :edge_cut)
 #partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
-#hyperpartition = Partition(hypergraph,partition1)
 
 partition = Partition(hypergraph,partition_vector)
-
 new_modelgraph,ref_map = aggregate(modelgraph,partition,hyper_map)
 optimize!(new_modelgraph,ipopt)
-#
+
+#Check results
 println()
 println("Aggregate Entire Graph Solution")
 println("n1[:x]= ",nodevalue(n1[:x]))

@@ -13,7 +13,7 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     n_nodes = getnumnodes(mg)
     n_workers = length(to_workers)
     nodes_per_worker = Int64(floor(n_nodes/n_workers))
-    nodes = getnodes(mg)
+    nodes = all_nodes(mg)
     node_indices = [getindex(mg,node) for node in nodes]
 
     link_data = ModelGraphs.get_link_constraint_data(mg)
@@ -35,7 +35,7 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
         end
         j += nodes_per_worker
     end
-    master = getmastermodel(mg)
+    master = getmasternode(mg)
     put!(channel_master, [master])  #put master model (node) into channel
 
     println("Distributing graph among workers: $to_workers")
@@ -59,9 +59,11 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     end
 end
 
-function _create_worker_modelgraph(master::JuMP.Model,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,linkeq_dict::OrderedDict,linkineq_dict::OrderedDict)
+function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,linkeq_dict::OrderedDict,linkineq_dict::OrderedDict)
     graph = ModelGraph()
-    graph.mastermodel = master
+    graph.node_idx_map = Dict{ModelNode,Int64}()
+    graph.masternode = master
+    graph.node_idx_map[master] = 0
 
     #Add nodes to worker's graph.  Each worker should have the same number of nodes, but some will be empty.
     for i = 1:n_nodes

@@ -16,6 +16,7 @@ struct PartitionRoot <: AbstractPartition
     sharededges::Vector{HyperEdge}          #shared edges become link constraints
     parent::Union{Nothing,PartitionRoot}
     children::Vector{AbstractPartition}
+    #shared_node_partitions::Dict{HyperNode,AbstractPartition}
 end
 PartitionRoot(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionRoot(sharednodes,sharededges,nothing,Vector{AbstractPartition}())
 PartitionRoot(sharededges::Vector{HyperEdge}) = PartitionRoot(Vector{HyperNode}(),sharededges,nothing,Vector{AbstractPartition}())
@@ -99,32 +100,9 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
-
     @assert length(hypernode_vectors) == length(induced_edge_partitions)
-
-    #Create new Hypergraphs
-    #new_hypers = Vector{HyperGraph}()
-    # for i = 1:length(hypernode_vectors)
-    #     hypernodes = hypernode_vectors[i]
-    #     induced_edges = induced_edge_partitions[i]
-    #
-    #     #hyper = HyperGraph()
-    #     #TODO: Do I actually need the hypergraph structure anymore?  We have the original hypergraph
-    #     # for hypernode in hypernodes
-    #     #     add_node!(hyper,hypernode)
-    #     # end
-    #     # for hyperedge in induced_edges
-    #     #     add_hyperedge!(hyper,hyperedge)
-    #     # end
-    #     # push!(new_hypers,hyper)
-    # end
-
     partition_root = PartitionRoot(shared_edges)
     partitions = Vector{PartitionLeaf}()
-    #for i = 1:length(new_hypers)
-    # for i = 1:length(hypernode_vectors)
-    #     push!(partitions,PartitionLeaf(new_hypers[i],partition_parent))
-    # end
     for i = 1:length(hypernode_vectors)
         push!(partitions,PartitionLeaf(hypernode_vectors[i],induced_edge_partitions[i],partition_root))
     end
@@ -205,3 +183,27 @@ show(io::IO,partition::Partition) = print(io,partition)
 # membership_vector = Metis.partition(dual_clique_graph,4)
 # model_partition = ModelPartition(dual_clique_graph,projection_map,membership_vector)
 # #get hypergraphs using induced subgraph
+
+
+
+#Create new Hypergraphs
+#new_hypers = Vector{HyperGraph}()
+# for i = 1:length(hypernode_vectors)
+#     hypernodes = hypernode_vectors[i]
+#     induced_edges = induced_edge_partitions[i]
+#
+#     #hyper = HyperGraph()
+#     #TODO: Do I actually need the hypergraph structure anymore?  We have the original hypergraph
+#     # for hypernode in hypernodes
+#     #     add_node!(hyper,hypernode)
+#     # end
+#     # for hyperedge in induced_edges
+#     #     add_hyperedge!(hyper,hyperedge)
+#     # end
+#     # push!(new_hypers,hyper)
+# end
+
+#for i = 1:length(new_hypers)
+# for i = 1:length(hypernode_vectors)
+#     push!(partitions,PartitionLeaf(new_hypers[i],partition_parent))
+# end
