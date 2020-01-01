@@ -155,9 +155,9 @@ include("utils.jl")
 
 include("block_matrix.jl")
 
-include("model_builders.jl")
-
 include("distribute.jl")
+
+include("hypergraphs/hypergraph_interface.jl")
 
 #include("plots.jl")
 function __init__()

@@ -493,9 +493,9 @@ set_optimizer(graph::AbstractModelGraph,optimizer::Union{JuMP.OptimizerFactory,A
 function string(graph::ModelGraph)
     """
     Model Graph:
-    model nodes: $(getnumnodes(graph))
+    local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
     link variables: $(num_linkvariables(graph))
-    link constraints: $(num_linkconstraints(graph))
+    local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
     """
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))

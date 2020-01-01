@@ -29,12 +29,6 @@ mutable struct ModelNode <: JuMP.AbstractModel
     ext::Dict{Symbol,Any}
 end
 
-#A node variable is a simple wrapper around a JuMP Variable Reference
-# struct NodeVariableRef <: AbstractNodeVariableRef
-#     vref::JuMP.VariableRef
-#     node::ModelNode
-#     idx::Int64
-# end
 #############################################
 # Add Model Nodes
 ############################################
@@ -45,7 +39,6 @@ function ModelNode()
      Dict{Int,String}(),
      Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
      Dict{Int64,AbstractLinkConstraint}(),
-    # Dict{Int64,AbstractLinkConstraint}(),
      Dict{MOI.VariableIndex,Float64}(),
      Dict{MOI.ConstraintIndex,Float64}(),
      Dict{JuMP.NonlinearConstraintIndex,Float64}(),
@@ -94,7 +87,7 @@ function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
 
     #setup node references to model objects
     # for var in JuMP.all_variables(m)
-    #     node.variable_values[var] = 
+    #     node.variable_values[var] =
 
 end
 @deprecate setmodel set_model
@@ -165,6 +158,7 @@ end
 
 JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
 JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
+JuMP.objective_sense(node::ModelNode) = JuMP.objective_sense(getmodel(node))
 JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 
 function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
@@ -292,3 +286,10 @@ show(io::IO,node::ModelNode) = print(io,node)
 # MOI.is_valid(node::ModelNode, vref::NodeVariableRef) = vref.idx in keys(node.nodevariables)
 
 #getnode(var::NodeVariableRef) = var.node
+
+#A node variable is a simple wrapper around a JuMP Variable Reference
+# struct NodeVariableRef <: AbstractNodeVariableRef
+#     vref::JuMP.VariableRef
+#     node::ModelNode
+#     idx::Int64
+# end

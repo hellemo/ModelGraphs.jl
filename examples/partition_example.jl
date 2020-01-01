@@ -51,15 +51,19 @@ ipopt = with_optimizer(Ipopt.Optimizer)
 optimize!(modelgraph,ipopt)
 
 hypergraph,hyper_map = gethypergraph(modelgraph) #create hypergraph object based on modelgraph
+
+
 A = sparse(hypergraph)
-partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
+partition_vector = KaHyPar.partition(A,2,configuration = :edge_cut)
 #partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
+#hyperpartition = Partition(hypergraph,partition1)
 
-hyperpartition = Partition(hypergraph,partition1)
-new_modelgraph,ref_map = aggregate(modelgraph,hyperpartition)
+partition = Partition(hypergraph,partition_vector)
+
+new_modelgraph,ref_map = aggregate(modelgraph,partition,hyper_map)
 optimize!(new_modelgraph,ipopt)
-
+#
 println()
 println("Aggregate Entire Graph Solution")
 println("n1[:x]= ",nodevalue(n1[:x]))

@@ -5,34 +5,33 @@ abstract type AbstractHyperGraph <: LightGraphs.AbstractGraph{Int64} end
 abstract type AbstractHyperEdge <: LightGraphs.AbstractEdge{Int64} end
 
 struct HyperNode
-    index_map::Dict{AbstractHyperGraph,Int64}
+    index::Int64
 end
-HyperNode(hypergraph::AbstractHyperGraph,index::Int64) = HyperNode(Dict{AbstractHyperGraph,Int64}(hypergraph => index))
-
+# HyperNode(index::Int64) = HyperNode()
 
 struct HyperEdge <: AbstractHyperEdge
-    index_map::Dict{AbstractHyperGraph,Int64}
+    index::Int64
     vertices::Set{HyperNode}
 end
-HyperEdge(hypergraph::AbstractHyperGraph,index::Int64,t::Set{HyperNode}) = HyperEdge(Dict{AbstractHyperGraph,Int64}(hypergraph => index),t)
-HyperEdge(hypergraph::AbstractHyperGraph,index::Int64,t::Vector{HyperNode}) = HyperEdge(Dict{AbstractHyperGraph,Int64}(hypergraph => index),Set(t))
-HyperEdge(hypergraph::AbstractHyperGraph,index::Int64,t::HyperNode...) = HyperEdge(Dict{AbstractHyperGraph,Int64}(hypergraph => index),Set(collect(t)))
+#HyperEdge(index::Int64,t::Set{HyperNode}) = HyperEdge(Dict{AbstractHyperGraph,Int64}(hypergraph => index),t)
+HyperEdge(index::Int64,t::Vector{HyperNode}) = HyperEdge(index,Set(t))
+HyperEdge(index::Int64,t::HyperNode...) = HyperEdge(index,Set(collect(t)))
 
 # LightGraphs.AbstractGraph
 mutable struct HyperGraph <: AbstractHyperGraph
     vertices::Vector{HyperNode}
     hyperedge_map::OrderedDict{Int64,HyperEdge}                  #look up hyperedges by index in the hypergraph
-    hyperedges::OrderedDict{Set,AbstractHyperEdge}       #look up hyperedges using hypernodes.  These are LOCAL to the hypergraph
-    node_map::Dict{HyperNode,Vector{AbstractHyperEdge}}  #map hypernodes to hyperedges they are incident to
+    hyperedges::OrderedDict{Set,HyperEdge}       #look up hyperedges using hypernodes.  These are LOCAL to the hypergraph
+    node_map::Dict{HyperNode,Vector{HyperEdge}}  #map hypernodes to hyperedges they are incident to
 end
 HyperGraph() = HyperGraph(HyperNode[],OrderedDict{Int64,HyperEdge}(),OrderedDict{Set,AbstractHyperEdge}(),Dict{HyperNode,Vector{AbstractHyperEdge}}())
 
-#SparseMatrix from complete hypergraph (i.e. including the subgraph hyperedges)
+#SparseMatrix from hypergraph
 function SparseArrays.sparse(hypergraph::HyperGraph)
     #Build up I and J.  Assume V = 1
     I = []
     J = []
-    for hyperedge in getallhyperedges(hypergraph)
+    for hyperedge in gethyperedges(hypergraph)
         edge_index = getindex(hypergraph,hyperedge)
         node_indices = []
         #NOTE: Order shouldn't matter here, but need to check
@@ -45,31 +44,15 @@ function SparseArrays.sparse(hypergraph::HyperGraph)
             push!(J,edge_index)
         end
     end
-
     V = Int.(ones(length(I)))
     return SparseArrays.sparse(I,J,V)
 end
-
-# function localsparse(hypergraph::HyperGraph)
-#     I = []
-#     J = []
-#     for hyperedge in gethyperedges(hypergraph)
-#         edge_index = getindex(hypergraph,hyperedge)
-#         for hypernode in hyperedge.vertices
-#             vertex = getindex(hypergraph,hypernode)
-#             push!(I,vertex)
-#             push!(J,edge_index)
-#         end
-#     end
-#     V = Int.(ones(length(I)))
-#     return SparseArrays.sparse(I,J,V)
-# end
 
 #HyperNode
 function LightGraphs.add_vertex!(hypergraph::AbstractHyperGraph)
     (nv(hypergraph) + one(Int) <= nv(hypergraph)) && return false       # test for overflow
     v = length(hypergraph.vertices)+1
-    hypernode = HyperNode(hypergraph,v)
+    hypernode = HyperNode(v)
     push!(hypergraph.vertices,hypernode)
     hypergraph.node_map[hypernode] = HyperEdge[]
     return hypernode
@@ -77,16 +60,9 @@ end
 
 add_node!(hypergraph::AbstractHyperGraph) = LightGraphs.add_vertex!(hypergraph)
 
-function add_node!(hypergraph::AbstractHyperGraph,node::HyperNode)
-    push!(hypergraph.vertices,node)
-    v = length(hypergraph.vertices)
-    node.index_map[hypergraph] = v
-    hypergraph.node_map[node] = HyperEdge[]
-    return node
-end
 
 getnode(hypergraph::HyperGraph,index::Int64) = hypergraph.vertices[index]
-Base.getindex(hypergraph::HyperGraph,node::HyperNode) = node.index_map[hypergraph]
+Base.getindex(hypergraph::HyperGraph,node::HyperNode) = node.index#_map[hypergraph]
 getnodes(hypergraph::HyperGraph) = hypergraph.vertices
 
 
@@ -111,37 +87,15 @@ function add_hyperedge!(hypergraph::AbstractHyperGraph,hypernodes::HyperNode...)
         return hypergraph.hyperedges[hypernodes]
     else
         index = ne(hypergraph) + 1
-        hyperedge = HyperEdge(hypergraph,index,hypernodes...)
+        hyperedge = HyperEdge(index,hypernodes...)
         for hypernode in hypernodes
             push!(hypergraph.node_map[hypernode], hyperedge)
         end
         hypergraph.hyperedges[hypernodes] = hyperedge
-
         hypergraph.hyperedge_map[index] = hyperedge
-        #push!(hypergraph.hyperedge_vector,hyperedge)
         return hyperedge
     end
 end
-
-#Add an existing hyperedge to a hypergraph
-# function add_sub_hyperedge!(hypergraph::AbstractHyperGraph, hyperedge::HyperEdge)
-#     # if has_edge(hypergraph,hyperedge)  #NOTE: I don't think this would ever happen
-#     #     return hyperedge
-#
-#     if haskey(hyperedge.index_map,hypergraph)  #if the hyperedge already belongs to this hypergraph
-#     # elseif hyperedge in hypergraph.hyperedge_vector     #if it's already a sub hyperedge
-#         return hyperedge
-#     else
-#         #Update the index map
-#         index = ne(hypergraph) + 1
-#         #push!(hypergraph.hyperedge_vector,hyperedge)
-#         #v = length(hypergraph.hyperedge_vector)
-#         hypergraph.hyperedge_map[index] = hyperedge
-#         hyperedge.index_map[hypergraph] = index
-#         return hyperedge
-#     end
-# end
-
 #Get hyperedges
 
 function gethyperedge(hypergraph::AbstractHyperGraph,vertices::Int64...)
@@ -150,11 +104,10 @@ function gethyperedge(hypergraph::AbstractHyperGraph,vertices::Int64...)
 end
 gethyperedge(hypergraph::HyperGraph,edge_index::Int64) = hypergraph.hyperedge_map[edge_index]
 gethyperedges(hypergraph::AbstractHyperGraph) = values(hypergraph.hyperedges)   #local hyperedges
-getallhyperedges(hypergraph::AbstractHyperGraph) = values(hypergraph.hyperedge_map)
+#getallhyperedges(hypergraph::AbstractHyperGraph) = values(hypergraph.hyperedge_map)
 getedges(hypergraph::AbstractHyperGraph) = gethyperedges(hypergraph)
 vertices(hyperedge::HyperEdge) = collect(hyperedge.vertices)
-Base.getindex(hypergraph::HyperGraph,edge::HyperEdge) = edge.index_map[hypergraph]
-
+Base.getindex(hypergraph::HyperGraph,edge::HyperEdge) = edge.index#_map[hypergraph]
 
 #LightGraphs Interface
 LightGraphs.edges(graph::AbstractHyperGraph) = graph.hyperedges #HyperEdgeIter(g)
@@ -179,38 +132,6 @@ LightGraphs.rem_edge!(g::AbstractHyperGraph,e::HyperEdge) = throw(error("Edge re
 #TODO Delete any associated edges with the vertex
 LightGraphs.rem_vertex!(g::AbstractHyperGraph) = throw(error("Vertex removal not supported on hypergraphs"))
 
-#Subgraph
-subgraphs(graph::HyperGraph) = graph.subgraphs
-getsubgraphs(graph::HyperGraph) = subgraphs(graph)
-
-function add_subgraph!(graph::HyperGraph,subgraph::HyperGraph)
-    push!(graph.subgraphs,subgraph)
-    subgraph.index = length(subgraphs(graph))           #subgraph index
-    for node in getnodes(subgraph)
-        add_node!(graph,node)  #add the HyperNode to the hypergraph
-    end
-
-    #TODO Fix.  This is slow.
-    for edge in getedges(subgraph)
-        add_sub_hyperedge!(graph,edge)
-    end
-    for subgraph in subgraphs(subgraph)
-        add_subgraph!(graph,subgraph)
-    end
-    return graph
-end
-
-# #Copy hypergraph.  Retain subgraphs too
-# function Base.copy(hypergraph::HyperGraph)
-#     copy_hypergraph = HyperGraph()
-#     for node in getnodes(hypergraph)
-#         add_node!(copy_hypergraph)
-#     end
-#     for edge in get
-# end
-
-
-
 ####################################
 #Print Functions
 ####################################
@@ -221,7 +142,7 @@ print(io::IO, graph::AbstractHyperGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractHyperGraph) = print(io,graph)
 
 function string(node::HyperNode)
-    "Hypernode: "*"$(values(node.index_map))"
+    "Hypernode: "*"$(node.index)" #_map))"
 end
 print(io::IO,node::HyperNode) = print(io, string(node))
 show(io::IO,node::HyperNode) = print(io,node)
@@ -232,6 +153,16 @@ end
 print(io::IO,edge::HyperEdge) = print(io, string(edge))
 show(io::IO,edge::HyperEdge) = print(io,edge)
 
+
+
+# #Copy hypergraph.  Retain subgraphs too
+# function Base.copy(hypergraph::HyperGraph)
+#     copy_hypergraph = HyperGraph()
+#     for node in getnodes(hypergraph)
+#         add_node!(copy_hypergraph)
+#     end
+#     for edge in get
+# end
 
 
 
@@ -287,4 +218,33 @@ show(io::IO,edge::HyperEdge) = print(io,edge)
 #             push!(J,h_index)
 #         end
 #     end
+# end
+
+# function add_node!(hypergraph::AbstractHyperGraph,node::HyperNode)
+#     push!(hypergraph.vertices,node)
+#     v = length(hypergraph.vertices)
+#     node.index = v
+#     hypergraph.node_map[node] = HyperEdge[]
+#     return node
+# end
+
+# #Subgraph
+# subgraphs(graph::HyperGraph) = graph.subgraphs
+# getsubgraphs(graph::HyperGraph) = subgraphs(graph)
+#
+# function add_subgraph!(graph::HyperGraph,subgraph::HyperGraph)
+#     push!(graph.subgraphs,subgraph)
+#     subgraph.index = length(subgraphs(graph))           #subgraph index
+#     for node in getnodes(subgraph)
+#         add_node!(graph,node)  #add the HyperNode to the hypergraph
+#     end
+#
+#     #TODO Fix.  This is slow.
+#     for edge in getedges(subgraph)
+#         add_sub_hyperedge!(graph,edge)
+#     end
+#     for subgraph in subgraphs(subgraph)
+#         add_subgraph!(graph,subgraph)
+#     end
+#     return graph
 # end

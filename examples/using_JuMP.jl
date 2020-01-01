@@ -30,6 +30,6 @@ set_model(n2,m2)
 
 optimize!(graph,optimizer)
 
-# println("n1[:x]= ",JuMP.value(n1[:x]))
-# println("n2[:x]= ",JuMP.value(n2[:x]))
-# println("objective = ", objectivevalue(graph))
+println("n1[:x]= ",JuMP.value(n1[:x]))
+println("n2[:x]= ",JuMP.value(n2[:x]))
+println("objective = ", objectivevalue(graph))

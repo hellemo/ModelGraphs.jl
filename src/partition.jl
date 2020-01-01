@@ -4,31 +4,34 @@ abstract type AbstractPartition end
 
 #A set of hypergraph nodes with a single parent
 struct PartitionLeaf <: AbstractPartition
-    hypergraph::HyperGraph  #nodes in this partition leaf
+    #hypergraph::HyperGraph  #nodes in this partition leaf
+    hypernodes::Vector{HyperNode}
+    hyperedges::Vector{HyperEdge}
     parent::Union{Nothing,AbstractPartition}
 end
 
-#PartitionParent descrives shared nodes and shared edges among its children
-struct PartitionParent <: AbstractPartition
-    sharednodes::Vector{HyperNode}          #shared nodes group into a master problem
+#PartitionRoot descrives shared nodes and shared edges among its children
+struct PartitionRoot <: AbstractPartition
+    sharednodes::Vector{HyperNode}          #shared nodes group into a master problem  #IDEA: Map shared nodes to the partitions that share them.  Then Overlap is trivial.
     sharededges::Vector{HyperEdge}          #shared edges become link constraints
-    parent::Union{Nothing,PartitionParent}
+    parent::Union{Nothing,PartitionRoot}
     children::Vector{AbstractPartition}
 end
-PartitionParent(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionParent(sharednodes,sharededges,nothing,Vector{AbstractPartition}())
-PartitionParent(sharededges::Vector{HyperEdge}) = PartitionParent(Vector{HyperNode}(),sharededges,nothing,Vector{AbstractPartition}())
+PartitionRoot(sharednodes::Vector{HyperNode},sharededges::Vector{HyperEdge}) = PartitionRoot(sharednodes,sharededges,nothing,Vector{AbstractPartition}())
+PartitionRoot(sharededges::Vector{HyperEdge}) = PartitionRoot(Vector{HyperNode}(),sharededges,nothing,Vector{AbstractPartition}())
 
 #A partition describes the entire partition structure of a Hypergraph.
 mutable struct Partition
-    leafpartitions::Vector{PartitionLeaf}      #bottom level communities (i.e. Leaf Communities)
-    parents::Vector{PartitionParent}          #tree structure describing recursive structure and shared nodes and edges
+    leafpartitions::Vector{PartitionLeaf}          #bottom level communities (i.e. Leaf Communities)
+    partitionroots::Vector{PartitionRoot}          #tree structure describing recursive structure and shared nodes and edges
 end
-Partition() = Partition(Vector{PartitionLeaf}(),Vector{PartitionParent}())
+Partition() = Partition(Vector{PartitionLeaf}(),Vector{PartitionRoot}())
 
 # TODO
 # mutable struct OverlappingPartition
 #     subpartitions::Vector{PartitionLeaf}
 #     overlaps::Vector{Vector{HyperNode}}
+# Map overlap nodes to partitions
 # end
 
 #Convert membership vector to lists of indices
@@ -90,38 +93,43 @@ end
 
 #Simple 2 level partition from a vector of integers
 #Can be used for both a row-net HyperGraph or a clique-expansion Graph
-function Partition(hypergraph::AbstractHyperGraph,node_membership_vector::Vector{Int64})
+function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
     hyperpartition = Partition()
 
     #convert membership vector to vector of vectors
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
     induced_edge_partitions,shared_edges = identifyhyperedges(hypergraph,hypernode_vectors)
 
+    @assert length(hypernode_vectors) == length(induced_edge_partitions)
+
     #Create new Hypergraphs
-    new_hypers = Vector{HyperGraph}()
-    for i = 1:length(hypernode_vectors)
-        hypernodes = hypernode_vectors[i]
-        induced_edges = induced_edge_partitions[i]
-        hyper = HyperGraph()
+    #new_hypers = Vector{HyperGraph}()
+    # for i = 1:length(hypernode_vectors)
+    #     hypernodes = hypernode_vectors[i]
+    #     induced_edges = induced_edge_partitions[i]
+    #
+    #     #hyper = HyperGraph()
+    #     #TODO: Do I actually need the hypergraph structure anymore?  We have the original hypergraph
+    #     # for hypernode in hypernodes
+    #     #     add_node!(hyper,hypernode)
+    #     # end
+    #     # for hyperedge in induced_edges
+    #     #     add_hyperedge!(hyper,hyperedge)
+    #     # end
+    #     # push!(new_hypers,hyper)
+    # end
 
-        for hypernode in hypernodes
-            add_node!(hyper,hypernode)
-        end
-
-        for hyperedge in induced_edges
-            add_sub_hyperedge!(hyper,hyperedge)  #NOTE HyperEdge Construction might be taking too long
-        end
-
-        push!(new_hypers,hyper)
-    end
-
-    partition_parent = PartitionParent(shared_edges)
+    partition_root = PartitionRoot(shared_edges)
     partitions = Vector{PartitionLeaf}()
-    for i = 1:length(new_hypers)
-        push!(partitions,PartitionLeaf(new_hypers[i],partition_parent))
+    #for i = 1:length(new_hypers)
+    # for i = 1:length(hypernode_vectors)
+    #     push!(partitions,PartitionLeaf(new_hypers[i],partition_parent))
+    # end
+    for i = 1:length(hypernode_vectors)
+        push!(partitions,PartitionLeaf(hypernode_vectors[i],induced_edge_partitions[i],partition_root))
     end
     hyperpartition.leafpartitions = partitions
-    hyperpartition.parents = [partition_parent]
+    hyperpartition.partitionroots = [partition_root]
 
     return hyperpartition
 end
@@ -131,8 +139,9 @@ end
 ####################################
 function string(partition::Partition)
     """
-    Partition:
-    partitions: $(length(partition.partitions))
+    Hypergraph Partition w/
+    leaf partitions: $(length(partition.leafpartitions))
+    partition roots: $(length(partition.partitionroots))
     """
 end
 print(io::IO, partition::Partition) = print(io, string(partition))

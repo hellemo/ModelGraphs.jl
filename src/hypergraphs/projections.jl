@@ -44,7 +44,6 @@ function clique_expansion(hypergraph::HyperGraph)
         projection_map[i]= node
     end
 
-
     #HyperEdges
     for hyperedge in gethyperedges(hypergraph)
         edge_vertices = vertices(hyperedge)
@@ -53,8 +52,7 @@ function clique_expansion(hypergraph::HyperGraph)
             other_vertices = edge_vertices[i+1:end]
             for j = 1:length(other_vertices)
                 vertex_to = getindex(hypergraph,other_vertices[j])
-
-                inserted = add_edge!(graph,vertex_from,vertex_to)
+                inserted = LightGraphs.add_edge!(graph,vertex_from,vertex_to)
                 new_edge = SimpleEdge(sort([vertex_from,vertex_to])...)
                 if inserted #new simple edge was created
                     projection_map.edge_map[new_edge] = [hyperedge]
@@ -68,34 +66,6 @@ function clique_expansion(hypergraph::HyperGraph)
         end
     end
 
-    #Subgraph HyperEdges
-    for subgraph in subgraphs(hypergraph)
-        for hyperedge in gethyperedges(subgraph)
-            edge_vertices = vertices(hyperedge)      #these are indices in the subgraph
-            #subgraph_hypernodes = [getnode(subgraph,i) for i in edge_vertices]
-            hypernodes = collect(edge_vertices)
-            #hypergraph_vertices = [getindex(hypergraph,hypernode) for hypernode in subgraph_hypernodes]  #these are the vertices in the original graph (and hence, the ugraph)
-
-            for i = 1:length(edge_vertices)
-                vertex_from = getindex(hypergraph,hypernodes[i])
-                #vertex_from = getindex(hypergraph,edge_vertices[i])
-                other_nodes = hypernodes[i+1:end]
-                for j = 1:length(other_nodes)
-                    vertex_to = getindex(hypergraph,other_nodes[j])
-                    inserted = add_edge!(graph,vertex_from,vertex_to)
-                    new_edge = SimpleEdge(sort([vertex_from,vertex_to])...)
-                    if inserted #new simple edge was created
-                        projection_map.edge_map[new_edge] = [hyperedge]
-                    #elseif it's a new hyperedge for this simple edge
-                    elseif !(hyperedge in values(projection_map.edge_map[new_edge]))
-                        push!(projection_map.edge_map[new_edge],hyperedge)
-                    else #nothing to do
-                        continue
-                    end
-                end
-            end
-        end
-    end
     return graph,projection_map
 end
 
@@ -111,3 +81,32 @@ end
 
 function dual_clique_expansion(hypergraph::HyperGraph)
 end
+
+# #Subgraph HyperEdges
+# for subgraph in subgraphs(hypergraph)
+#     for hyperedge in gethyperedges(subgraph)
+#         edge_vertices = vertices(hyperedge)      #these are indices in the subgraph
+#         #subgraph_hypernodes = [getnode(subgraph,i) for i in edge_vertices]
+#         hypernodes = collect(edge_vertices)
+#         #hypergraph_vertices = [getindex(hypergraph,hypernode) for hypernode in subgraph_hypernodes]  #these are the vertices in the original graph (and hence, the ugraph)
+#
+#         for i = 1:length(edge_vertices)
+#             vertex_from = getindex(hypergraph,hypernodes[i])
+#             #vertex_from = getindex(hypergraph,edge_vertices[i])
+#             other_nodes = hypernodes[i+1:end]
+#             for j = 1:length(other_nodes)
+#                 vertex_to = getindex(hypergraph,other_nodes[j])
+#                 inserted = add_edge!(graph,vertex_from,vertex_to)
+#                 new_edge = SimpleEdge(sort([vertex_from,vertex_to])...)
+#                 if inserted #new simple edge was created
+#                     projection_map.edge_map[new_edge] = [hyperedge]
+#                 #elseif it's a new hyperedge for this simple edge
+#                 elseif !(hyperedge in values(projection_map.edge_map[new_edge]))
+#                     push!(projection_map.edge_map[new_edge],hyperedge)
+#                 else #nothing to do
+#                     continue
+#                 end
+#             end
+#         end
+#     end
+# end
