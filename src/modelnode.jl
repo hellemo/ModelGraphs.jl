@@ -12,13 +12,13 @@ mutable struct ModelNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
     nodevariable_index::Int64
-    nodevariables::OrderedDict{Int,AbstractVariableRef}                  #model nodes have node variables
+    nodevariables::OrderedDict{Int,AbstractVariableRef}
     nodevarnames::Dict{Int,String}
 
     parent_linkvariable_map::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #map of nodevariables to parent linkvariables
-    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
-    # partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
-    # partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
+    # partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
+    partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
+    partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
@@ -39,6 +39,7 @@ function ModelNode()
      Dict{Int,String}(),
      Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
      Dict{Int64,AbstractLinkConstraint}(),
+     Dict{Int64,AbstractLinkConstraint}(),
      Dict{MOI.VariableIndex,Float64}(),
      Dict{MOI.ConstraintIndex,Float64}(),
      Dict{JuMP.NonlinearConstraintIndex,Float64}(),
@@ -51,7 +52,6 @@ end
 # ModelNode Management
 ############################################
 #Get the underlying JuMP Model on a node
-
 JuMP.value(node::ModelNode,vref::VariableRef) = node.variable_values[vref]
 #nodevalue(vref::VariableRef) = vref.node.variable_values[vref]
 getmodel(node::ModelNode) = node.model
@@ -59,10 +59,8 @@ getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
 getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
 
-
 setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
-
 nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
@@ -107,6 +105,7 @@ function is_linked_variable(var::JuMP.AbstractVariableRef)
         return var in keys(getnode(var).parent_linkvariable_map)
     end
 end
+
 is_linked_to_master(node::Model) = !(isempty(node.parent_linkvariable_map))
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
 

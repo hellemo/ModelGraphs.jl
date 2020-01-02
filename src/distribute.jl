@@ -16,9 +16,10 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     nodes = all_nodes(mg)
     node_indices = [getindex(mg,node) for node in nodes]
 
-    link_data = ModelGraphs.get_link_constraint_data(mg)
-    n_linkeq_cons = length(link_data.linear_eq_constraints)
-    n_linkineq_cons = length(link_data.linear_le_constraints) + length(link_data.linear_ge_constraints) + length(link_data.linear_interval_constraints)
+    #link_data = ModelGraphs.get_link_constraint_data(mg)
+    n_linkeq_cons = length(mg.linkeqconstraints)
+    n_linkineq_cons = length(mg.linkineqconstraints)
+    #n_linkineq_cons = length(link_data.linear_le_constraints) + length(link_data.linear_ge_constraints) + length(link_data.linear_interval_constraints)
     n_link_cons = n_linkeq_cons + n_linkineq_cons
 
     #Allocate modelnodes onto provided workers
@@ -78,18 +79,20 @@ function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNod
         new_node.partial_linkconstraints = node.partial_linkconstraints
     end
     #We need the graph to have the partial constraints over graph nodes
-    graph.linkconstraints = _add_link_terms(modelnodes)
+    #graph.linkconstraints = _add_link_terms(modelnodes)
+    graph.linkeqconstraints = _add_linkeq_terms(modelnodes)
+    graph.linkineqconstraints = _add_linkineq_terms(modelnodes)
 
-
+    #Tell the worker how many linkconstraints the graph actually has
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
     graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
-    graph.obj_dict[:linkeq_dict] = linkeq_dict
-    graph.obj_dict[:linkineq_dict] = linkineq_dict
+    #graph.obj_dict[:linkeq_dict] = linkeq_dict
+    #graph.obj_dict[:linkineq_dict] = linkineq_dict
     return graph
 end
 
-function _add_link_terms(modelnodes::Vector{ModelNode})
-    linkconstraints = OrderedDict()
+function _add_linkeq_terms(modelnodes::Vector{ModelNode})
+    linkeqconstraints = OrderedDict()
     for node in modelnodes
         partial_links = node.partial_linkconstraints
         for (idx,linkconstraint) in partial_links

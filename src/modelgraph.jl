@@ -370,6 +370,7 @@ getnumnodes(con::LinkConstraint) = length(getnodes(con))
 #Add a LinkConstraint to a ModelGraph and update its LinkEdges
 function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstraint,name::String = "")
     @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
+
     graph.linkeqconstraint_index += 1
     graph.linkconstraint_index += 1
 
@@ -383,14 +384,14 @@ function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstrai
     push!(linkedge.linkconstraints,cref)
     graph.linkconstraints[cref.idx] = link_con
     eq_idx = graph.linkeqconstraint_index
-
     graph.linkeqconstraints[eq_idx] = link_con
 
-    #Add partial linkconstraint to connect model nodes
-    # for (var,coeff) in link_con.func.terms
-    #   node = getnode(var)
-    #   _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
-    # end
+    #Add partial linkconstraint to nodes
+    for (var,coeff) in link_con.func.terms
+      node = getnode(var)
+      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
+    end
+
     return cref
 end
 
@@ -410,17 +411,16 @@ function add_link_inequality_constraint(graph::ModelGraph,con::JuMP.ScalarConstr
     push!(linkedge.linkconstraints,cref)
     graph.linkconstraints[cref.idx] = link_con
     ineq_idx = graph.linkineqconstraint_index
-
     graph.linkineqconstraints[ineq_idx] = link_con
+
+    #Add partial linkconstraint to nodes
+    for (var,coeff) in link_con.func.terms
+      node = getnode(var)
+      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
+    end
 
     return cref
 end
-
-# function JuMP.add_constraint(graph::ModelGraph, con::ScalarNodeConstraint, name::String="")
-#     scalar_con = JuMP.ScalarConstraint(con)
-#     JuMP.add_constraint(graph,scalar_con,name)
-#     return cref
-# end
 
 function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
     if isa(con.set,MOI.EqualTo)
@@ -428,26 +428,36 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
     else
         cref = add_link_inequality_constraint(graph,con,name)
     end
-    link_con = LinkConstraint(cref)
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
-    end
     return cref
 end
 
 #Add to a partial linkconstraint on a modelnode
-function _add_to_partial_linkconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+function _add_to_partial_linkeqconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
     @assert getnode(var) == node
-    if haskey(node.partial_linkconstraints,index)
-        linkcon = node.partial_linkconstraints[index]
+    if haskey(node.partial_linkeqconstraints,index)
+        linkcon = node.partial_linkeqconstraints[index]
         JuMP.add_to_expression!(linkcon.func,coeff,var)
     else
         new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
         new_func.terms[var] = coeff
         new_func.constant = constant
         linkcon = LinkConstraint(new_func,set)
-        node.partial_linkconstraints[index] = linkcon
+        node.partial_linkeqconstraints[index] = linkcon
+    end
+end
+
+#Add to a partial linkconstraint on a modelnode
+function _add_to_partial_linkineqconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+    @assert getnode(var) == node
+    if haskey(node.partial_linkineqconstraints,index)
+        linkcon = node.partial_linkineqconstraints[index]
+        JuMP.add_to_expression!(linkcon.func,coeff,var)
+    else
+        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+        new_func.terms[var] = coeff
+        new_func.constant = constant
+        linkcon = LinkConstraint(new_func,set)
+        node.partial_linkineqconstraints[index] = linkcon
     end
 end
 
@@ -478,13 +488,13 @@ MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(grap
 #######################################################
 # HIERARCHICAL CONSTRAINTS
 #######################################################
-#TODO: Handle expression between link variable and node variables
+#TODO: Handle expression between link variable and node (JuMP) variables
 
 
 #################################
 # Optimizer
 #################################
-set_optimizer(graph::AbstractModelGraph,optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}) = graph.optimizer = optimizer
+set_optimizer(graph::ModelGraph,optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}) = graph.optimizer = optimizer
 
 
 ####################################
@@ -500,60 +510,3 @@ function string(graph::ModelGraph)
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-# graph.linkconstraint_index += 1
-# link_con = LinkConstraint(con)      #Convert ScalarConstraint to a LinkConstraint
-#
-# modelnodes = [getnode(var) for var in keys(con.func.terms)]
-#
-# #Setup graph structure
-# #modelnodes = [getnode(graph,index) for index in hypernodes]
-# linkedge = add_link_edge!(graph,modelnodes)
-#
-# #Setup constraint reference
-# cref = LinkConstraintRef(graph, graph.linkconstraint_index,linkedge)
-#
-# push!(linkedge.linkconstraints,cref)
-# graph.linkconstraints[cref.idx] = link_con
-#
-# JuMP.set_name(cref, name)
-#
-# if isa(con.set,MOI.EqualTo)
-#     graph.linkeqconstraints[cref.idx] = graph.linkeqconstraint_index
-# else
-#     graph.linkineqconstraints[cref.idx ] = graph.linkineqconstraint_index
-# end
-
-#Add partial linkconstraint to connect model nodes
-# struct ScalarMasterConstraint{F <: MasterAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
-#     func::F
-#     set::S
-#     function ScalarMasterConstraint(F::MasterAffExpr,S::MOI.AbstractScalarSet)
-#         con = new{typeof(F),typeof(S)}(F,S)
-#     end
-# end
-#
-# function JuMP.build_constraint(_error::Function,func::MasterAffExpr,set::MOI.AbstractScalarSet)
-#     constraint = ScalarMasterConstraint(func, set)
-#     return constraint
-# end
-#
-# function JuMP.ScalarConstraint(con::ScalarMasterConstraint)
-#     terms = con.func.terms
-#     new_terms = OrderedDict([(linkvar_ref.vref,coeff) for (linkvar_ref,coeff) in terms])
-#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-#     new_func.terms = new_terms
-#     new_func.constant = con.func.constant
-#     return JuMP.ScalarConstraint(new_func,con.set)
-# end
-#
-# #Add a Master Constraint
-# function JuMP.add_constraint(graph::ModelGraph, con::ScalarMasterConstraint, name::String="")
-#     scalar_con = JuMP.ScalarConstraint(con)
-#     cref = JuMP.add_constraint(getmastermodel(graph),scalar_con,name)          #also add to master model
-#     return cref
-# end
-#
-# # Model Extras
-# JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
-# JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""

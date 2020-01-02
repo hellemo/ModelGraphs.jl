@@ -1,18 +1,23 @@
 JuMP.Model(modelgraph::ModelGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
 
 function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;kwargs...)
-    println("Aggregating Model Graph...")
-    aggregate_model,reference_map = aggregate(graph)
+    println("Converting ModelGraph to ModelNode...")
+    modelnode,reference_map = convert_to_node(graph)
 
-    println("Optimizing Aggregated Model...")
-    JuMP.optimize!(aggregate_model,optimizer;kwargs...)
-    status = JuMP.termination_status(aggregate_model)
+    println("Optimizing ModelNode")
+    status = JuMP.optimize!(modelnode,optimizer;kwargs...)
+    #status = JuMP.termination_status(aggregate_model)
 
-    if JuMP.has_values(aggregate_model)     # TODO Get all the correct status codes for copying a solution
-        _copysolution!(graph,reference_map)   #Now get our solution data back into the original ModelGraph
+    if JuMP.has_values(getmodel(modelnode))     # TODO Get all the correct status codes for copying a solution
+        _copysolution!(graph,reference_map)     #Now get our solution data back into the original ModelGraph
         println("Found Solution")
     end
 
+    return status
+end
+
+function JuMP.optimize!(node::ModelNode,optimizer::JuMP.OptimizerFactory;kwargs...)
+    status = JuMP.optimize!(getmodel(node),optimizer;kwargs...)
     return status
 end
 

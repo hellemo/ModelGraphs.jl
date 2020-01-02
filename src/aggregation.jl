@@ -102,6 +102,12 @@ end
 # Aggregation Functions
 #############################################################################################
 #Aggregate modelgraph into AggregateModel
+#Group ModelGraph to a ModelNode
+convert_to_node(modelgraph::ModelGraph) = aggregate(modelgraph)
+
+# function convert_to_graph(node::ModelNode)
+# end
+
 function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
@@ -154,14 +160,18 @@ function aggregate(modelgraph::ModelGraph)
     # for nllinkconstraint in getallnllinkconstraints(modelgraph)
     # end
 
-    return aggregate_model, reference_map
+    modelnode = ModelNode()
+    set_model(modelnode,aggregate_model)
+
+    # return aggregate_model, reference_map
+    return modelnode,reference_map
 end
 
 #Aggregate a graph using a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition), link constraints and link variables
 #IDEA: Create new ModelGraph with subgraphs based on partition object.
 #Group subgraphs together for solver interface
 function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
-    println("Aggregating Partitioned ModelGraph...")
+    println("Creating Partitioned ModelGraph...")
 
     #Create New ModelGraphs
     parent_dict = Dict()
@@ -202,7 +212,7 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
 
         parent_mg = parent_dict[parent]
 
-        #LINK VARIABLES (MASTER NODE)
+        # LINK VARIABLES (MASTER NODE)
         # master = aggregate(shared_nodes) #get linkvariables from shared nodes
         # set_master(parent_mg,master)
         #master = Model()
@@ -232,12 +242,15 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
 end
 
 #TODO
-#Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
+#Aggregate the subgraphs of a modelgraph where n_levels corresponds to how many levels remain, 0 means no subgraphs
 # function aggregate(graph::ModelGraph,n_levels::Int64)
 #     new_model_graph = ModelGraph()
 #     return new_model_graph
 # end
 
+#Create a modelgraph where the subgraphs are grouped into ModelNodes
+function group_subgraphs(graph::ModelGraph)
+end
 
 function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)
 
@@ -366,6 +379,32 @@ function _set_node_objectives!(modelgraph::ModelGraph)
     JuMP.set_objective(modelgraph,MOI.MIN_SENSE,graph_obj)
 end
 
+#Create a ModelGraph from a set of ModelNodes and LinkEdges
+#IDEA: Make copies instead?
+function induced_modelgraph(modelnodes::Vector{ModelNode},linkedges::Vector{LinkEdge})
+    submg = ModelGraph()
+    for node in modelnodes
+        push!(submg.modelnodes,node)
+        submg.node_idx_map[node] = length(submg.modelnodes)
+    end
+    for linkedge in linkedges
+        #TODO: Make sure linkedge nodes actually connect the modelnodes
+        push!(submg.linkedges,linkedge)
+        submg.edge_idx_map[linkedge] = length(submg.linkedges)
+        submg.linkedge_map[linkedge.nodes] = linkedge
+        for linkconstraintref in linkedge.linkconstraints
+            idx = linkconstraintref.idx
+            linkconstraint = LinkConstraint(linkconstraintref)
+            submg.linkconstraints[idx] = linkconstraint
+        end
+    end
+    return submg
+end
+
+# function induced_modelgraph(modelnodes::Vector{ModelNode})
+#     #figure out supporting edges
+# end
+
 # #Create a ModelGraph from a given Hypergraph
 # function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph,hyper_map::Dict)
 #     submg = ModelGraph()
@@ -392,28 +431,6 @@ end
 #     end
 #     return submg
 # end
-
-# Create a ModelGraph from a set of ModelNodes and LinkEdges
-#TODO: Make copies instead?
-function induced_modelgraph(modelnodes::Vector{ModelNode},linkedges::Vector{LinkEdge})
-    submg = ModelGraph()
-    for node in modelnodes
-        push!(submg.modelnodes,node)
-        submg.node_idx_map[node] = length(submg.modelnodes)
-    end
-    for linkedge in linkedges
-        #TODO: Make sure linkedge nodes actually connect the modelnodes
-        push!(submg.linkedges,linkedge)
-        submg.edge_idx_map[linkedge] = length(submg.linkedges)
-        submg.linkedge_map[linkedge.nodes] = linkedge
-        for linkconstraintref in linkedge.linkconstraints
-            idx = linkconstraintref.idx
-            linkconstraint = LinkConstraint(linkconstraintref)
-            submg.linkconstraints[idx] = linkconstraint
-        end
-    end
-    return submg
-end
 
 # #ADD VARIABLE CONSTRAINTS SEPARATELY.  Need to do this because linked variables get counted multiple times.
 # for (func,set) in constraint_types
