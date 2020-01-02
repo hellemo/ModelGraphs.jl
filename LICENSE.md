@@ -1,4 +1,4 @@
-Copyright (c) 2019 Jordan Jalving and Contributors
+Copyright (c) 2020 Jordan Jalving and Contributors
 
 Mozilla Public License, version 2.0
 

@@ -8,6 +8,7 @@ if nprocs() == 1
     addprocs(2)
 end
 @everywhere using Pkg
+@everywhere using Revise
 @everywhere Pkg.activate(".")
 @everywhere using ModelGraphs
 
@@ -22,6 +23,8 @@ r2 = remote_references[2]
 g1 = fetch(r1)
 g2 = fetch(r2)
 
+
+println("Graph: ",Base.summarysize(graph)," Remote Graph: ",Base.summarysize(g1))
 names = fieldnames(ModelGraph)
 for name in names
     println(name," ",Base.summarysize(getfield(graph,name)), " ",Base.summarysize(getfield(g1,name)))

@@ -19,7 +19,6 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     #link_data = ModelGraphs.get_link_constraint_data(mg)
     n_linkeq_cons = length(mg.linkeqconstraints)
     n_linkineq_cons = length(mg.linkineqconstraints)
-    #n_linkineq_cons = length(link_data.linear_le_constraints) + length(link_data.linear_ge_constraints) + length(link_data.linear_interval_constraints)
     n_link_cons = n_linkeq_cons + n_linkineq_cons
 
     #Allocate modelnodes onto provided workers
@@ -53,14 +52,14 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
             end
             wait(ref1)
             ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),
-            n_nodes,n_linkeq_cons,n_linkineq_cons,mg.linkeqconstraints,mg.linkineqconstraints)))
+            n_nodes,n_linkeq_cons,n_linkineq_cons)))
             push!(remote_references,ref2)
         end
         return remote_references
     end
 end
 
-function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,linkeq_dict::OrderedDict,linkineq_dict::OrderedDict)
+function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
     graph = ModelGraph()
     graph.node_idx_map = Dict{ModelNode,Int64}()
     graph.masternode = master
@@ -76,7 +75,8 @@ function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNod
         index = node_indices[i]  #need node index in highest level
         new_node = getnode(graph,index)
         set_model(new_node,getmodel(node))
-        new_node.partial_linkconstraints = node.partial_linkconstraints
+        new_node.partial_linkeqconstraints = node.partial_linkeqconstraints
+        new_node.partial_linkineqconstraints = node.partial_linkineqconstraints
     end
     #We need the graph to have the partial constraints over graph nodes
     #graph.linkconstraints = _add_link_terms(modelnodes)
@@ -86,28 +86,47 @@ function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNod
     #Tell the worker how many linkconstraints the graph actually has
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
     graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
-    #graph.obj_dict[:linkeq_dict] = linkeq_dict
-    #graph.obj_dict[:linkineq_dict] = linkineq_dict
     return graph
 end
 
 function _add_linkeq_terms(modelnodes::Vector{ModelNode})
     linkeqconstraints = OrderedDict()
     for node in modelnodes
-        partial_links = node.partial_linkconstraints
+        partial_links = node.partial_linkeqconstraints
         for (idx,linkconstraint) in partial_links
-            if !(haskey(linkconstraints,idx))   #create link constraint
+            if !(haskey(linkeqconstraints,idx))   #create link constraint
                 new_func = linkconstraint.func
                 set = linkconstraint.set
                 linkcon = LinkConstraint(new_func,set)
-                linkconstraints[idx] = linkcon
+                linkeqconstraints[idx] = linkcon
             else #update linkconstraint
-                newlinkcon = linkconstraints[idx]
-                nodelinkcon = node.partial_linkconstraints[idx]
+                newlinkcon = linkeqconstraints[idx]
+                nodelinkcon = node.partial_linkeqconstraints[idx]
                 newlinkcon = LinkConstraint(newlinkcon.func + nodelinkcon.func,newlinkcon.set)
-                linkconstraints[idx] = newlinkcon
+                linkeqconstraints[idx] = newlinkcon
             end
         end
     end
-    return linkconstraints
+    return linkeqconstraints
+end
+
+function _add_linkineq_terms(modelnodes::Vector{ModelNode})
+    linkineqconstraints = OrderedDict()
+    for node in modelnodes
+        partial_links = node.partial_linkineqconstraints
+        for (idx,linkconstraint) in partial_links
+            if !(haskey(linkineqconstraints,idx))   #create link constraint
+                new_func = linkconstraint.func
+                set = linkconstraint.set
+                linkcon = LinkConstraint(new_func,set)
+                linkineqconstraints[idx] = linkcon
+            else #update linkconstraint
+                newlinkcon = linkineqconstraints[idx]
+                nodelinkcon = node.partial_linkineqconstraints[idx]
+                newlinkcon = LinkConstraint(newlinkcon.func + nodelinkcon.func,newlinkcon.set)
+                linkineqconstraints[idx] = newlinkcon
+            end
+        end
+    end
+    return linkineqconstraints
 end
