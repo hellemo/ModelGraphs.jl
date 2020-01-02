@@ -11,9 +11,18 @@ end
 @everywhere Pkg.activate(".")
 @everywhere using ModelGraphs
 
-include("simple_modelgraph.jl")
+include("simple_modelgraph1.jl")
 
 #Get references to the graph on each worker
-remote_references = distribute(mg, workers(), remote_name = :graph)
+remote_references = distribute(graph, workers(), remote_name = :graph)
 r1 = remote_references[1]
 r2 = remote_references[2]
+
+#Fetch graph from each worker
+g1 = fetch(r1)
+g2 = fetch(r2)
+
+names = fieldnames(ModelGraph)
+for name in names
+    println(name," ",Base.summarysize(getfield(graph,name)), " ",Base.summarysize(getfield(g1,name)))
+end

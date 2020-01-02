@@ -8,7 +8,6 @@ using Distributed
 
 using MathOptInterface
 const MOI = MathOptInterface
-#const NHG = NestedHyperGraphs
 
 using JuMP
 macro exportall(pkg)
@@ -24,30 +23,6 @@ import DataStructures.OrderedDict
 #Model Graph
 export
 
-######################################
-# HYPERGRAPHS
-######################################
-HyperGraph, HyperEdge,HyperNode,
-
-# Hypergraph getters
-gethypergraph, getnode, getnodes, getnumnodes, subgraphs, getindices, getlabel, getedge, getedges, gethyperedge, gethyperedges, getindex, getsubgraphs, getsubgraph,
-
-# Hypergraph adders
-add_node!,add_edge!,add_hyperedge!,add_subgraph!,
-
-# Hypergraph functions
-in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to,get_connected_from,
-
-in_neighbors,out_neighbors,neighbors,has_edge, in_edges, out_edges,
-
-# Hypergraph Projections
-BipartiteGraph, CliqueExpandedGraph,
-
-copy_graph,
-
-#Projections
-dual_hyper_graph, clique_expansion, dual_clique_expansion, star_expansion,
-
 #################################
 # MODELGRAPHS
 ################################
@@ -55,6 +30,16 @@ AbstractModelGraph, ModelGraph,
 
 #Nodes and Edges,
 ModelNode,LinkEdge,
+
+getsubgraph,getsubgraphs,all_subgraphs,
+
+getnode, getnodes,all_nodes,find_node,
+
+add_node!,add_edge!,add_subgraph!,
+
+getedge, getedges, all_edges, find_edge,
+
+getnumnodes, getnumedges,
 
 #LinkVariable and LinkConstraint
 LinkVariable, LinkConstraint, LinkVariableRef, LinkConstraintRef,
@@ -65,15 +50,19 @@ Partition,
 #Solvers/Optimizers
 AbstractGraphOptimizer,
 
+# solve handles
+optimize!,
+
 # ModelGraph checks
 has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
 num_linkconstraints, num_linkvariables,
 
 # ModelGraph getters
-getlinkedge,getlinkedges, getmodel, getmastermodel,
+getlinkedge, getlinkedges, getmodel, getmasternode,
 
 getblockmatrix, getincidencematrix, getlinkconstraints, getlinkvariables, getattribute,
+all_linkconstraints,
 
 # ModelGraph setters
 set_model, set_optimizer, reset_model, setattribute,
@@ -82,22 +71,45 @@ set_model, set_optimizer, reset_model, setattribute,
 is_nodevariable, is_linked_variable, link_variables!,
 
 # Aggregation
-aggregate, aggregate!,
+aggregate, #aggregate!,
 
 # Distribute
 distribute,
 
-# solve handles
-optimize!,
-
-# Solution management
+# solution management
 nodevalue, nodedual,  linkdual,
 
-# extras
+# extras, plotting, etc...
 plotblockmatrix,
 
+#export to file
+
+######################################
+# HYPERGRAPH INTERFACE
+######################################
+HyperGraph,HyperEdge,HyperNode,
+
+# Hypergraph getters
+gethypergraph, gethyperedge, gethyperedges,
+
+# Hypergraph adders
+add_hypernode!,add_hyperedge!,
+
+# Hypergraph functions
+in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to,get_connected_from,
+
+in_neighbors,out_neighbors,neighbors, has_edge, in_edges, out_edges,
+
+# Hypergraph Projections
+BipartiteGraph, CliqueExpandedGraph,
+
+copy_graph,
+
+#Projections
+dual_hyper_graph, clique_expansion, dual_clique_expansion, star_expansion,
+
 #macros
-@linkconstraint, @NLlinkconstraint, @linkvariable,
+@link, @linkconstraint, @NLlinkconstraint, @linkvariable,
 
 @NLnodeconstraint,
 
@@ -111,6 +123,7 @@ abstract type AbstractModelGraph <: JuMP.AbstractModel end
 abstract type AbstractLinkEdge end
 abstract type AbstractLinkConstraintRef end
 abstract type AbstractLinkVariableRef <: JuMP.AbstractVariableRef end
+abstract type AbstractNodeVariableRef <: JuMP.AbstractVariableRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
@@ -142,9 +155,9 @@ include("utils.jl")
 
 include("block_matrix.jl")
 
-include("model_builders.jl")
-
 include("distribute.jl")
+
+include("hypergraphs/hypergraph_interface.jl")
 
 #include("plots.jl")
 function __init__()

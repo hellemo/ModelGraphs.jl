@@ -1,11 +1,11 @@
 using ModelGraphs
-#using Ipopt
+using Ipopt
 
 graph = ModelGraph()
-#optimizer = with_optimizer(Ipopt.Optimizer)
+optimizer = with_optimizer(Ipopt.Optimizer)
 
-# @linkvariable(graph,z[1:2])
-# @masterconstraint(graph,z[1] + z[2] <= 2)
+@linkvariable(graph,z[1:2])
+@masterconstraint(graph,z[1] + z[2] <= 2)
 
 #Add nodes to a GraphModel
 n1 = add_node!(graph)
@@ -40,3 +40,5 @@ n4 = add_node!(graph)
 @linkconstraint(graph,n2[:x] == n3[:x][3])
 @linkconstraint(graph,n3[:x][1] <= n4[:x][1])
 @linkconstraint(graph,n1[:x] + n2[:x] <= n4[:x][5])
+
+optimize!(graph,optimizer)

@@ -12,8 +12,6 @@ n1 = add_node!(modelgraph)
 n2 = add_node!(modelgraph)
 n3 = add_node!(modelgraph)
 n4 = add_node!(modelgraph)
-#Add edges between the nodes
-
 
 #Set a model on node 1
 m1 = Model()
@@ -48,18 +46,21 @@ ipopt = with_optimizer(Ipopt.Optimizer)
 @linkconstraint(modelgraph,n4[:x] == n1[:x])
 @linkconstraint(modelgraph,n1[:y] + n2[:y] + n3[:x] <= 2 )
 
-hypergraph = gethypergraph(modelgraph)
-A = sparse(hypergraph)
-partition1 = KaHyPar.partition(A,2,configuration = :edge_cut)
-partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
-
 optimize!(modelgraph,ipopt)
 
+hypergraph,hyper_map = gethypergraph(modelgraph) #create hypergraph object based on modelgraph
 
-hyperpartition = Partition(hypergraph,partition1)
-new_modelgraph,ref_map = aggregate(modelgraph,hyperpartition)
+
+A = sparse(hypergraph)
+partition_vector = KaHyPar.partition(A,2,configuration = :edge_cut)
+#partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
+
+
+partition = Partition(hypergraph,partition_vector)
+new_modelgraph,ref_map = aggregate(modelgraph,partition,hyper_map)
 optimize!(new_modelgraph,ipopt)
 
+#Check results
 println()
 println("Aggregate Entire Graph Solution")
 println("n1[:x]= ",nodevalue(n1[:x]))

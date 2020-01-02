@@ -1,5 +1,5 @@
 #############################################################################################
-# Aggregate Model
+# Aggregate: IDEA: Group nodes together into a larger node
 #############################################################################################
 mutable struct AggregatedNode
     index::Int64
@@ -21,7 +21,6 @@ mutable struct AggregationInfo
 end
 AggregationInfo() = AggregationInfo(AggregatedNode[],VariableRef[],ConstraintRef[],ConstraintRef[])
 
-
 #A JuMP model created from a aggregated ModelGraph
 function AggregateModel()
     m = JuMP.Model()
@@ -31,7 +30,6 @@ end
 
 is_aggregate_model(m::JuMP.Model) = haskey(m.ext,:AggregationInfo) ? true : false  #check if the model is a graph model
 assert_is_aggregate_model(m::JuMP.Model) = @assert is_aggregate_model(m)
-
 getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:AggregationInfo] : error("Model is not an aggregate model")
 getlinkconstraints(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkconstraints
 getlinkvariables(m::JuMP.Model) = is_aggregate_model(m) && getaggregationinfo(m).linkvariables
@@ -108,38 +106,42 @@ function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
-    master_reference_map = _add_to_aggregate_model!(aggregate_model,getmastermodel(modelgraph),reference_map)
+    master_node = getmasternode(modelgraph)
+    _add_to_aggregate_model!(aggregate_model,getmodel(master_node),reference_map)
 
     #COPY NODE MODELS INTO AGGREGATED MODEL
-    has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
-    for modelnode in getnodes(modelgraph)               #for each node in the model graph
+    has_nonlinear_objective = false                      #check if any nodes have nonlinear objectives
+    for modelnode in all_nodes(modelgraph)               #for each node in the model graph
         node_model = getmodel(modelnode)
+
         #Need to pass master reference so we use those variables instead of creating new ones
-        _add_to_aggregate_model!(aggregate_model,node_model,reference_map)  #updates jump_graph_model,the jump_node, and the ref_map
-        #merge!(reference_map,node_reference_map)   #Update the reference_map
+        _add_to_aggregate_model!(aggregate_model,node_model,reference_map)  #updates aggregate_model and reference_map
 
         #Check for nonlinear objective functions unless we know we already have one
-
         if has_nonlinear_objective != true
             has_nonlinear_objective = _has_nonlinear_obj(node_model)
         end
     end
 
     #OBJECTIVE FUNCTION
+    if !(has_objective(modelgraph)) && !has_nonlinear_objective
+        _set_node_objectives!(modelgraph)
+    end
+
     if has_objective(modelgraph)
         agg_graph_obj = _copy_constraint_func(JuMP.objective_function(modelgraph),reference_map)
         JuMP.set_objective_function(aggregate_model,agg_graph_obj)
         JuMP.set_objective_sense(aggregate_model,JuMP.objective_sense(modelgraph))
     elseif has_NLobjective(modelgraph)
         #TODO
-        error("NL graph objective not yet supported")
+        error("NL graph objective not yet supported on a ModelGraph")
         # dgraph = JuMP.NLPEvaluator(modelgraph)
         # MOI.initialize(dgraph,[:ExprGraph])
         # graph_obj = MOI.objective_expr(dgraph)
         # _splice_nonlinear_variables!(graph_obj,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
         # JuMP.set_NL_objective(aggregate_model,JuMP.objective_sense(modelgraph,graph_obj))
     else
-        _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)          #set to the sum of the node objectives
+        _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)  #Set objective on the aggregate model
     end
 
     #ADD LINK CONSTRAINTS
@@ -155,31 +157,37 @@ function aggregate(modelgraph::ModelGraph)
     return aggregate_model, reference_map
 end
 
-#Aggregate a graph based on a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition)
-function aggregate(graph::ModelGraph,hyperpartition::Partition)
-    println("Building Aggregate Model Graph using HyperPartition")
+#Aggregate a graph using a model partition.  Return a new ModelGraph with possible subgraphs (If it was passed a recursive partition), link constraints and link variables
+#IDEA: Create new ModelGraph with subgraphs based on partition object.
+#Group subgraphs together for solver interface
+function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
+    println("Aggregating Partitioned ModelGraph...")
 
     #Create New ModelGraphs
     parent_dict = Dict()
-    for parent in hyperpartition.parents
+    for parent in hyperpartition.partitionroots
         new_model_graph = ModelGraph()
         parent_dict[parent] = new_model_graph
     end
 
-    top_model_graph = parent_dict[hyperpartition.parents[1]]
+    top_model_graph = parent_dict[hyperpartition.partitionroots[1]]
     reference_map = AggregationMap(top_model_graph)  #old model graph => new modelgraph
 
 
-    #BOTTOM LEVEL NODES
-    #Aggregate subgraphs to create bottom level nodes
+    #ADD BOTTOM LEVEL NODES: Aggregate subgraphs and then create bottom level nodes
     submodelgraphs = []
     for partition in hyperpartition.leafpartitions
-        hypergraph = partition.hypergraph
-        submodelgraph = ModelGraphs.create_sub_modelgraph(graph,hypergraph)
+
+        #hypergraph = partition.hypergraph
+        hypernodes = partition.hypernodes
+        hyperedges = partition.hyperedges
+        modelnodes = ModelNode[hypermap[node] for node in hypernodes]
+        linkedges = LinkEdge[hypermap[edge] for edge in hyperedges]
+
+        submodelgraph = ModelGraphs.induced_modelgraph(modelnodes,linkedges)
         push!(submodelgraphs,submodelgraph)
 
-        aggregate_model,agg_ref_map = aggregate(submodelgraph)
-
+        aggregate_model,agg_ref_map = aggregate(submodelgraph) #creates new model
         merge!(reference_map,agg_ref_map)
 
         parent_graph = parent_dict[partition.parent]
@@ -187,31 +195,31 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition)
         set_model(aggregate_node,aggregate_model)
     end
 
-
-    # #Now add shared nodes and shared edges
-    for parent in hyperpartition.parents
-        shared_nodes = parent.sharednodes     #Could be linkconstraints, shared variables, shared models, or pairs
-        shared_edges = parent.sharededges
+    #Now add shared nodes and shared edges
+    for parent in hyperpartition.partitionroots
+        shared_nodes = parent.sharednodes     #shared nodes (modelnodes)
+        shared_edges = parent.sharededges     #shared edges (linkedges)
 
         parent_mg = parent_dict[parent]
 
-        #LINK VARIABLES
+        #LINK VARIABLES (MASTER NODE)
         # master = aggregate(shared_nodes) #get linkvariables from shared nodes
         # set_master(parent_mg,master)
-        master = Model()
+        #master = Model()
         for shared_node in shared_nodes
             error("Shared nodes not supported yet")
             #identify edges here and figure out which link variables to make
         end
-        parent_mg.mastermodel = master
+        #parent_mg.masternode = master
 
         #LINK CONSTRAINTS
         for shared_edge in shared_edges
-            linkedge = findlinkedge(graph,shared_edge)
+            #linkedge = findlinkedge(graph,shared_edge)
+            linkedge = hypermap[shared_edge]
             for linkconstraintref in linkedge.linkconstraints
                 linkconstraint = LinkConstraint(linkconstraintref)
                 new_con = _copy_constraint(linkconstraint,reference_map)
-                JuMP.add_constraint(parent_mg,new_con)  #this is a link constraint
+                JuMP.add_constraint(parent_mg,new_con)  #add linkconstraint to the modelgraph
             end
         end
 
@@ -223,14 +231,14 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition)
     return top_model_graph,reference_map
 end
 
+#TODO
 #Aggregate the subgraphs of a modelgrap where n_levels corresponds to how many levels remain, 0 means no subgraphs
-function aggregate(graph::ModelGraph,n_levels::Int64)
-    new_model_graph = ModelGraph()
-    return new_model_graph
-end
+# function aggregate(graph::ModelGraph,n_levels::Int64)
+#     new_model_graph = ModelGraph()
+#     return new_model_graph
+# end
 
 
-#previously _buildnodemodel!
 function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)
 
     agg_node = add_aggregated_node!(aggregate_model)
@@ -246,7 +254,7 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
         if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
-            reference_map[var] = aggregation_map[getlinkvariable(var)]                    #get the master variable
+            reference_map[var] = aggregation_map[getlinkvariable(var)]   #get the master variable
         else
             new_x = JuMP.@variable(aggregate_model)                      #create an anonymous variable
             reference_map[var] = new_x                                   #map variable reference to new reference
@@ -259,21 +267,6 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
             agg_node.variablemap[new_x] = var
         end
     end
-    # #ADD VARIABLE CONSTRAINTS SEPARATELY.  Need to do this because linked variables get counted multiple times.
-    # for (func,set) in constraint_types
-    #     if func == JuMP.VariableRef
-    #         if !(is_linked_variable(var))
-    #             constraint_refs = JuMP.all_constraints(node_model, func, set)
-    #             for constraint_ref in constraint_refs
-    #                 constraint = JuMP.constraint_object(constraint_ref)
-    #                 new_constraint = _copy_constraint(constraint,reference_map)
-    #                 new_ref= JuMP.add_constraint(aggregate_model,new_constraint)
-    #                 agg_node.constraintmap[new_ref] = constraint_ref
-    #                 reference_map[constraint_ref] = new_ref
-    #             end
-    #         end
-    #     end
-    # end
 
     #COPY ALL OTHER CONSTRAINTS
     #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
@@ -341,10 +334,11 @@ function _add_to_aggregate_model!(aggregate_model::JuMP.Model,node_model::JuMP.M
     return reference_map
 end
 
+#Set aggregate model objective to sum of ModelGraph node objectives
 function _set_node_objectives!(modelgraph::ModelGraph,aggregate_model::JuMP.Model,reference_map::AggregationMap,has_nonlinear_objective::Bool)
     if has_nonlinear_objective
         graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
-        for node in getnodes(modelgraph)
+        for node in all_nodes(modelgraph)
             node_model = getmodel(node)
             JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
             d = JuMP.NLPEvaluator(node_model)
@@ -355,9 +349,84 @@ function _set_node_objectives!(modelgraph::ModelGraph,aggregate_model::JuMP.Mode
             graph_obj = Expr(:call,:+,graph_obj,node_obj)  #update graph objective
         end
         JuMP.set_NL_objective(aggregate_model, MOI.MIN_SENSE, graph_obj)
-
     else
+        #TODO: Fix issue with setting maximize
         graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(aggregate_model))    #NOTE: All of the node objectives are converted to Minimize (MOI.OptimizationSense(0))
         JuMP.set_objective(aggregate_model,MOI.MIN_SENSE,graph_obj)
     end
 end
+
+function _set_node_objectives!(modelgraph::ModelGraph)
+    graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+    for node in all_nodes(modelgraph)
+        sense = JuMP.objective_sense(node)
+        s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
+        JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
+    end
+    JuMP.set_objective(modelgraph,MOI.MIN_SENSE,graph_obj)
+end
+
+# #Create a ModelGraph from a given Hypergraph
+# function create_sub_modelgraph(modelgraph::ModelGraph,hypergraph::HyperGraph,hyper_map::Dict)
+#     submg = ModelGraph()
+#
+#     for hypernode in getnodes(hypergraph)
+#         modelnode = hyper_map[hypernode]
+#         push!(submg.modelnodes,modelnode)
+#         submg.node_idx_map[modelnode] = length(graph.modelnodes)
+#         #modelnode = getnode(modelgraph,hypernode)
+#         #submg.modelnodes[hypernode] = modelnode
+#     end
+#
+#     i = 1
+#     for hyperedge in gethyperedges(hypergraph)
+#         #linkedge = findlinkedge(modelgraph,hyperedge)  #this could be in a subgraph
+#         linkedge = hyper_map[hyperedge]
+#         add_edge!(submg,linkedge)
+#         #submg.linkedges[hyperedge] = linkedge
+#         for linkconstraintref in linkedge.linkconstraints
+#             linkconstraint = LinkConstraint(linkconstraintref)
+#             submg.linkconstraints[i] = linkconstraint
+#             i += 1
+#         end
+#     end
+#     return submg
+# end
+
+# Create a ModelGraph from a set of ModelNodes and LinkEdges
+#TODO: Make copies instead?
+function induced_modelgraph(modelnodes::Vector{ModelNode},linkedges::Vector{LinkEdge})
+    submg = ModelGraph()
+    for node in modelnodes
+        push!(submg.modelnodes,node)
+        submg.node_idx_map[node] = length(submg.modelnodes)
+    end
+    for linkedge in linkedges
+        #TODO: Make sure linkedge nodes actually connect the modelnodes
+        push!(submg.linkedges,linkedge)
+        submg.edge_idx_map[linkedge] = length(submg.linkedges)
+        submg.linkedge_map[linkedge.nodes] = linkedge
+        for linkconstraintref in linkedge.linkconstraints
+            idx = linkconstraintref.idx
+            linkconstraint = LinkConstraint(linkconstraintref)
+            submg.linkconstraints[idx] = linkconstraint
+        end
+    end
+    return submg
+end
+
+# #ADD VARIABLE CONSTRAINTS SEPARATELY.  Need to do this because linked variables get counted multiple times.
+# for (func,set) in constraint_types
+#     if func == JuMP.VariableRef
+#         if !(is_linked_variable(var))
+#             constraint_refs = JuMP.all_constraints(node_model, func, set)
+#             for constraint_ref in constraint_refs
+#                 constraint = JuMP.constraint_object(constraint_ref)
+#                 new_constraint = _copy_constraint(constraint,reference_map)
+#                 new_ref= JuMP.add_constraint(aggregate_model,new_constraint)
+#                 agg_node.constraintmap[new_ref] = constraint_ref
+#                 reference_map[constraint_ref] = new_ref
+#             end
+#         end
+#     end
+# end
