@@ -389,7 +389,7 @@ function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstrai
     #Add partial linkconstraint to nodes
     for (var,coeff) in link_con.func.terms
       node = getnode(var)
-      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
+      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,eq_idx)
     end
 
     return cref
@@ -416,7 +416,7 @@ function add_link_inequality_constraint(graph::ModelGraph,con::JuMP.ScalarConstr
     #Add partial linkconstraint to nodes
     for (var,coeff) in link_con.func.terms
       node = getnode(var)
-      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,cref.idx)
+      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,ineq_idx)
     end
 
     return cref
