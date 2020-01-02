@@ -19,7 +19,21 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     #link_data = ModelGraphs.get_link_constraint_data(mg)
     n_linkeq_cons = length(mg.linkeqconstraints)
     n_linkineq_cons = length(mg.linkineqconstraints)
-    n_link_cons = n_linkeq_cons + n_linkineq_cons
+
+    ineqlink_lb = zeros(n_linkineq_cons)
+    ineqlink_ub = zeros(n_linkineq_cons)
+    for (idx,link) in mg.linkineqconstraints
+        if isa(link.set,MOI.LessThan)
+            ineqlink_lb[idx] = -Inf
+            ineqlink_ub[idx] = link.set.upper
+        elseif isa(link.set,MOI.GreaterThan)
+            ineqlink_lb[idx] = link.set.lower
+            ineqlink_ub[idx] = Inf
+        elseif isa(link.set,MOI.Interval)
+            ineqlink_lb[idx] = link.set.lower
+            ineqlink_ub[idx] = link.set.upper
+        end
+    end
 
     #Allocate modelnodes onto provided workers
     allocations = []
@@ -52,14 +66,15 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
             end
             wait(ref1)
             ref2 = @spawnat worker Core.eval(Main, Expr(:(=), remote_name, ModelGraphs._create_worker_modelgraph(getfield(Main,:master),getfield(Main,:nodes),getfield(Main,:node_indices),
-            n_nodes,n_linkeq_cons,n_linkineq_cons)))
+            n_nodes,n_linkeq_cons,n_linkineq_cons,ineqlink_lb,ineqlink_ub)))
             push!(remote_references,ref2)
         end
         return remote_references
     end
 end
 
-function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64)
+function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNode},node_indices::Vector{Int64},n_nodes::Int64,n_linkeq_cons::Int64,n_linkineq_cons::Int64,
+    link_ineq_lower::Vector,link_ineq_upper::Vector)
     graph = ModelGraph()
     graph.node_idx_map = Dict{ModelNode,Int64}()
     graph.masternode = master
@@ -86,6 +101,8 @@ function _create_worker_modelgraph(master::ModelNode,modelnodes::Vector{ModelNod
     #Tell the worker how many linkconstraints the graph actually has
     graph.obj_dict[:n_linkeq_cons] = n_linkeq_cons
     graph.obj_dict[:n_linkineq_cons] = n_linkineq_cons
+    graph.obj_dict[:linkineq_lower] = link_ineq_lower
+    graph.obj_dict[:linkineq_upper] = link_ineq_upper
     return graph
 end
 

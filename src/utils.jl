@@ -245,7 +245,6 @@ function link_jacobian_structure(graph::ModelGraph)
 	con_data = get_link_constraint_data(graph)
 
     #Map node variable indices to graph indices
-
     var_map = Dict()
     graph_index = 1
     for node in getnodes(graph)
@@ -266,12 +265,5 @@ function link_jacobian_structure(graph::ModelGraph)
     @append_to_link_jacobian_sparsity con_data.quadratic_interval_constraints
     @append_to_link_jacobian_sparsity con_data.quadratic_eq_constraints
 
-
-    # I = [jacobian_sparsity[i][1] for i = 1:length(jacobian_sparsity)]
-    # J = [jacobian_sparsity[i][2] for i = 1:length(jacobian_sparsity)]
-    # V = ones(length(jacobian_sparsity))
-    #
-    #
-    # return sparse(I,J,V)
     return jacobian_sparsity
 end
