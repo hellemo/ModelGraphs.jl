@@ -108,9 +108,6 @@ convert_to_node(modelgraph::ModelGraph) = aggregate(modelgraph)
 # function convert_to_graph(node::ModelNode)
 # end
 
-function aggregate_subgraphs(modelgraph::ModelGraph)
-end
-
 function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
@@ -201,12 +198,15 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
         submodelgraph = ModelGraphs.induced_modelgraph(modelnodes,linkedges)
         push!(submodelgraphs,submodelgraph)
 
-        aggregate_model,agg_ref_map = aggregate(submodelgraph) #creates new model
+        aggregate_node,agg_ref_map = aggregate(submodelgraph) #creates new model
+
         merge!(reference_map,agg_ref_map)
 
         parent_graph = parent_dict[partition.parent]
-        aggregate_node = add_node!(parent_graph)
-        set_model(aggregate_node,aggregate_model)
+
+        #aggregate_node = add_node!(parent_graph)
+        #set_model(aggregate_node,aggregate_model)
+        add_node!(parent_graph,aggregate_node)
     end
 
     #Now add shared nodes and shared edges
