@@ -119,10 +119,16 @@ function add_node!(graph::ModelGraph)
     return modelnode
 end
 
-function add_node!(graph::ModelGraph,m::JuMP.AbstractModel)
+function add_node!(graph::ModelGraph,m::JuMP.Model)
     node = add_node!(graph)
     set_model(node,m)
     return node
+end
+
+function add_node!(graph::ModelGraph,modelnode::ModelNode)
+    push!(graph.modelnodes,modelnode)
+    graph.node_idx_map[modelnode] = length(graph.modelnodes)
+    return modelnode
 end
 
 getnodes(graph::ModelGraph) = graph.modelnodes
