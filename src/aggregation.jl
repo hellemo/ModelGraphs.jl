@@ -108,6 +108,9 @@ convert_to_node(modelgraph::ModelGraph) = aggregate(modelgraph)
 # function convert_to_graph(node::ModelNode)
 # end
 
+function aggregate_subgraphs(modelgraph::ModelGraph)
+end
+
 function aggregate(modelgraph::ModelGraph)
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
@@ -131,23 +134,24 @@ function aggregate(modelgraph::ModelGraph)
 
     #OBJECTIVE FUNCTION
     if !(has_objective(modelgraph)) && !has_nonlinear_objective
-        _set_node_objectives!(modelgraph)
+        _set_node_objectives!(modelgraph)  #set modelgraph objective function
+        _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective) #set aggregate_model objective function
     end
 
     if has_objective(modelgraph)
         agg_graph_obj = _copy_constraint_func(JuMP.objective_function(modelgraph),reference_map)
         JuMP.set_objective_function(aggregate_model,agg_graph_obj)
         JuMP.set_objective_sense(aggregate_model,JuMP.objective_sense(modelgraph))
-    elseif has_NLobjective(modelgraph)
-        #TODO
-        error("NL graph objective not yet supported on a ModelGraph")
-        # dgraph = JuMP.NLPEvaluator(modelgraph)
-        # MOI.initialize(dgraph,[:ExprGraph])
-        # graph_obj = MOI.objective_expr(dgraph)
-        # _splice_nonlinear_variables!(graph_obj,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
-        # JuMP.set_NL_objective(aggregate_model,JuMP.objective_sense(modelgraph,graph_obj))
-    else
-        _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)  #Set objective on the aggregate model
+    # elseif has_NLobjective(modelgraph)
+    #     #TODO
+    #     error("NL graph objective not yet supported on a ModelGraph")
+    #     # dgraph = JuMP.NLPEvaluator(modelgraph)
+    #     # MOI.initialize(dgraph,[:ExprGraph])
+    #     # graph_obj = MOI.objective_expr(dgraph)
+    #     # _splice_nonlinear_variables!(graph_obj,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
+    #     # JuMP.set_NL_objective(aggregate_model,JuMP.objective_sense(modelgraph,graph_obj))
+    # else
+    #     _set_node_objectives!(modelgraph,aggregate_model,reference_map,has_nonlinear_objective)  #Set objective on the aggregate model
     end
 
     #ADD LINK CONSTRAINTS
