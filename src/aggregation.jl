@@ -186,7 +186,7 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
 
 
     #ADD BOTTOM LEVEL NODES: Aggregate subgraphs and then create bottom level nodes
-    submodelgraphs = []
+    #submodelgraphs = []
     for partition in hyperpartition.leafpartitions
 
         #hypergraph = partition.hypergraph
@@ -196,7 +196,7 @@ function aggregate(graph::ModelGraph,hyperpartition::Partition,hypermap::Dict)
         linkedges = LinkEdge[hypermap[edge] for edge in hyperedges]
 
         submodelgraph = ModelGraphs.induced_modelgraph(modelnodes,linkedges)
-        push!(submodelgraphs,submodelgraph)
+        #push!(submodelgraphs,submodelgraph)
 
         aggregate_node,agg_ref_map = aggregate(submodelgraph) #creates new model
 
@@ -391,15 +391,17 @@ function induced_modelgraph(modelnodes::Vector{ModelNode},linkedges::Vector{Link
         push!(submg.modelnodes,node)
         submg.node_idx_map[node] = length(submg.modelnodes)
     end
+    link_idx = 0
     for linkedge in linkedges
         #TODO: Make sure linkedge nodes actually connect the modelnodes
         push!(submg.linkedges,linkedge)
         submg.edge_idx_map[linkedge] = length(submg.linkedges)
         submg.linkedge_map[linkedge.nodes] = linkedge
         for linkconstraintref in linkedge.linkconstraints
-            idx = linkconstraintref.idx
+            link_idx += 1
+            # idx = linkconstraintref.idx #these can be duplicates with subgraphs
             linkconstraint = LinkConstraint(linkconstraintref)
-            submg.linkconstraints[idx] = linkconstraint
+            submg.linkconstraints[link_idx] = linkconstraint
         end
     end
     return submg
