@@ -158,10 +158,16 @@ end
 #################
 function add_link_edge!(graph::ModelGraph,modelnodes::Vector{ModelNode})
     #node_indices = Set([graph.node_idx_map[node] for node in modelnodes])
-    linkedge = LinkEdge(modelnodes)
+    #Check for existing linkedge
+    key = Set(modelnodes)
+    if haskey(graph.linkedge_map,key)
+        linkedge = graph.linkedge_map[key]
+    else
+        linkedge = LinkEdge(modelnodes)
+        push!(graph.linkedges,linkedge)
+    end
     n_links = length(graph.linkedges)
     idx = n_links + 1
-    push!(graph.linkedges,linkedge)
     graph.linkedge_map[linkedge.nodes] = linkedge
     graph.edge_idx_map[linkedge] = idx
     return linkedge

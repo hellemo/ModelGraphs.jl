@@ -32,6 +32,7 @@ n4 = add_node!(subgraph2,nl_model())
 add_subgraph!(graph,subgraph1)
 add_subgraph!(graph,subgraph2)
 @linkconstraint(graph,n1[:x] == n3[:x])
+@linkconstraint(graph,n1[:x] <= n3[:x])
 
 optimize!(graph,with_optimizer(Ipopt.Optimizer))
 
