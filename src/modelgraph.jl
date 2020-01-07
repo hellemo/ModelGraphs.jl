@@ -1,3 +1,15 @@
+#A LinkVariableRef wraps a JuMP VariableRef.  This makes it easy to use all of the JuMP's functionality and extend it for providing link information
+struct LinkVariableRef <: AbstractLinkVariableRef  #NOTE AbstractVariableRef is an AbstractJuMPScalar
+    vref::JuMP.VariableRef
+    idx::Int64
+end
+
+struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
+    func::F
+    set::S
+end
+LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
+
 ##############################################################################
 # ModelGraph
 ##############################################################################
@@ -21,15 +33,15 @@ mutable struct ModelGraph <: AbstractModelGraph
     linkedge_map::OrderedDict{Set,LinkEdge}      #Sets of vertices map to a linkedge
 
     #Link variables
-    linkvariables::OrderedDict{Int64,AbstractLinkVariableRef}                                 #Link Variable references to master node variables
-    child_linkvariable_map::Dict{AbstractLinkVariableRef,Vector{JuMP.AbstractVariableRef}}    #Map of link variables in master model to corresponding variables in child ModelNodes.
-    parent_linkvariable_map::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}           #Map of graph link variables to parent graph link variables
+    linkvariables::OrderedDict{Int64,LinkVariableRef}                                 #Link Variable references to master node variables
+    child_linkvariable_map::Dict{LinkVariableRef,Vector{JuMP.VariableRef}}    #Map of link variables in master model to corresponding variables in child ModelNodes.
+    parent_linkvariable_map::Dict{JuMP.VariableRef,LinkVariableRef}           #Map of graph link variables to parent graph link variables
     linkvariable_names::Dict{Int64,String}
 
     #Link constraints
-    linkconstraints::OrderedDict{Int64,AbstractLinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
-    linkeqconstraints::OrderedDict{Int64,AbstractLinkConstraint}
-    linkineqconstraints::OrderedDict{Int64,AbstractLinkConstraint}
+    linkconstraints::OrderedDict{Int64,LinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
+    linkeqconstraints::OrderedDict{Int64,LinkConstraint}
+    linkineqconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
 
     #Objective
@@ -265,12 +277,6 @@ JuMP.objective_sense(m::ModelGraph) = m.objective_sense
 #  A link variable belongs to the master node on a graph.  A link variable is available for
 #  model nodes to use in their constraints which 'links' them together
 #####################################################
-#A LinkVariableRef wraps a JuMP VariableRef.  This makes it easy to use all of the JuMP's functionality and extend it for providing link information
-struct LinkVariableRef <: AbstractLinkVariableRef  #NOTE AbstractVariableRef is an AbstractJuMPScalar
-    vref::JuMP.VariableRef
-    idx::Int64
-end
-
 Base.broadcastable(v::LinkVariableRef) = Ref(v)
 Base.copy(v::LinkVariableRef) = v
 Base.:(==)(v::LinkVariableRef, w::LinkVariableRef) = v.vref.model === w.vref.model && v.vref.index == w.vref.index
@@ -364,14 +370,7 @@ struct LinkConstraintRef <: AbstractLinkConstraintRef
     idx::Int                        # index in `model.linkconstraints`
     linkedge::LinkEdge
 end
-
-struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
-    func::F
-    set::S
-end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
-LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
-
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]  #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
 getnodes(cref::LinkConstraintRef) = getnodes(cref.linkedge)
 getnumnodes(con::LinkConstraint) = length(getnodes(con))
