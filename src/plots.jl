@@ -31,7 +31,7 @@ function plotblockmatrix(graph::ModelGraph;markershape = :square,colorbar = noth
 
     n_link_constraints = num_linkconstraints(graph)
 
-    master = getmastermodel(graph)
+    master = getmodel(getmasternode(graph))
     n_master_constraints = ModelGraphs.num_all_constraints(master)
 
     n_rows_top_block = n_link_constraints + n_master_constraints #master constraints + link constraints

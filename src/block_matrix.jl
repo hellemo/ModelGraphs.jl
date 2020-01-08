@@ -21,7 +21,7 @@ function getblockdata(graph::ModelGraph)
 
     n_link_constraints = num_linkconstraints(graph)
 
-    master = getmastermodel(graph)
+    master = getmodel(getmasternode(graph))
     n_master_constraints = ModelGraphs.num_all_constraints(master)
 
     n_rows_top_block = n_link_constraints + n_master_constraints #master constraints + link constraints
@@ -100,7 +100,7 @@ function getblockdata(graph::ModelGraph)
         A[start_row:end_row,start_col:end_col] = Anode  #sizes match
 
         #TODO: Fix issues with variables that have no constraints.  Need to keep their dimensions in Anode
-        for (local_var,master_var) in node.linkvariablemap
+        for (local_var,master_var) in node.parent_linkvariable_map
             master_column = master_var.vref.index.value        #master variables are the first indices
 
             local_column = local_var.index.value
