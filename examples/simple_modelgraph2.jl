@@ -33,7 +33,7 @@ n4 = add_node!(graph)
 @variable(n4,x[1:5])
 @constraint(n4,sum(x[i] for i = 1:5) >= 10)
 @NLnodeconstraint(n4,ref,exp(x[2]) >= 4)
-@objective(n4,Min,x[2])
+@objective(n4,Min,x[2]^2)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n1[:x] == n2[:x])

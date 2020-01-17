@@ -105,13 +105,12 @@ end
 #Group ModelGraph to a ModelNode
 convert_to_node(modelgraph::ModelGraph) = aggregate(modelgraph)
 
-# function convert_to_graph(node::ModelNode)
-# end
 
-function aggregate(modelgraph::ModelGraph)
+function aggregate(modelgraph::ModelGraph)  #group, collapse,
     aggregate_model = AggregateModel()
     reference_map = AggregationMap(aggregate_model)
 
+    #TODO: Get rid of master node idea
     master_node = getmasternode(modelgraph)
     _add_to_aggregate_model!(aggregate_model,getmodel(master_node),reference_map)
 
@@ -374,12 +373,14 @@ function _set_node_objectives!(modelgraph::ModelGraph,aggregate_model::JuMP.Mode
 end
 
 function _set_node_objectives!(modelgraph::ModelGraph)
-    graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+    # graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+    graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})  #testing changing this to quadratic expression
     for node in all_nodes(modelgraph)
         sense = JuMP.objective_sense(node)
         s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
         JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
     end
+
     JuMP.set_objective(modelgraph,MOI.MIN_SENSE,graph_obj)
 end
 
@@ -407,8 +408,9 @@ function induced_modelgraph(modelnodes::Vector{ModelNode},linkedges::Vector{Link
     return submg
 end
 
-# function induced_modelgraph(modelnodes::Vector{ModelNode})
-#     #figure out supporting edges
+# Create an induced subgraph from a set of nodes
+# function induced_modelgraph(modelgraph::ModelGraph,modelnodes::Vector{ModelNode})
+#     #figure out supporting edges using hypergraph
 # end
 
 # #Create a ModelGraph from a given Hypergraph
