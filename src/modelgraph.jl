@@ -499,7 +499,7 @@ MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(grap
 #######################################################
 # HIERARCHICAL CONSTRAINTS
 #######################################################
-#TODO: Handle expression between link variable and node (JuMP) variables
+#TODO: These are just constraints between a child node and a parent node
 
 
 #################################
