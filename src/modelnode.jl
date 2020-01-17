@@ -126,7 +126,7 @@ end
 
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
 JuMP.variable_type(::ModelNode) = JuMP.VariableRef
-JuMP.constraint_type(::ModelGraph) = JuMP.ConstraintRef
+JuMP.constraint_type(::ModelNode) = JuMP.ConstraintRef
 #JuMP.variable_type(::ModelNode) = NodeVariableRef
 
 #Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
