@@ -73,6 +73,7 @@ is_nodevariable, is_linked_variable, link_variables!,
 # Aggregation
 aggregate, #aggregate!,
 convert_to_node,
+combine,
 
 # Distribute
 distribute,

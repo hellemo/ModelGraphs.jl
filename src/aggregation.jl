@@ -104,7 +104,7 @@ end
 #Aggregate modelgraph into AggregateModel
 #Group ModelGraph to a ModelNode
 convert_to_node(modelgraph::ModelGraph) = aggregate(modelgraph)
-
+combine(modelgraph::ModelGraph) = aggregate(modelgraph)
 
 function aggregate(modelgraph::ModelGraph)  #group, collapse,
     aggregate_model = AggregateModel()
