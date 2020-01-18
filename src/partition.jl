@@ -104,7 +104,9 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64})
     partition_root = PartitionRoot(shared_edges)
     partitions = Vector{PartitionLeaf}()
     for i = 1:length(hypernode_vectors)
-        push!(partitions,PartitionLeaf(hypernode_vectors[i],induced_edge_partitions[i],partition_root))
+        leaf = PartitionLeaf(hypernode_vectors[i],induced_edge_partitions[i],partition_root)
+        push!(partitions,leaf)
+        push!(partition_root.children,leaf)
     end
     hyperpartition.leafpartitions = partitions
     hyperpartition.partitionroots = [partition_root]

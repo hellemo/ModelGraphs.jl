@@ -20,7 +20,7 @@ The ModelGraph Type.  Represents a graph containing models (nodes) and the linkc
 """
 mutable struct ModelGraph <: AbstractModelGraph
 
-    masternode::ModelNode                       #Master node in a graph.  Can contain linkvariables
+    masternode::ModelNode                       #$TODO: Get rid of master node.  Master node in a graph.  Can contain linkvariables
 
     #Topology
     modelnodes::Vector{ModelNode}                #Local model nodes
@@ -28,6 +28,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     node_idx_map::Dict{ModelNode,Int64}          #Local map of model nodes to indices
     edge_idx_map::Dict{LinkEdge,Int64}           #Local map of link edges indices
     subgraphs::Vector{AbstractModelGraph}        #Subgraphs contained in the model graph
+    #linked_node_map::Dict{}
 
     #graphindex::Int64
     linkedge_map::OrderedDict{Set,LinkEdge}      #Sets of vertices map to a linkedge

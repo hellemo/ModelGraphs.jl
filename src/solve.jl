@@ -2,7 +2,7 @@ JuMP.Model(modelgraph::ModelGraph;add_node_objectives = !(has_objective(model_gr
 
 function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;kwargs...)
     println("Converting ModelGraph to ModelNode...")
-    modelnode,reference_map = convert_to_node(graph)
+    modelnode,reference_map = combine(graph)
 
     println("Optimizing ModelNode")
     status = JuMP.optimize!(modelnode,optimizer;kwargs...)

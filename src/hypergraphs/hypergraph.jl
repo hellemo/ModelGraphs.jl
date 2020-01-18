@@ -126,11 +126,61 @@ LightGraphs.vertices(graph::AbstractHyperGraph) = graph.vertices
 
 # LightGraphs.rem_edge!
 #TODO This shouldn't be too bad
-LightGraphs.rem_edge!(g::AbstractHyperGraph,e::HyperEdge) = throw(error("Edge removal not supported on hypergraphs"))
+LightGraphs.rem_edge!(g::AbstractHyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
 
 # LightGraphs.rem_vertex!
 #TODO Delete any associated edges with the vertex
-LightGraphs.rem_vertex!(g::AbstractHyperGraph) = throw(error("Vertex removal not supported on hypergraphs"))
+LightGraphs.rem_vertex!(g::AbstractHyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
+
+#NOTE Inefficient neighbors implementation
+#Could use a SparseArray to do this faster
+function LightGraphs.all_neighbors(g::HyperGraph,node::HyperNode)
+    hyperedges = g.node_map[node]  #incident hyperedges to the hypernode
+    neighbors = []
+    for edge in hyperedges
+        append!(neighbors,[vert for vert in edge.vertices if vert != node])
+    end
+    return unique(neighbors)
+end
+
+function incident_edges(g::HyperGraph,node::HyperNode)
+    hyperedges = g.node_map[node]  #incident hyperedges to the hypernode
+    return hyperedges
+end
+
+#TODO Get neighborhood of a node out to a given distance
+function neighborhood(g::HyperGraph,node::HyperNode,distance::Int64)
+    dist = 0
+    neighbor_list = []
+    edge_list = []
+
+    nodes_to_check = [node]
+    checked_nodes = []
+    checked_edges = []
+    while dist < distance
+        if !isempty(nodes_to_check)
+            for node in nodes_to_check
+                neighbors = LightGraphs.all_neighbors(g,node)
+                iedges = incident_edges[g,node]
+
+                f1 = (node) -> !(node in checked_nodes)
+                f2 = (edge) -> !(edge in checked_edges)
+
+                filter!(f1,neighbors)  #these are the new neighbors
+                filter!(f2,iedges)
+
+                popfirst!(nodes_to_check)
+                append!(nodes_to_check,neighbors)
+                push!(checked_nodes,node)
+
+            end
+            dist += 1
+        end
+    end
+
+    return nodes,edges
+end
+
 
 ####################################
 #Print Functions
@@ -166,16 +216,7 @@ show(io::IO,edge::HyperEdge) = print(io,edge)
 
 
 
-# #NOTE Inefficient neighbors implementation
-# function LightGraphs.all_neighbors(g::HyperGraph,v::Int)
-#     hyperedges = g.node_map[v]
-#     neighbors = []
-#     for edge in hyperedges
-#         #append!(neighbors,edge.vertices[1:end .!= v])  #NOTE This doesn't seem to work
-#         append!(neighbors,[vert for vert in edge.vertices if vert != v])
-#     end
-#     return unique(neighbors)
-# end
+
 
 #LightGraphs.degree(g::HyperGraph,v::Int) = length(all_neighbors(g,v))
 

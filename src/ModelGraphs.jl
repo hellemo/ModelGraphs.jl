@@ -147,9 +147,9 @@ include("macros.jl")
 
 include("partition.jl")
 
-include("aggregation.jl")          #An aggregated JuMP model
+include("combine.jl")          #An aggregated JuMP model
 
-include("copy_functions.jl")
+include("copy.jl")
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 
