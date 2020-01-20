@@ -106,7 +106,7 @@ gethyperedge(hypergraph::HyperGraph,edge_index::Int64) = hypergraph.hyperedge_ma
 gethyperedges(hypergraph::AbstractHyperGraph) = values(hypergraph.hyperedges)   #local hyperedges
 #getallhyperedges(hypergraph::AbstractHyperGraph) = values(hypergraph.hyperedge_map)
 getedges(hypergraph::AbstractHyperGraph) = gethyperedges(hypergraph)
-vertices(hyperedge::HyperEdge) = collect(hyperedge.vertices)
+LightGraphs.vertices(hyperedge::HyperEdge) = collect(hyperedge.vertices)
 Base.getindex(hypergraph::HyperGraph,edge::HyperEdge) = edge.index#_map[hypergraph]
 
 #LightGraphs Interface
@@ -136,7 +136,7 @@ LightGraphs.rem_vertex!(g::AbstractHyperGraph) = throw(error("Vertex removal not
 #Could use a SparseArray to do this faster
 function LightGraphs.all_neighbors(g::HyperGraph,node::HyperNode)
     hyperedges = g.node_map[node]  #incident hyperedges to the hypernode
-    neighbors = []
+    neighbors = HyperNode[]
     for edge in hyperedges
         append!(neighbors,[vert for vert in edge.vertices if vert != node])
     end
@@ -144,41 +144,48 @@ function LightGraphs.all_neighbors(g::HyperGraph,node::HyperNode)
 end
 
 function incident_edges(g::HyperGraph,node::HyperNode)
-    hyperedges = g.node_map[node]  #incident hyperedges to the hypernode
+    hyperedges = HyperEdge[]
+    for hedge in g.node_map[node]
+        push!(hyperedges,hedge)
+    end
     return hyperedges
 end
 
-#TODO Get neighborhood of a node out to a given distance
-function neighborhood(g::HyperGraph,node::HyperNode,distance::Int64)
+function neighborhood(g::HyperGraph,hnode::HyperNode,distance::Int64;exclude_nodes = HyperNode[])
     dist = 0
-    neighbor_list = []
-    edge_list = []
+    neighbor_list = HyperNode[]
+    edge_list = HyperEdge[]
+    nodes_to_check = [hnode]
 
-    nodes_to_check = [node]
-    checked_nodes = []
-    checked_edges = []
+    neighbor_list_return = []
+    edge_list_return = []
+
     while dist < distance
-        if !isempty(nodes_to_check)
-            for node in nodes_to_check
-                neighbors = LightGraphs.all_neighbors(g,node)
-                iedges = incident_edges[g,node]
+        neighbors = HyperNode[]
+        iedges = HyperEdge[]
+        for node in nodes_to_check
+            node_neighbors = LightGraphs.all_neighbors(g,node)
+            node_iedges = incident_edges(g,node)
 
-                f1 = (node) -> !(node in checked_nodes)
-                f2 = (edge) -> !(edge in checked_edges)
+            ##don't add duplicate nodes or edges or excluded nodes and edges
+            f1 = (node) -> !(node in [[hnode];neighbor_list;exclude_nodes])  #hnode should already be in exclude_nodes
+            f2 = (edge) -> !(edge in edge_list) && !all(node -> node in exclude_nodes, LightGraphs.vertices(edge))  #This removes the first incident edge
+            filter!(f1,node_neighbors)
+            filter!(f2,node_iedges)
 
-                filter!(f1,neighbors)  #these are the new neighbors
-                filter!(f2,iedges)
-
-                popfirst!(nodes_to_check)
-                append!(nodes_to_check,neighbors)
-                push!(checked_nodes,node)
-
-            end
-            dist += 1
+            append!(neighbors,node_neighbors)
+            append!(iedges,node_iedges)
         end
-    end
+        nodes_to_check = neighbors
+        append!(neighbor_list,neighbors)
+        append!(edge_list,iedges)
 
-    return nodes,edges
+        push!(neighbor_list_return,neighbors)
+        push!(edge_list_return,iedges)
+
+        dist += 1
+    end
+    return neighbor_list_return,edge_list_return
 end
 
 

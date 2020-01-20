@@ -71,8 +71,8 @@ set_model, set_optimizer, reset_model, setattribute,
 is_nodevariable, is_linked_variable, link_variables!,
 
 # Aggregation
+make_subgraphs!,
 aggregate, #aggregate!,
-convert_to_node,
 combine,
 
 # Distribute
@@ -160,6 +160,8 @@ include("block_matrix.jl")
 include("distribute.jl")
 
 include("hypergraphs/hypergraph_interface.jl")
+
+include("graph_functions.jl")
 
 #include("plots.jl")
 function __init__()

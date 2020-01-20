@@ -43,8 +43,10 @@ set_model(n4,m4)
 ipopt = with_optimizer(Ipopt.Optimizer)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-@linkconstraint(modelgraph,n4[:x] == n1[:x])
-@linkconstraint(modelgraph,n1[:y] + n2[:y] + n3[:x] <= 2 )
+@linkconstraint(modelgraph,n1[:x] == n2[:x])
+@linkconstraint(modelgraph,n2[:y] == n3[:x])
+@linkconstraint(modelgraph,n3[:x] == n4[:x])
+#@linkconstraint(modelgraph,n1[:y] + n2[:y] + n3[:x] <= 2 )
 
 optimize!(modelgraph,ipopt)
 
@@ -55,9 +57,9 @@ A = sparse(hypergraph)
 partition_vector = KaHyPar.partition(A,2,configuration = :edge_cut)
 #partition2 = KaHyPar.partition(A,2,configuration = :connectivity)
 
-
 partition = Partition(hypergraph,partition_vector)
-new_modelgraph,ref_map = aggregate(modelgraph,partition,hyper_map)
+new_modelgraph,ref_map = combine(modelgraph,partition,hyper_map)
+
 optimize!(new_modelgraph,ipopt)
 
 #Check results
