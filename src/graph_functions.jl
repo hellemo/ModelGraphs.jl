@@ -38,13 +38,13 @@ function neighborhood_expansion(mg::ModelGraph,subgraph::ModelGraph,boundary_nod
     boundary_edges = LinkEdge[]
 
     for node in boundary_nodes
-        # neighbor_node_list,edge_list = neighborhood(hypergraph,hypernode,overlap;exclude = subgraph_nodes)
         neighbor_node_list,edge_list = neighborhood(mg,node,overlap,exclude_nodes = subgraph_nodes)
 
         append!(new_modelnodes,vcat(neighbor_node_list...))
         append!(new_linkedges,vcat(edge_list...))
         #now get the incident edges from the last layer of neighbor_nodes.  These are the link constraints we need to coordinate.
 
+        #if !isempty(neighbor_node_list[end])
         final_nodes = neighbor_node_list[end]
         new_i_edges = []
         for node in final_nodes

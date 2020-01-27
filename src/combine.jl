@@ -353,14 +353,14 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
         end
     end
 
-    #TODO Get nonlinear object data to work
+    #TODO Get nonlinear object data to work.  Is this bottlenecking?
     #COPY OBJECT DATA (JUMP CONTAINERS).  I don't really need this for this.  It would be nice for Aggregation though.
-    for (name, value) in JuMP.object_dictionary(node_model)
-        #agg_node.obj_dict[name] = reference_map[value]
-        if typeof(value) in [JuMP.VariableRef,JuMP.ConstraintRef,LinkVariableRef]
-            agg_node.obj_dict[name] = getindex.(reference_map, value)
-        end
-    end
+    # for (name, value) in JuMP.object_dictionary(node_model)
+    #     #agg_node.obj_dict[name] = reference_map[value]
+    #     if typeof(value) in [JuMP.VariableRef,JuMP.ConstraintRef,LinkVariableRef]
+    #         agg_node.obj_dict[name] = getindex.(reference_map, value)
+    #     end
+    # end
 
     #OBJECTIVE FUNCTION (store expression on combinedd_nodes)
     if !(_has_nonlinear_obj(node_model))

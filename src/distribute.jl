@@ -55,6 +55,7 @@ function distribute(mg::ModelGraph,to_workers::Vector{Int64};remote_name = :grap
     println("Distributing graph among workers: $to_workers")
     remote_references = []
     #Fill channel with sets of nodes to send
+    #TODO: Make this parallel
     @sync begin
         for (i,worker) in enumerate(to_workers)
             @spawnat(1, put!(channel_nodes, allocations[i]))
@@ -146,4 +147,7 @@ function _add_linkineq_terms(modelnodes::Vector{ModelNode})
         end
     end
     return linkineqconstraints
+end
+
+function send_node(node::ModelNode,worker::Int64)
 end
