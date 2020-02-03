@@ -31,7 +31,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     #linked_node_map::Dict{}
 
     #graphindex::Int64
-    linkedge_map::OrderedDict{Set,LinkEdge}      #Sets of vertices map to a linkedge
+    linkedge_map::OrderedDict{OrderedSet,LinkEdge}      #Sets of vertices map to a linkedge
 
     #Link variables
     linkvariables::OrderedDict{Int64,LinkVariableRef}                                 #Link Variable references to master node variables
@@ -72,7 +72,7 @@ mutable struct ModelGraph <: AbstractModelGraph
                     Dict{ModelNode,Int64}(),
                     Dict{LinkEdge,Int64}(),
                     Vector{AbstractModelGraph}(),
-                    OrderedDict{Set,LinkEdge}(),
+                    OrderedDict{OrderedSet,LinkEdge}(),
                     OrderedDict{Int,AbstractLinkVariableRef}(),
                     Dict{AbstractLinkVariableRef,Vector{JuMP.AbstractVariableRef}}(),
                     Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
@@ -172,7 +172,7 @@ end
 function add_link_edge!(graph::ModelGraph,modelnodes::Vector{ModelNode})
     #node_indices = Set([graph.node_idx_map[node] for node in modelnodes])
     #Check for existing linkedge
-    key = Set(modelnodes)
+    key = OrderedSet(modelnodes)
     if haskey(graph.linkedge_map,key)
         linkedge = graph.linkedge_map[key]
     else
@@ -198,10 +198,10 @@ function all_edges(graph::ModelGraph)
     end
     return edges
 end
-getedge(graph::ModelGraph,nodes::Set{ModelNode}) = graph.linkedge_map[nodes]
+getedge(graph::ModelGraph,nodes::OrderedSet{ModelNode}) = graph.linkedge_map[nodes]
 
 function getedge(graph::ModelGraph,nodes::ModelNode...)
-    s = Set(collect(nodes))
+    s = OrderedSet(collect(nodes))
     return getlinkedge(graph,s)
 end
 

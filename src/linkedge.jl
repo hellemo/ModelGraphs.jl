@@ -4,11 +4,11 @@
 ##############################################################################
 mutable struct LinkEdge <: AbstractLinkEdge
     #vertices::Set{Int64}
-    nodes::Set{ModelNode}
+    nodes::OrderedSet{ModelNode}
     linkconstraints::Vector{AbstractLinkConstraintRef}  #Link constraints this edge represents
 end
-LinkEdge() = LinkEdge(Set{ModelNode}(),Vector{AbstractLinkConstraintRef}())
-LinkEdge(nodes::Vector{ModelNode}) = LinkEdge(Set(nodes),Vector{AbstractLinkConstraintRef}())
+LinkEdge() = LinkEdge(OrderedSet{ModelNode}(),Vector{AbstractLinkConstraintRef}())
+LinkEdge(nodes::Vector{ModelNode}) = LinkEdge(OrderedSet(nodes),Vector{AbstractLinkConstraintRef}())
 #LinkEdge() = LinkEdge(Set{Int64}(),Vector{AbstractLinkConstraintRef}())
 #LinkEdge(indices::Set{Int64}) = LinkEdge(indices,Vector{AbstractLinkConstraintRef}())
 

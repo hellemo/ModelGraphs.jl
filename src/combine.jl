@@ -64,6 +64,7 @@ struct AggregationMap
     combined_model::JuMP.AbstractModel                             #An combined model (Could be another ModelGraph)
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original modelgraph to combinedmodel
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original modelgraph to combinedmodel
+    linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
 end
 
 function Base.getindex(reference_map::AggregationMap, vref::JuMP.VariableRef)  #reference_map[node_var] --> combinedd_copy_var
@@ -91,7 +92,7 @@ end
 #     reference_map.varmap[node_vref] = graph_vref
 # end
 
-AggregationMap(m::JuMP.AbstractModel) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}())
+AggregationMap(m::JuMP.AbstractModel) = AggregationMap(m,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
 
 function Base.merge!(ref_map1::AggregationMap,ref_map2::AggregationMap)
     merge!(ref_map1.varmap,ref_map2.varmap)
@@ -155,7 +156,8 @@ function combine(modelgraph::ModelGraph)
     #ADD LINK CONSTRAINTS
     for linkconstraint in all_linkconstraints(modelgraph)
         new_constraint = _copy_constraint(linkconstraint,reference_map)
-        JuMP.add_constraint(combined_model,new_constraint)
+        cref = JuMP.add_constraint(combined_model,new_constraint)
+        reference_map.linkconstraintmap[linkconstraint] = cref
     end
 
     #TODO ADD NLLINKCONSSTRAINTS
