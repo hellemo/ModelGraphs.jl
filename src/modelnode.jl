@@ -127,13 +127,11 @@ end
 JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
 JuMP.variable_type(::ModelNode) = JuMP.VariableRef
 JuMP.constraint_type(::ModelNode) = JuMP.ConstraintRef
-#JuMP.variable_type(::ModelNode) = NodeVariableRef
 
 #Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
 function JuMP.add_variable(node::ModelNode, v::JuMP.AbstractVariable, name::String="")
     node.nodevariable_index += 1
-    jump_vref = JuMP.add_variable(node.model,v,name)  #add the variable to the node model
-    #node_vref = NodeVariableRef(jump_vref,node,node.nodevariable_index)
+    jump_vref = JuMP.add_variable(node.model,v,name) #add the variable to the node model
     node.nodevariables[node.nodevariable_index] = jump_vref
     JuMP.set_name(jump_vref, name)
     return jump_vref
@@ -164,6 +162,8 @@ JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
 function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective(getmodel(modelnode),sense,func)
 end
+
+JuMP.termination_status(node::ModelNode) = JuMP.termination_status(getmodel(node))
 
 
 ##############################################

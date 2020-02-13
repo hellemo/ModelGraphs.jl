@@ -85,6 +85,65 @@ quadratic_eq_offset(constraints::ConstraintData) = quadratic_interval_offset(con
 nlp_constraint_offset(constraints::ConstraintData) = quadratic_eq_offset(constraints) + length(constraints.quadratic_eq_constraints)
 
 
+
+#####################################
+# OBJECTIVE GRADIENT EVALUATION
+#####################################
+function has_nl_objective(m::JuMP.Model)
+	if m.nlp_data == nothing
+		return false
+	elseif m.nlp_data.nlobj != nothing
+		return true
+	else
+		return false
+	end
+end
+
+function fill_gradient!(grad, x, var::JuMP.VariableRef)
+    fill!(grad, 0.0)
+    grad[var.index.value] = 1.0
+	return
+end
+
+function fill_gradient!(grad, x, aff::JuMP.GenericAffExpr{Float64,JuMP.VariableRef})
+    fill!(grad, 0.0)
+	for	(var,coeff) in aff.terms
+        grad[var.index.value] += coeff
+    end
+	return
+end
+
+function fill_gradient!(grad, x, quad::JuMP.GenericQuadExpr{Float64,JuMP.VariableRef})
+    fill!(grad, 0.0)
+    for	(var,coeff) in quad.aff.terms
+        grad[var.index.value] += coeff
+    end
+    #for term in quad.quadratic_terms
+	for (terms,coeff) in quad.terms
+        row_idx = terms.a.index
+        col_idx = terms.b.index
+        if row_idx == col_idx
+            grad[row_idx.value] += 2*coeff*x[row_idx.value]
+        else
+            grad[row_idx.value] += coeff*x[col_idx.value]
+            grad[col_idx.value] += coeff*x[row_idx.value]
+        end
+    end
+	return
+end
+
+function eval_objective_gradient(d::JuMP.NLPEvaluator, grad, x)
+	m = d.m
+    if has_nl_objective(m)
+        MOI.eval_objective_gradient(d, grad, x)
+    elseif JuMP.objective_function(m) !== nothing
+        fill_gradient!(grad, x, JuMP.objective_function(m))
+    else
+        fill!(grad, 0.0)
+    end
+    return
+end
+
 ###############################################################
 # JACOBIAN STRUCTURE FOR VISUALIZING BLOCK STRUCTURE
 ###############################################################

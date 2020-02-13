@@ -21,6 +21,9 @@ function JuMP.optimize!(node::ModelNode,optimizer::JuMP.OptimizerFactory;kwargs.
     return status
 end
 
+#TODO: Update node_variables
+JuMP.optimize!(node::ModelNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
+
 # function JuMP.optimize!(graph::ModelGraph,optimizer::AbstractModelGraphOptimizer,kwargs...)
 #     optimizer_model = initialize_model(optimizer,graph)
 #     status = optimize!(optimizer_model)
@@ -28,11 +31,22 @@ end
 #     return status
 # end
 
-# #TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
+#TODO Make sure this still works. copy the solution from one graph to another where nodes and variables match
 function _copysolution!(modelgraph::ModelGraph,ref_map::AggregationMap)
+
+    #Node solutions
     for node in all_nodes(modelgraph)
         for var in JuMP.all_variables(node)
             node.variable_values[var] = JuMP.value(ref_map[var])
+        end
+    end
+
+    #Link constraint duals
+    for edge in all_edges(modelgraph)
+        for linkref in edge.linkconstraints
+            linkcon = modelgraph.linkconstraints[linkref.idx]
+            dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
+            edge.dual_values[linkref] = dual
         end
     end
 
