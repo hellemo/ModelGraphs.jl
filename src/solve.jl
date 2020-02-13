@@ -42,11 +42,13 @@ function _copysolution!(modelgraph::ModelGraph,ref_map::AggregationMap)
     end
 
     #Link constraint duals
-    for edge in all_edges(modelgraph)
-        for linkref in edge.linkconstraints
-            linkcon = modelgraph.linkconstraints[linkref.idx]
-            dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
-            edge.dual_values[linkref] = dual
+    if JuMP.has_duals(ref_map.combined)model)
+        for edge in all_edges(modelgraph)
+            for linkref in edge.linkconstraints
+                linkcon = modelgraph.linkconstraints[linkref.idx]
+                dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
+                edge.dual_values[linkref] = dual
+            end
         end
     end
 
