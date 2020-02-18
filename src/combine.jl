@@ -1,3 +1,8 @@
+t_add_node = 0
+t_copy_vars = 0
+t_copy_constraints = 0
+t_copy_nl_constraints = 0
+
 #############################################################################################
 # Aggregate: IDEA: Group nodes together into a larger node
 #############################################################################################
@@ -290,9 +295,14 @@ end
 #     new_model_graph = ModelGraph()
 #     return new_model_graph
 # end
+
+
+
 function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::AggregationMap)
 
-    agg_node = add_combined_node!(combined_model)
+    global t_add_node += @elapsed begin
+        agg_node = add_combined_node!(combined_model)
+    end
 
     if JuMP.mode(node_model) == JuMP.DIRECT
         error("Cannot copy a node model in `DIRECT` mode. Use the `Model` ",
@@ -302,50 +312,52 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
 
     reference_map = AggregationMap(combined_model)
     constraint_types = JuMP.list_of_constraint_types(node_model)
+
     #COPY VARIABLES
-    for var in JuMP.all_variables(node_model)
-        # if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
-        #     reference_map[var] = aggregation_map[getlinkvariable(var)]   #get the master variable
-        # else
-        new_x = JuMP.@variable(combined_model)                      #create an anonymous variable
-        reference_map[var] = new_x                                   #map variable reference to new reference
-        var_name = JuMP.name(var)
-        new_name = var_name
-        JuMP.set_name(new_x,new_name)
-        if JuMP.start_value(var) != nothing
-            JuMP.set_start_value(new_x,JuMP.start_value(var))
+    global t_copy_vars += @elapsed begin
+        for var in JuMP.all_variables(node_model)
+            new_x = JuMP.@variable(combined_model)                      #create an anonymous variable
+            reference_map[var] = new_x                                   #map variable reference to new reference
+            var_name = JuMP.name(var)
+            new_name = var_name
+            JuMP.set_name(new_x,new_name)
+            if JuMP.start_value(var) != nothing
+                JuMP.set_start_value(new_x,JuMP.start_value(var))
+            end
+            agg_node.variablemap[new_x] = var
         end
-        agg_node.variablemap[new_x] = var
-        #end
     end
 
-    #COPY ALL OTHER CONSTRAINTS
-    #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
-    for (func,set) in constraint_types
-        constraint_refs = JuMP.all_constraints(node_model, func, set)
-        for constraint_ref in constraint_refs
-            constraint = JuMP.constraint_object(constraint_ref)
-            new_constraint = _copy_constraint(constraint,reference_map)
-            new_ref= JuMP.add_constraint(combined_model,new_constraint)
-            agg_node.constraintmap[new_ref] = constraint_ref
-            reference_map[constraint_ref] = new_ref
+    global t_copy_constraints += @elapsed begin
+        #COPY ALL OTHER CONSTRAINTS
+        #Use JuMP and check if I have a ScalarConstraint or VectorConstraint and use the reference map to create new constraints
+        for (func,set) in constraint_types
+            constraint_refs = JuMP.all_constraints(node_model, func, set)
+            for constraint_ref in constraint_refs
+                constraint = JuMP.constraint_object(constraint_ref)
+                new_constraint = _copy_constraint(constraint,reference_map)
+                new_ref= JuMP.add_constraint(combined_model,new_constraint)
+                agg_node.constraintmap[new_ref] = constraint_ref
+                reference_map[constraint_ref] = new_ref
+            end
         end
-
     end
 
-    #COPY NONLINEAR CONSTRAINTS
-    nlp_initialized = false
-    if node_model.nlp_data !== nothing
-        d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
-        MOI.initialize(d,[:ExprGraph])
-        nlp_initialized = true
-        for i = 1:length(node_model.nlp_data.nlconstr)
-            expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
-            _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_NL_constraint(combined_model,expr)      #raw expression input for non-linear constraint
-            constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            agg_node.nl_constraintmap[new_nl_constraint] = constraint_ref
-            reference_map[constraint_ref] = new_nl_constraint
+    global t_copy_nl_constraints += @elapsed begin
+        #COPY NONLINEAR CONSTRAINTS
+        nlp_initialized = false
+        if node_model.nlp_data !== nothing
+            d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
+            MOI.initialize(d,[:ExprGraph])
+            nlp_initialized = true
+            for i = 1:length(node_model.nlp_data.nlconstr)
+                expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
+                _splice_nonlinear_variables!(expr,node_model,reference_map)        #splice the variables from var_map into the expression
+                new_nl_constraint = JuMP.add_NL_constraint(combined_model,expr)      #raw expression input for non-linear constraint
+                constraint_ref = JuMP.ConstraintRef(node_model,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
+                agg_node.nl_constraintmap[new_nl_constraint] = constraint_ref
+                reference_map[constraint_ref] = new_nl_constraint
+            end
         end
     end
 
