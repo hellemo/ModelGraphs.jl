@@ -15,11 +15,11 @@ Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.Const
 #Aggregation Info
 mutable struct AggregationInfo
     nodes::Vector{AggregatedNode}
-    linkvariables::Vector{VariableRef}
+    #linkvariables::Vector{VariableRef}
     linkconstraints::Vector{ConstraintRef}
     NLlinkconstraints::Vector{ConstraintRef}
 end
-AggregationInfo() = AggregationInfo(AggregatedNode[],VariableRef[],ConstraintRef[],ConstraintRef[])
+AggregationInfo() = AggregationInfo(AggregatedNode[],ConstraintRef[],ConstraintRef[])
 
 #A JuMP model created from a combined ModelGraph
 function AggregateModel()
@@ -32,7 +32,7 @@ is_combined_model(m::JuMP.Model) = haskey(m.ext,:AggregationInfo) ? true : false
 assert_is_combined_model(m::JuMP.Model) = @assert is_combined_model(m)
 getaggregationinfo(m::JuMP.Model) = haskey(m.ext, :AggregationInfo) ? m.ext[:AggregationInfo] : error("Model is not a combined model")
 getlinkconstraints(m::JuMP.Model) = is_combined_model(m) && getaggregationinfo(m).linkconstraints
-getlinkvariables(m::JuMP.Model) = is_combined_model(m) && getaggregationinfo(m).linkvariables
+#getlinkvariables(m::JuMP.Model) = is_combined_model(m) && getaggregationinfo(m).linkvariables
 getNLlinkconstraints(m::JuMP.Model) = is_combined_model(m) && getaggregationinfo(m).NLlinkconstraints
 getnodes(m::JuMP.Model) = is_combined_model(m) && getaggregationinfo(m).nodes
 
@@ -304,19 +304,19 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
     constraint_types = JuMP.list_of_constraint_types(node_model)
     #COPY VARIABLES
     for var in JuMP.all_variables(node_model)
-        if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
-            reference_map[var] = aggregation_map[getlinkvariable(var)]   #get the master variable
-        else
-            new_x = JuMP.@variable(combined_model)                      #create an anonymous variable
-            reference_map[var] = new_x                                   #map variable reference to new reference
-            var_name = JuMP.name(var)
-            new_name = var_name
-            JuMP.set_name(new_x,new_name)
-            if JuMP.start_value(var) != nothing
-                JuMP.set_start_value(new_x,JuMP.start_value(var))
-            end
-            agg_node.variablemap[new_x] = var
+        # if is_linked_variable(var)                                       #if the variable is actually a link variable, we don't need to make a new one
+        #     reference_map[var] = aggregation_map[getlinkvariable(var)]   #get the master variable
+        # else
+        new_x = JuMP.@variable(combined_model)                      #create an anonymous variable
+        reference_map[var] = new_x                                   #map variable reference to new reference
+        var_name = JuMP.name(var)
+        new_name = var_name
+        JuMP.set_name(new_x,new_name)
+        if JuMP.start_value(var) != nothing
+            JuMP.set_start_value(new_x,JuMP.start_value(var))
         end
+        agg_node.variablemap[new_x] = var
+        #end
     end
 
     #COPY ALL OTHER CONSTRAINTS
@@ -325,12 +325,6 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
         constraint_refs = JuMP.all_constraints(node_model, func, set)
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(constraint_ref)
-            if func == JuMP.VariableRef
-                var = constraint.func
-                if is_linked_variable(var)  #Don't add multiple copies of a linked variable constraint
-                    continue
-                end
-            end
             new_constraint = _copy_constraint(constraint,reference_map)
             new_ref= JuMP.add_constraint(combined_model,new_constraint)
             agg_node.constraintmap[new_ref] = constraint_ref

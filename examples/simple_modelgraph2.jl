@@ -4,8 +4,8 @@ using Ipopt
 graph = ModelGraph()
 optimizer = with_optimizer(Ipopt.Optimizer)
 
-@linkvariable(graph,z[1:2])
-@masterconstraint(graph,z[1] + z[2] <= 2)
+# @linkvariable(graph,z[1:2])
+# @masterconstraint(graph,z[1] + z[2] <= 2)
 
 #Add nodes to a GraphModel
 n1 = add_node!(graph)

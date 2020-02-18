@@ -20,7 +20,7 @@ The ModelGraph Type.  Represents a graph containing models (nodes) and the linkc
 """
 mutable struct ModelGraph <: AbstractModelGraph
 
-    masternode::ModelNode                       #$TODO: Get rid of master node.  Master node in a graph.  Can contain linkvariables
+    #masternode::ModelNode                       #$TODO: Get rid of master node.  Master node in a graph.  Can contain linkvariables
 
     #Topology
     modelnodes::Vector{ModelNode}                #Local model nodes
@@ -28,16 +28,15 @@ mutable struct ModelGraph <: AbstractModelGraph
     node_idx_map::Dict{ModelNode,Int64}          #Local map of model nodes to indices
     edge_idx_map::Dict{LinkEdge,Int64}           #Local map of link edges indices
     subgraphs::Vector{AbstractModelGraph}        #Subgraphs contained in the model graph
-    #linked_node_map::Dict{}
 
     #graphindex::Int64
     linkedge_map::OrderedDict{OrderedSet,LinkEdge}      #Sets of vertices map to a linkedge
 
     #Link variables
-    linkvariables::OrderedDict{Int64,LinkVariableRef}                                 #Link Variable references to master node variables
-    child_linkvariable_map::Dict{LinkVariableRef,Vector{JuMP.VariableRef}}    #Map of link variables in master model to corresponding variables in child ModelNodes.
-    parent_linkvariable_map::Dict{JuMP.VariableRef,LinkVariableRef}           #Map of graph link variables to parent graph link variables
-    linkvariable_names::Dict{Int64,String}
+    # linkvariables::OrderedDict{Int64,LinkVariableRef}                                 #Link Variable references to master node variables
+    # child_linkvariable_map::Dict{LinkVariableRef,Vector{JuMP.VariableRef}}    #Map of link variables in master model to corresponding variables in child ModelNodes.
+    # parent_linkvariable_map::Dict{JuMP.VariableRef,LinkVariableRef}           #Map of graph link variables to parent graph link variables
+    # linkvariable_names::Dict{Int64,String}
 
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}                     #Link constraint.  Defined over variables in ModelNodes.
@@ -53,7 +52,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}
 
     #Object indices
-    linkvariable_index::Int
+    #linkvariable_index::Int
     linkeqconstraint_index::Int           #keep track of constraint indices
     linkineqconstraint_index::Int
     linkconstraint_index::Int
@@ -66,17 +65,12 @@ mutable struct ModelGraph <: AbstractModelGraph
 
     #Constructor
     function ModelGraph()
-        modelgraph = new(ModelNode(),
-                    Vector{ModelNode}(),
+        modelgraph = new(Vector{ModelNode}(),
                     Vector{LinkEdge}(),
                     Dict{ModelNode,Int64}(),
                     Dict{LinkEdge,Int64}(),
                     Vector{AbstractModelGraph}(),
                     OrderedDict{OrderedSet,LinkEdge}(),
-                    OrderedDict{Int,AbstractLinkVariableRef}(),
-                    Dict{AbstractLinkVariableRef,Vector{JuMP.AbstractVariableRef}}(),
-                    Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
-                    Dict{Int,String}(),
                     OrderedDict{Int, AbstractLinkConstraint}(),
                     OrderedDict{Int, AbstractLinkConstraint}(),
                     OrderedDict{Int, AbstractLinkConstraint}(),
@@ -87,13 +81,12 @@ mutable struct ModelGraph <: AbstractModelGraph
                     0,
                     0,
                     0,
-                    0,
                     Dict{Symbol,Any}(),
                     nothing
                     )
 
-        modelgraph.masternode.ext[:modelgraph] = true
-        modelgraph.node_idx_map[modelgraph.masternode] = 0
+        #modelgraph.masternode.ext[:modelgraph] = true
+        #modelgraph.node_idx_map[modelgraph.masternode] = 0
 
         return modelgraph
     end
@@ -217,18 +210,18 @@ end
 ########################################################
 # Model Management
 ########################################################
-is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
+#is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
 has_objective(graph::AbstractModelGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 has_NLobjective(graph::AbstractModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
 has_subgraphs(graph::AbstractModelGraph) = !(isempty(graph.subgraphs))
 has_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
 num_linkconstraints(graph::AbstractModelGraph) = length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
-num_linkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
+#num_linkvariables(graph::AbstractModelGraph) = length(graph.linkvariables)
 num_NLlinkconstraints(graph::AbstractModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
 getnumnodes(graph::AbstractModelGraph) = length(getnodes(graph))
 
 getmasternode(graph::ModelGraph) = graph.masternode
-getlinkvariables(graph::ModelGraph) = collect(values(graph.linkvariables))
+#getlinkvariables(graph::ModelGraph) = collect(values(graph.linkvariables))
 getlinkconstraints(graph::ModelGraph) = collect(values(graph.linkconstraints))
 
 #Go through subgraphs and get all linkconstraints
@@ -242,13 +235,13 @@ function all_linkconstraints(graph::AbstractModelGraph)
 end
 
 function JuMP.num_variables(graph::AbstractModelGraph)
-    n_master_variables = 0
-    n_master_variables += JuMP.num_variables(getmasternode(graph))
-    for subgraph in all_subgraphs(graph)
-        n_master_variables += JuMP.num_variables(getmasternode(subgraph))
-    end
+    #n_master_variables = 0
+    #n_master_variables += JuMP.num_variables(getmasternode(graph))
+    # for subgraph in all_subgraphs(graph)
+    #     n_master_variables += JuMP.num_variables(getmasternode(subgraph))
+    # end
     n_node_variables = sum(JuMP.num_variables.(all_nodes(graph)))
-    return n_master_variables + n_node_variables
+    return n_node_variables
 end
 
 #JuMP Model Extenstion
@@ -289,73 +282,73 @@ JuMP.set_name(v::LinkVariableRef, s::String) = JuMP.set_name(v.vref,s)
 JuMP.name(v::LinkVariableRef) =  JuMP.name(v.vref)
 
 #Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
-function JuMP.add_variable(graph::ModelGraph, v::JuMP.AbstractVariable, name::String="")
-    graph.linkvariable_index += 1
-
-    node_vref = JuMP.add_variable(graph.masternode,v,name)  #add the variable to the master model
-    link_vref = LinkVariableRef(node_vref,graph.linkvariable_index) #use underlying model variable
-
-    graph.linkvariables[link_vref.idx] = link_vref
-    JuMP.set_name(link_vref, name)
-
-    graph.child_linkvariable_map[link_vref] = Vector{JuMP.AbstractVariableRef}()
-    return link_vref
-end
+# function JuMP.add_variable(graph::ModelGraph, v::JuMP.AbstractVariable, name::String="")
+#     graph.linkvariable_index += 1
+#
+#     node_vref = JuMP.add_variable(graph.masternode,v,name)  #add the variable to the master model
+#     link_vref = LinkVariableRef(node_vref,graph.linkvariable_index) #use underlying model variable
+#
+#     graph.linkvariables[link_vref.idx] = link_vref
+#     JuMP.set_name(link_vref, name)
+#
+#     graph.child_linkvariable_map[link_vref] = Vector{JuMP.AbstractVariableRef}()
+#     return link_vref
+# end
 
 #Delete a link variable
-function MOI.delete!(graph::ModelGraph, vref::LinkVariableRef)
-    delete!(m.linkvariables, vref.idx)
-    delete!(m.linkvarnames, vref.idx)
-end
-MOI.is_valid(graph::ModelGraph, vref::LinkVariableRef) = vref.idx in keys(graph.linkvariables)
+# function MOI.delete!(graph::ModelGraph, vref::LinkVariableRef)
+#     delete!(m.linkvariables, vref.idx)
+#     delete!(m.linkvarnames, vref.idx)
+# end
+# MOI.is_valid(graph::ModelGraph, vref::LinkVariableRef) = vref.idx in keys(graph.linkvariables)
 
 #Link master variable to model node
 #TODO: Make a linkvariable reference its master node
-function link_variables!(graph::ModelGraph,lvref::LinkVariableRef,vref::JuMP.VariableRef)
-    #graph = lvref.graph
-    if !(vref in graph.child_linkvariable_map[lvref])
-        push!(graph.child_linkvariable_map[lvref],vref)
-    end
-    node = getnode(vref)
-    node.parent_linkvariable_map[vref] = lvref
-    return nothing
-end
-link_variables!(graph::ModelGraph,vref::JuMP.VariableRef,lvref::LinkVariableRef) = link_variables!(graph,lvref,vref)
+# function link_variables!(graph::ModelGraph,lvref::LinkVariableRef,vref::JuMP.VariableRef)
+#     #graph = lvref.graph
+#     if !(vref in graph.child_linkvariable_map[lvref])
+#         push!(graph.child_linkvariable_map[lvref],vref)
+#     end
+#     node = getnode(vref)
+#     node.parent_linkvariable_map[vref] = lvref
+#     return nothing
+# end
+# link_variables!(graph::ModelGraph,vref::JuMP.VariableRef,lvref::LinkVariableRef) = link_variables!(graph,lvref,vref)
 #link_variables!(lvref::LinkVariableRef,nvref::NodeVariableRef) = link_variables!(lvref,nvref.vref)
 
 ######################################################
 # Master Constraints
 ######################################################
-const MasterAffExpr = Union{LinkVariableRef,JuMP.GenericAffExpr{Float64,LinkVariableRef}}
+#const MasterAffExpr = Union{LinkVariableRef,JuMP.GenericAffExpr{Float64,LinkVariableRef}}
 
-struct ScalarMasterConstraint{F <: MasterAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
-    func::F
-    set::S
-    function ScalarMasterConstraint(F::MasterAffExpr,S::MOI.AbstractScalarSet)
-        con = new{typeof(F),typeof(S)}(F,S)
-    end
-end
-
-function JuMP.build_constraint(_error::Function,func::MasterAffExpr,set::MOI.AbstractScalarSet)
-    constraint = ScalarMasterConstraint(func, set)
-    return constraint
-end
-
-function JuMP.ScalarConstraint(con::ScalarMasterConstraint)
-    terms = con.func.terms
-    new_terms = OrderedDict([(linkvar_ref.vref,coeff) for (linkvar_ref,coeff) in terms])
-    new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-    new_func.terms = new_terms
-    new_func.constant = con.func.constant
-    return JuMP.ScalarConstraint(new_func,con.set)
-end
-
-#Add a Master Constraint
-function JuMP.add_constraint(graph::ModelGraph, con::ScalarMasterConstraint, name::String="")
-    scalar_con = JuMP.ScalarConstraint(con)
-    cref = JuMP.add_constraint(getmasternode(graph),scalar_con,name)          #also add to master model
-    return cref
-end
+# struct ScalarMasterConstraint{F <: MasterAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
+#     func::F
+#     set::S
+#     function ScalarMasterConstraint(F::MasterAffExpr,S::MOI.AbstractScalarSet)
+#         con = new{typeof(F),typeof(S)}(F,S)
+#     end
+# end
+#
+# function JuMP.build_constraint(_error::Function,func::MasterAffExpr,set::MOI.AbstractScalarSet)
+#     constraint = ScalarMasterConstraint(func, set)
+#     return constraint
+# end
+#
+# function JuMP.ScalarConstraint(con::ScalarMasterConstraint)
+#     terms = con.func.terms
+#     new_terms = OrderedDict([(linkvar_ref.vref,coeff) for (linkvar_ref,coeff) in terms])
+#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+#     new_func.terms = new_terms
+#     new_func.constant = con.func.constant
+#     return JuMP.ScalarConstraint(new_func,con.set)
+# end
+#
+# #Add a Master Constraint
+# function JuMP.add_constraint(graph::ModelGraph, con::ScalarMasterConstraint, name::String="")
+#     scalar_con = JuMP.ScalarConstraint(con)
+#     cref = JuMP.add_constraint(getmasternode(graph),scalar_con,name)          #also add to master model
+#     return cref
+# end
 
 # Model Extras
 JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
@@ -516,7 +509,6 @@ function string(graph::ModelGraph)
     """
     Model Graph:
     local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
-    link variables: $(num_linkvariables(graph))
     local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
     """
 end

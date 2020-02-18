@@ -15,7 +15,7 @@ mutable struct ModelNode <: JuMP.AbstractModel
     nodevariables::OrderedDict{Int,AbstractVariableRef}
     nodevarnames::Dict{Int,String}
 
-    parent_linkvariable_map::Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}  #map of nodevariables to parent linkvariables
+    #parent_linkvariable_map::Dict{JuMP.AbstractVariableRef,AbstractVariableRef}  #map of nodevariables to parent variables
     # partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
@@ -37,7 +37,6 @@ function ModelNode()
      0,
      OrderedDict{Int,JuMP.VariableRef}(),
      Dict{Int,String}(),
-     Dict{JuMP.AbstractVariableRef,AbstractLinkVariableRef}(),
      Dict{Int64,AbstractLinkConstraint}(),
      Dict{Int64,AbstractLinkConstraint}(),
      Dict{MOI.VariableIndex,Float64}(),
@@ -57,7 +56,7 @@ JuMP.value(node::ModelNode,vref::VariableRef) = node.variable_values[vref]
 getmodel(node::ModelNode) = node.model
 getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
-getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
+#getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
 
 setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
@@ -97,16 +96,16 @@ Check whether a JuMP variable belongs to a ModelNode
 is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
 is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:modelnode])
 
-function is_linked_variable(var::JuMP.AbstractVariableRef)
-    m = owner_model(var)
-    if haskey(m.ext,:modelgraph)
-        return false
-    else
-        return var in keys(getnode(var).parent_linkvariable_map)
-    end
-end
+# function is_linked_variable(var::JuMP.AbstractVariableRef)
+#     m = owner_model(var)
+#     if haskey(m.ext,:modelgraph)
+#         return false
+#     else
+#         return var in keys(getnode(var).parent_linkvariable_map)
+#     end
+# end
 
-is_linked_to_master(node::Model) = !(isempty(node.parent_linkvariable_map))
+#is_linked_to_master(node::Model) = !(isempty(node.parent_linkvariable_map))
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
 
 #############################################
