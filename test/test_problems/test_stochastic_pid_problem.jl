@@ -80,9 +80,9 @@ xsp[3] =  1.0;
 # create two-stage graph moddel
 PID = ModelGraph()
 # add variables to parent node
-@variable(PID, -10<= Kc <=10)
-@variable(PID,-100<=tauI<=100)
-@variable(PID,-100<=tauD<=1000)
+@linkvariable(PID, -10<= Kc <=10)
+@linkvariable(PID,-100<=tauI<=100)
+@linkvariable(PID,-100<=tauD<=1000)
 
 # create array of children models
 PIDch=Array{ModelNode}(undef,NS)
