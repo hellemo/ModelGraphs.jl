@@ -40,7 +40,7 @@ set_model(n2,m2)
 set_model(n3,m3)
 set_model(n4,m4)
 
-ipopt = with_optimizer(Ipopt.Optimizer)
+ipopt = Ipopt.Optimizer
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(modelgraph,n1[:x] == n2[:x])

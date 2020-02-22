@@ -2,7 +2,7 @@ using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()
-optimizer = with_optimizer(Ipopt.Optimizer)
+optimizer = Ipopt.Optimizer
 
 # @linkvariable(graph,z[1:2])
 # @masterconstraint(graph,z[1] + z[2] <= 2)

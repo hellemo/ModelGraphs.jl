@@ -49,7 +49,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     objective_function::JuMP.AbstractJuMPScalar
 
     #Optimizer
-    optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}
+    optimizer
 
     #Object indices
     #linkvariable_index::Int
@@ -499,7 +499,7 @@ MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(grap
 #################################
 # Optimizer
 #################################
-set_optimizer(graph::ModelGraph,optimizer::Union{JuMP.OptimizerFactory,AbstractGraphOptimizer,Nothing}) = graph.optimizer = optimizer
+set_optimizer(graph::ModelGraph,optimizer) = graph.optimizer = optimizer
 
 
 ####################################

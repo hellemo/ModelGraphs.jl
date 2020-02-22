@@ -1,11 +1,12 @@
 JuMP.Model(modelgraph::ModelGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
 
-function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;kwargs...)
+function JuMP.optimize!(graph::ModelGraph,optimizer;kwargs...)
     println("Converting ModelGraph to ModelNode...")
     modelnode,reference_map = combine(graph)
 
     println("Optimizing ModelNode")
-    status = JuMP.optimize!(modelnode,optimizer;kwargs...)
+    JuMP.set_optimizer(modelnode,optimizer)
+    status = JuMP.optimize!(modelnode)#,optimizer;kwargs...)
     #status = JuMP.termination_status(aggregate_model)
 
     if JuMP.has_values(getmodel(modelnode))     # TODO Get all the correct status codes for copying a solution
@@ -16,7 +17,7 @@ function JuMP.optimize!(graph::ModelGraph,optimizer::JuMP.OptimizerFactory;kwarg
     return status
 end
 
-function JuMP.optimize!(node::ModelNode,optimizer::JuMP.OptimizerFactory;kwargs...)
+function JuMP.optimize!(node::ModelNode,optimizer;kwargs...)
     status = JuMP.optimize!(getmodel(node),optimizer;kwargs...)
     return status
 end

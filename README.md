@@ -30,7 +30,7 @@ using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()
-optimizer = with_optimizer(Ipopt.Optimizer)
+optimizer = Ipopt.Optimizer
 
 #Add nodes to a ModelGraph
 n1 = add_node!(graph)

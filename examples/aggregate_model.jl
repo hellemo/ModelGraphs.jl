@@ -2,7 +2,7 @@ using ModelGraphs
 using Ipopt
 
 graph = ModelGraph()
-optimizer = with_optimizer(Ipopt.Optimizer)
+optimizer = Ipopt.Optimizer
 
 #m1 = JuMP.Model()
 n1 = add_node!(graph)

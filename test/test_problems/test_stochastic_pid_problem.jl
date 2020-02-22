@@ -80,9 +80,9 @@ xsp[3] =  1.0;
 # create two-stage graph moddel
 PID = ModelGraph()
 # add variables to parent node
-@linkvariable(PID, -10<= Kc <=10)
-@linkvariable(PID,-100<=tauI<=100)
-@linkvariable(PID,-100<=tauD<=1000)
+@variable(PID, -10<= Kc <=10)
+@variable(PID,-100<=tauI<=100)
+@variable(PID,-100<=tauD<=1000)
 
 # create array of children models
 PIDch=Array{ModelNode}(undef,NS)
@@ -99,7 +99,7 @@ for s in 1:NS
 end
 
 # solve with Ipopt
-ipopt = with_optimizer(Ipopt.Optimizer)
+ipopt = Ipopt.Optimizer
 optimize!(PID,ipopt)
 
 #Query solution from graph

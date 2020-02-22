@@ -34,7 +34,7 @@ add_subgraph!(graph,subgraph2)
 @linkconstraint(graph,n1[:x] == n3[:x])
 @linkconstraint(graph,n1[:x] <= n3[:x])
 
-optimize!(graph,with_optimizer(Ipopt.Optimizer))
+optimize!(graph,Ipopt.Optimizer)
 
 println("n1[:x]= ",nodevalue(n1[:x]))
 println("n2[:x]= ",nodevalue(n2[:x]))

@@ -37,10 +37,10 @@ m4 = Model()
 
 
 #Set models on nodes and edges
-setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
-setmodel(n2,m2)
-setmodel(n3,m3)
-setmodel(n4,m4)
+set_model(n1,m1)     #set m1 to node 1.  Updates reference on m1
+set_model(n2,m2)
+set_model(n3,m3)
+set_model(n4,m4)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n4[:x] == n1[:x])
@@ -49,7 +49,7 @@ setmodel(n4,m4)
 @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
-ipopt = with_optimizer(Ipopt.Optimizer)
+ipopt = Ipopt.Optimizer
 optimize!(graph,ipopt)
 
 #Query solution

@@ -157,6 +157,8 @@ JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node
 JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
 JuMP.objective_sense(node::ModelNode) = JuMP.objective_sense(getmodel(node))
 JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
+JuMP.set_optimizer(node::ModelNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
+JuMP.NLPEvaluator(node::ModelNode) = JuMP.NLPEvaluator(getmodel(node))
 
 function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective(getmodel(modelnode),sense,func)
