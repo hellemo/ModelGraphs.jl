@@ -53,6 +53,4 @@ ipopt = Ipopt.Optimizer
 optimize!(graph,ipopt)
 
 #Query solution
-nodevalue(n2[:x])
-
-true
+@test nodevalue(n2[:x]) ≈ 1

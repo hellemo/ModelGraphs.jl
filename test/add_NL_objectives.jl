@@ -22,11 +22,8 @@ set_start_value(x[2],2)
 @NLobjective(m2,Min,x[1]^3 + x[2]^2)
 n2 = add_node!(graph,m2)
 
-aggmodel,ref_map = combine(graph)
-JuMP.set_optimizer(aggmodel,Ipopt.Optimizer)
-optimize!(aggmodel)
+optimize!(graph,Ipopt.Optimizer)
 
 # d = JuMP.NLPEvaluator(aggmodel)
 # MOI.initialize(d,[:ExprGraph])
-
-true
+@test round(nodevalue(n2[:x][1]),digits=4) ≈ 2.1167

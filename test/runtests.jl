@@ -4,8 +4,8 @@ using Test
 
 
 @testset "Test adding nonlinear objectives" begin
-    @test include("add_NL_objectives.jl")
-    @test include("nl_problem.jl")
+    include("add_NL_objectives.jl")
+    include("nl_problem.jl")
 end
 
 @testset "Running special test cases" begin
